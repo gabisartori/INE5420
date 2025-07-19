@@ -1,8 +1,6 @@
-import tkinter as tk
-
 from dataclasses import dataclass, field
-
-type Point = list[int]
+from screen import ScreenWireframe
+from my_types import Point
 
 @dataclass
 class Wireframe:
@@ -12,7 +10,7 @@ class Wireframe:
   color: str = "black"
 
 
-  def draw(self, canva: tk.Canvas): raise NotImplementedError("Subclasses should implement this method")
+  def figures(self) -> list[ScreenWireframe]: raise NotImplementedError("Subclasses should implement this method")
 
   def __str__(self) -> str:
     points_str = ','.join(f"({','.join(map(str, point))})" for point in self.points)
@@ -35,25 +33,25 @@ class PointObject(Wireframe):
   def __init__(self, name: str, center: Point):
     super().__init__(name, center, [center])
 
-  def draw(self, canva: tk.Canvas):
-    x, y = self.center
-    canva.create_oval(x - 2, y - 2, x + 2, y + 2, fill=self.color)
+  def figures(self) -> list[ScreenWireframe]:
+    return [ScreenWireframe(self.center)]
 
 class LineObject(Wireframe):
   def __init__(self, name: str, start: Point, end: Point):
-    super().__init__(name, [(start[0] + end[0]) // 2, (start[1] + end[1]) // 2], [start, end])
+    super().__init__(name, [(start[0] + end[0]) // 2, (start[2] + end[2]) // 2], [start, end])
 
-  def draw(self, canva: tk.Canvas):
-    start, end = self.points
-    canva.create_line(start[0], start[1], end[0], end[1], fill=self.color)
+  def figures(self) -> list[ScreenWireframe]:
+    return [ScreenWireframe(self.points[0], self.points[1])]
 
 class PolygonObject(Wireframe):
   def __init__(self, name: str, points: list[Point]):
     center = [sum(p[n] for p in points) // len(points) for n in range(len(points[0]))]
     super().__init__(name, center, points)
 
-  def draw(self, canva: tk.Canvas):
+  def figures(self) -> list[ScreenWireframe]:
+    edges = []
     for i in range(len(self.points)):
       start = self.points[i]
       end = self.points[(i + 1) % len(self.points)]
-      canva.create_line(start[0], start[1], end[0], end[1], fill=self.color)
+      edges.append(ScreenWireframe(start, end))
+    return edges

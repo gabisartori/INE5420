@@ -1,5 +1,6 @@
 import tkinter as tk
 from wireframe import *
+from screen import *
 
 class Viewport:
   def __init__(self, width, height, title="INE5420", input: str="", output: str=""):
@@ -10,6 +11,8 @@ class Viewport:
     self.objects: list[Wireframe] = self.load_objects(input)
     self.build: list[Point] = []
     self.building: bool = False
+
+    self.camera = Camera(np.array([0, -1, 0]), np.array([0, 100, 0]))
 
 
     # Ui Componentes
@@ -42,8 +45,8 @@ class Viewport:
     self.clear_button.grid(row=3, column=1)
 
   def canva_click(self, event):
-    if self.building: self.build.append([event.x, event.y])
-    else: self.objects.append(PointObject("Clicked Point", [event.x, event.y]))
+    if self.building: self.build.append(np.array([event.x, 0, event.y]))
+    else: self.objects.append(PointObject("Clicked Point", np.array([event.x, 0, event.y])))
     self.update()
 
   def finish_lines(self):
@@ -65,7 +68,17 @@ class Viewport:
 
   def update(self):
     self.canva.delete("all")
-    for obj in self.objects: obj.draw(self.canva)
+    for obj in self.objects:
+      for edge in obj.figures():
+        # Draw line
+        if edge.end:
+          start, end = self.camera.project(edge.start), self.camera.project(edge.end)
+          self.canva.create_line(start[0], start[1], end[0], end[1], fill=obj.color)
+        # Draw point
+        else:
+          point = self.camera.project(edge.start)
+          self.canva.create_oval(point[0] - 2, point[1] - 2, point[0] + 2, point[1] + 2, fill=obj.color)
+        
     prev = None
     for point in self.build:
       self.canva.create_oval(point[0] - 2, point[1] - 2, point[0] + 2, point[1] + 2, fill="red")
