@@ -12,7 +12,7 @@ class Viewport:
     self.build: list[Point] = []
     self.building: bool = False
 
-    self.camera = Camera(np.array([0, -1, 0]), np.array([0, 100, 0]))
+    self.camera = Camera(np.array([-1, -1, 0]), np.array([200, 100, 0]))
 
 
     # Ui Componentes
@@ -25,6 +25,7 @@ class Viewport:
     self.polygon_button = tk.Button(self.root, text="Polygon", command=self.finish_polygon)
     self.clear_button = tk.Button(self.root, text="Clear", command=self.clear)
 
+    self.controls()
     self.build_ui()
     self.update()
 
@@ -36,8 +37,16 @@ class Viewport:
     self.building = False
     self.update()
 
-  def build_ui(self):
+  def controls(self):
     self.canva.bind("<ButtonRelease-1>", self.canva_click)
+    self.root.bind("<KeyPress-w>", lambda e: self.camera.move_up() or self.update())
+    self.root.bind("<KeyPress-s>", lambda e: self.camera.move_down() or self.update())
+    self.root.bind("<KeyPress-a>", lambda e: self.camera.move_left() or self.update())
+    self.root.bind("<KeyPress-d>", lambda e: self.camera.move_right() or self.update())
+    self.root.bind("<KeyPress-q>", lambda e: self.camera.move_below() or self.update())
+    self.root.bind("<KeyPress-e>", lambda e: self.camera.move_above() or self.update())
+
+  def build_ui(self):
     self.canva.grid(row=0, column=0)
     self.build_button.grid(row=0, column=1)
     self.lines_button.grid(row=1, column=1)
@@ -71,7 +80,7 @@ class Viewport:
     for obj in self.objects:
       for edge in obj.figures():
         # Draw line
-        if edge.end:
+        if edge.end is not None:
           start, end = self.camera.project(edge.start), self.camera.project(edge.end)
           self.canva.create_line(start[0], start[1], end[0], end[1], fill=obj.color)
         # Draw point
@@ -81,8 +90,9 @@ class Viewport:
         
     prev = None
     for point in self.build:
+      point = self.camera.project(point)
       self.canva.create_oval(point[0] - 2, point[1] - 2, point[0] + 2, point[1] + 2, fill="red")
-      if prev: self.canva.create_line(prev[0], prev[1], point[0], point[1], fill="red")
+      if prev is not None: self.canva.create_line(prev[0], prev[1], point[0], point[1], fill="red")
       prev = point
 
   def run(self) -> list[Wireframe]:
