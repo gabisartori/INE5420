@@ -46,11 +46,13 @@ class Camera:
     v = c - self.position
     x = np.dot(v, self.right)
     y = np.dot(v, self.up)
-    print(self.position, self.normal)
-    print(point, c, v)
-    print(x, y)
-    print()
     return np.array([x, y])
+  
+  def get_clicked_point(self, x: int, y: int) -> Point:
+    """Get the point in 3D space corresponding to a click on the viewport."""
+    point = x*self.right + y*self.up + self.position
+    print(point)
+    return point
 
 
 @dataclass

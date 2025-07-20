@@ -12,7 +12,7 @@ class Viewport:
     self.build: list[Point] = []
     self.building: bool = False
 
-    self.camera = Camera(np.array([-1, -1, 0]), np.array([200, 100, 0]))
+    self.camera = Camera(np.array([0, -1, 0]), np.array([0, 100, 0]))
 
 
     # Ui Componentes
@@ -54,8 +54,8 @@ class Viewport:
     self.clear_button.grid(row=3, column=1)
 
   def canva_click(self, event):
-    if self.building: self.build.append(np.array([event.x, 0, event.y]))
-    else: self.objects.append(PointObject("Clicked Point", np.array([event.x, 0, event.y])))
+    if self.building: self.build.append(self.camera.get_clicked_point(event.x, event.y))
+    else: self.objects.append(PointObject("Clicked Point", self.camera.get_clicked_point(event.x, event.y)))
     self.update()
 
   def finish_lines(self):
