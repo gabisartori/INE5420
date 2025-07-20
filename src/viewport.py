@@ -12,8 +12,7 @@ class Viewport:
     self.build: list[Point] = []
     self.building: bool = False
 
-    self.camera = Camera(np.array([0, -1, 0]), np.array([0, 100, 0]))
-
+    self.camera = Camera(np.array([0, -1, 0]), np.array([-int(self.width *0.4), 0, -int(self.height*0.4)]), self.height)
 
     # Ui Componentes
     self.root: tk.Tk = tk.Tk()
@@ -39,6 +38,8 @@ class Viewport:
 
   def controls(self):
     self.canva.bind("<ButtonRelease-1>", self.canva_click)
+    self.root.bind("<Button-4>", lambda e: self.camera.zoom_in(e.x, e.y) or self.update())
+    self.root.bind("<Button-5>", lambda e: self.camera.zoom_out(e.x, e.y) or self.update())
     self.root.bind("<KeyPress-w>", lambda e: self.camera.move_up() or self.update())
     self.root.bind("<KeyPress-s>", lambda e: self.camera.move_down() or self.update())
     self.root.bind("<KeyPress-a>", lambda e: self.camera.move_left() or self.update())
@@ -74,7 +75,6 @@ class Viewport:
     self.building = False
     self.update()
 
-
   def update(self):
     self.canva.delete("all")
     for obj in self.objects:
@@ -87,7 +87,6 @@ class Viewport:
         else:
           point = self.camera.project(edge.start)
           self.canva.create_oval(point[0] - 2, point[1] - 2, point[0] + 2, point[1] + 2, fill=obj.color)
-        
     prev = None
     for point in self.build:
       point = self.camera.project(point)
