@@ -12,7 +12,7 @@ class Viewport:
     self.build: list[Point] = []
     self.building: bool = False
 
-    self.camera = Camera(np.array([0, -1, 0]), np.array([-int(self.width *0.4), 0, -int(self.height*0.4)]), self.height)
+    self.camera = Camera(np.array([0, -1, 0]), np.array([0, 0, 0]), width*0.8, height*0.8)
 
     # Ui Componentes
     self.root: tk.Tk = tk.Tk()
