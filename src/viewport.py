@@ -3,7 +3,7 @@ from wireframe import *
 from screen import *
 
 class Viewport:
-  def __init__(self, width, height, title="INE5420", input: str="", output: str=""):
+  def __init__(self, width, height, title="INE5420", input: str="", output: str="", debug: bool=False):
     self.output: str = output
     
     self.width: int = width
@@ -11,6 +11,7 @@ class Viewport:
     self.objects: list[Wireframe] = self.load_objects(input)
     self.build: list[Point] = []
     self.building: bool = False
+    self.debug: bool = debug
 
     self.camera = Camera(np.array([0, -1, 0]), np.array([0, 0, 0]), width*0.8, height*0.8)
 
@@ -93,6 +94,11 @@ class Viewport:
       self.canva.create_oval(point[0] - 2, point[1] - 2, point[0] + 2, point[1] + 2, fill="red")
       if prev is not None: self.canva.create_line(prev[0], prev[1], point[0], point[1], fill="red")
       prev = point
+    
+    # Draw axes
+    if self.debug:
+      self.canva.create_line(0, self.height*0.4, self.width, self.height*0.4, fill="blue")
+      self.canva.create_line(self.width*0.4, 0, self.width*0.4, self.height, fill="blue")
 
   def run(self) -> list[Wireframe]:
     self.root.mainloop()
@@ -109,7 +115,7 @@ class Viewport:
     if not objects: return []
     try:
       with open(objects, "r") as file:
-        return [Wireframe.from_string(line.strip()) for line in file if line.strip()]
+        return [Wireframe.from_string(line.strip()) for line in file if line.strip() and not line.startswith("#")]
     except FileNotFoundError:
       print(f"Arquivo {objects} não encontrado.")
       return []

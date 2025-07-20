@@ -17,6 +17,8 @@ class Camera:
     self.zoom: float = 1.0
     self.viewport_width: int = viewport_width
     self.viewport_height: int = viewport_height
+    self.center_x = viewport_width // 2
+    self.center_y = viewport_height // 2
 
     UP = np.array([0, 1, 0])
     if np.array_equal(normal, UP) or np.array_equal(normal, -UP):
@@ -26,9 +28,9 @@ class Camera:
       self.right = normalize(np.cross(self.normal, UP))
       self.up = normalize(np.cross(self.right, self.normal))
 
-  def move_up(self): self.position[2] -= self.speed/self.zoom
+  def move_up(self): self.position[2] += self.speed/self.zoom
 
-  def move_down(self): self.position[2] += self.speed/self.zoom
+  def move_down(self): self.position[2] -= self.speed/self.zoom
 
   def move_left(self): self.position[0] -= self.speed/self.zoom
 
@@ -38,13 +40,9 @@ class Camera:
 
   def move_above(self): self.position[1] += self.speed/self.zoom
 
-  def zoom_in(self, x, y):
-    self.position = self.get_clicked_point(x, y)
-    self.zoom *= 1.1
+  def zoom_in(self, x, y): self.zoom *= 1.1
 
-  def zoom_out(self, x, y):
-    self.position = self.get_clicked_point(x, y)
-    self.zoom /= 1.1
+  def zoom_out(self, x, y): self.zoom /= 1.1
 
   def project(self, point: Point) -> Point:
     # Ignore points behind camera
@@ -63,20 +61,24 @@ class Camera:
     # - Centering the camera plane origin at the center of the viewport
     # - Scaling the coordinates by the zoom factor
     # - Adjusting the y-coordinate to match the canvas coordinate system
-    x = (x + self.viewport_width / 2)
-    y = (y + self.viewport_height / 2)
-    x = int(x * self.zoom)
-    y = int(y * self.zoom)
+    x = (x + self.center_x)
+    y = (y + self.center_y)
+    x = int(self.center_x + self.zoom*(x-self.center_x))
+    y = int(self.center_y + self.zoom*(y-self.center_y))
     y = self.viewport_height - y
 
     return np.array([x, y])
   
+  def viewport_to_camera(self, x: int, y: int) -> tuple[int, int]:
+    # Convert viewport coordinates to camera view plane coordinates
+    y = self.viewport_height - y
+    x = int((x - self.center_x) / self.zoom)
+    y = int((y - self.center_y) / self.zoom)
+    return x, y
+
   def get_clicked_point(self, x: int, y: int) -> Point:
     # Reverse the projection to get the 3D point from the 2D click coordinates
-    # Convert the viewport coordinates to camera view plane coordinates
-    y = self.viewport_height - y
-    x = int(x / self.zoom - self.viewport_width / 2)
-    y = int(y / self.zoom - self.viewport_height / 2)
+    x, y = self.viewport_to_camera(x, y)
 
     # Return a 3D point based on the camera's position and orientation
     # TODO: This creates a point at the exact position of the camera
