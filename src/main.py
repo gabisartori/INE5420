@@ -1,5 +1,5 @@
 import viewport
 
 
-screen = viewport.Viewport(800, 600, input="../example.obj", output="../output.obj", debug=True)
+screen = viewport.Viewport(800, 600, input="../example.obj", output="../output.obj")
 objects = screen.run()

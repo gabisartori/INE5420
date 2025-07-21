@@ -10,8 +10,11 @@ class Viewport:
     self.height: int = height
     self.objects: list[Wireframe] = self.load_objects(input)
     self.build: list[Point] = []
-    self.building: bool = False
+    self._building: bool = False
+
     self.debug: bool = debug
+    self.debug_objects: list[Wireframe] = [PointObject("World Origin", np.array([0, 0, 0]))]
+
 
     self.camera = Camera(np.array([0, -1, 0]), np.array([0, 0, 0]), width*0.8, height*0.8)
 
@@ -24,6 +27,7 @@ class Viewport:
     self.lines_button = tk.Button(self.root, text="Lines", command=self.finish_lines)
     self.polygon_button = tk.Button(self.root, text="Polygon", command=self.finish_polygon)
     self.clear_button = tk.Button(self.root, text="Clear", command=self.clear)
+    self.recenter_button = tk.Button(self.root, text="Recenter", command=lambda: self.camera.recenter() or self.update())
 
     self.controls()
     self.build_ui()
@@ -31,14 +35,29 @@ class Viewport:
 
   def set_building(self): self.building = True
 
+  def set_debug(self):
+    self.debug = not self.debug
+    self.update()
+
+  def move_camera(self, event):
+    self.camera.position = self.camera.get_clicked_point(event.x, event.y)
+    self.update()
+
   def clear(self):
     self.objects.clear()
     self.build.clear()
     self.building = False
     self.update()
 
+  def cancel_building(self):
+    self.build.clear()
+    self.building = False
+    self.update()
+
   def controls(self):
     self.canva.bind("<ButtonRelease-1>", self.canva_click)
+    self.canva.bind("<Button-3>", self.move_camera)
+    self.root.bind("<Button-2>", lambda e: self.set_debug())
     self.root.bind("<Button-4>", lambda e: self.camera.zoom_in(e.x, e.y) or self.update())
     self.root.bind("<Button-5>", lambda e: self.camera.zoom_out(e.x, e.y) or self.update())
     self.root.bind("<KeyPress-w>", lambda e: self.camera.move_up() or self.update())
@@ -47,13 +66,17 @@ class Viewport:
     self.root.bind("<KeyPress-d>", lambda e: self.camera.move_right() or self.update())
     self.root.bind("<KeyPress-q>", lambda e: self.camera.move_below() or self.update())
     self.root.bind("<KeyPress-e>", lambda e: self.camera.move_above() or self.update())
+    self.root.bind("<KeyPress-Escape>", lambda e: self.cancel_building())
+    self.root.bind("<Control-z>", lambda e: self.undo())
+
 
   def build_ui(self):
-    self.canva.grid(row=0, column=0)
-    self.build_button.grid(row=0, column=1)
-    self.lines_button.grid(row=1, column=1)
-    self.polygon_button.grid(row=2, column=1)
-    self.clear_button.grid(row=3, column=1)
+    self.canva.grid(row=0, column=0, columnspan=4, rowspan=10, sticky="nsew")
+    self.build_button.grid(row=11, column=0, sticky="ew")
+    self.lines_button.grid(row=11, column=1, sticky="ew")
+    self.polygon_button.grid(row=11, column=2, sticky="ew")
+    self.clear_button.grid(row=11, column=3, sticky="ew")
+    self.recenter_button.grid(row=0, column=5, columnspan=4)
 
   def canva_click(self, event):
     if self.building: self.build.append(self.camera.get_clicked_point(event.x, event.y))
@@ -78,7 +101,9 @@ class Viewport:
 
   def update(self):
     self.canva.delete("all")
-    for obj in self.objects:
+    all_objects = self.objects
+    if self.debug: all_objects += self.debug_objects
+    for obj in all_objects:
       for edge in obj.figures():
         # Draw line
         if edge.end is not None:
@@ -122,4 +147,18 @@ class Viewport:
     except Exception as e:
       print(f"Erro ao carregar objetos: {e}")
       return []
-    
+
+  def undo(self):
+    if self.building:
+      if self.build: self.build.pop()
+      else: self.building = False
+    elif self.objects:
+      self.objects.pop()
+    self.update()
+
+  @property
+  def building(self) -> bool: return self._building
+
+  @building.setter
+  def building(self, value: bool):
+    self._building = value

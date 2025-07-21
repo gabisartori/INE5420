@@ -28,21 +28,23 @@ class Camera:
       self.right = normalize(np.cross(self.normal, UP))
       self.up = normalize(np.cross(self.right, self.normal))
 
-  def move_up(self): self.position[2] += self.speed/self.zoom
+  def move_up(self): self.position[2] += max(self.speed/self.zoom, 1)
 
-  def move_down(self): self.position[2] -= self.speed/self.zoom
+  def move_down(self): self.position[2] -= max(self.speed/self.zoom, 1)
 
-  def move_left(self): self.position[0] -= self.speed/self.zoom
+  def move_left(self): self.position[0] -= max(self.speed/self.zoom, 1)
 
-  def move_right(self): self.position[0] += self.speed/self.zoom
+  def move_right(self): self.position[0] += max(self.speed/self.zoom, 1)
 
-  def move_below(self): self.position[1] -= self.speed/self.zoom
+  def move_below(self): self.position[1] -= max(self.speed/self.zoom, 1)
 
-  def move_above(self): self.position[1] += self.speed/self.zoom
+  def move_above(self): self.position[1] += max(self.speed/self.zoom, 1)
 
   def zoom_in(self, x, y): self.zoom *= 1.1
 
   def zoom_out(self, x, y): self.zoom /= 1.1
+
+  def recenter(self): self.position = np.array([0, 100, 0]); self.normal = np.array([0, -1, 0]); self.zoom = 1.0
 
   def project(self, point: Point) -> Point:
     # Ignore points behind camera
