@@ -28,10 +28,31 @@ class Viewport:
     self.polygon_button = tk.Button(self.root, text="Polygon", command=self.finish_polygon)
     self.clear_button = tk.Button(self.root, text="Clear", command=self.clear)
     self.recenter_button = tk.Button(self.root, text="Recenter", command=lambda: self.camera.recenter() or self.update())
+    self.m00_value = tk.StringVar()
+    self.m01_value = tk.StringVar()
+    self.m10_value = tk.StringVar()
+    self.m11_value = tk.StringVar()
+    self.m00_input = tk.Entry(self.root, textvariable=self.m00_value, width=5)
+    self.m01_input = tk.Entry(self.root, textvariable=self.m01_value, width=5)
+    self.m10_input = tk.Entry(self.root, textvariable=self.m10_value, width=5)
+    self.m11_input = tk.Entry(self.root, textvariable=self.m11_value, width=5)
+    self.apply_transform_button = tk.Button(self.root, text="Apply Transform", command=self.apply_transform)
 
     self.controls()
     self.build_ui()
     self.update()
+
+  def apply_transform(self):
+    try:
+      m00 = float(self.m00_value.get())
+      m01 = float(self.m01_value.get())
+      m10 = float(self.m10_value.get())
+      m11 = float(self.m11_value.get())
+      transform_matrix = np.array([[m00, 0, m01],[0, 1, 0], [m10, 0, m11]])
+      self.camera.right = np.dot(transform_matrix, self.camera.right)
+      self.update()
+    except ValueError:
+      print("Erro: Valores inválidos para a matriz de transformação.")
 
   def set_building(self): self.building = True
 
@@ -68,6 +89,7 @@ class Viewport:
     self.root.bind("<KeyPress-e>", lambda e: self.camera.move_above() or self.update())
     self.root.bind("<KeyPress-Escape>", lambda e: self.cancel_building())
     self.root.bind("<Control-z>", lambda e: self.undo())
+    # self.root.bind("<KeyPress-h>", lambda e: self.camera.rotate_left() or self.update())
 
 
   def build_ui(self):
@@ -77,6 +99,13 @@ class Viewport:
     self.polygon_button.grid(row=11, column=2, sticky="ew")
     self.clear_button.grid(row=11, column=3, sticky="ew")
     self.recenter_button.grid(row=0, column=5, columnspan=4)
+
+    self.m00_input.grid(row=1, column=5, sticky="ew")
+    self.m01_input.grid(row=1, column=6, sticky="ew")
+    self.m10_input.grid(row=2, column=5, sticky="ew")
+    self.m11_input.grid(row=2, column=6, sticky="ew")
+    self.apply_transform_button.grid(row=1, column=7, rowspan=2, sticky="ew")
+
 
   def canva_click(self, event):
     if self.building: self.build.append(self.camera.get_clicked_point(event.x, event.y))
@@ -101,7 +130,7 @@ class Viewport:
 
   def update(self):
     self.canva.delete("all")
-    all_objects = self.objects
+    all_objects = self.objects.copy()
     if self.debug: all_objects += self.debug_objects
     for obj in all_objects:
       for edge in obj.figures():

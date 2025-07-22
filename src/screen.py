@@ -1,4 +1,5 @@
 import numpy as np
+import math
 
 import tkinter as tk
 from dataclasses import dataclass
@@ -19,6 +20,7 @@ class Camera:
     self.viewport_height: int = viewport_height
     self.center_x = viewport_width // 2
     self.center_y = viewport_height // 2
+    self.viewport_angle = 0
 
     UP = np.array([0, 1, 0])
     if np.array_equal(normal, UP) or np.array_equal(normal, -UP):
@@ -40,9 +42,21 @@ class Camera:
 
   def move_above(self): self.position[1] += max(self.speed/self.zoom, 1)
 
-  def zoom_in(self, x, y): self.zoom *= 1.1
+  # def rotate_left(self):
+  #   rotation_matrix = np.array([
+  #     [math.cos(math.radians(5)), 0, -math.sin(math.radians(5))],
+  #     [0, 1, 0],
+  #     [math.sin(math.radians(5)), 0, math.cos(math.radians(5))]
+  #   ])
+  #   self.right = np.dot(rotation_matrix, self.right)
 
-  def zoom_out(self, x, y): self.zoom /= 1.1
+  def zoom_in(self, x, y):
+    # self.position = self.get_clicked_point(x, y)
+    self.zoom *= 1.1
+
+  def zoom_out(self, x, y):
+    # self.position = self.get_clicked_point(x, y)
+    self.zoom /= 1.1
 
   def recenter(self): self.position = np.array([0, 100, 0]); self.normal = np.array([0, -1, 0]); self.zoom = 1.0
 

@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from screen import ScreenWireframe
 from my_types import Point
+import numpy as np
 
 @dataclass
 class Wireframe:
@@ -20,7 +21,7 @@ class Wireframe:
   def from_string(data: str) -> 'Wireframe':
     name, points = data.split(';')
     points = points[1:-1].split('),(')
-    points = [list(map(int, point.split(','))) for point in points]
+    points = [np.array(map(int, point.split(','))) for point in points]
     if len(points) == 1:
       return PointObject(name, points[0])
     elif len(points) == 2:
@@ -38,14 +39,14 @@ class PointObject(Wireframe):
 
 class LineObject(Wireframe):
   def __init__(self, name: str, start: Point, end: Point):
-    super().__init__(name, [(start[0] + end[0]) // 2, (start[2] + end[2]) // 2], [start, end])
+    super().__init__(name, np.array([(start[0] + end[0]) // 2, (start[2] + end[2]) // 2]), [start, end])
 
   def figures(self) -> list[ScreenWireframe]:
     return [ScreenWireframe(self.points[0], self.points[1])]
 
 class PolygonObject(Wireframe):
   def __init__(self, name: str, points: list[Point]):
-    center = [sum(p[n] for p in points) // len(points) for n in range(len(points[0]))]
+    center = np.array([sum(p[n] for p in points) // len(points) for n in range(len(points[0]))])
     super().__init__(name, center, points)
 
   def figures(self) -> list[ScreenWireframe]:
