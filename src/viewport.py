@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import ttk
 from wireframe import *
 from screen import *
 
@@ -37,6 +38,7 @@ class Viewport:
     self.m10_input = tk.Entry(self.root, textvariable=self.m10_value, width=5)
     self.m11_input = tk.Entry(self.root, textvariable=self.m11_value, width=5)
     self.apply_transform_button = tk.Button(self.root, text="Apply Transform", command=self.apply_transform)
+    self.formsTable = ttk.Treeview(self.root, columns=("Id", "Points"), show="headings")  
 
     self.controls()
     self.build_ui()
@@ -105,11 +107,27 @@ class Viewport:
     self.m10_input.grid(row=2, column=5, sticky="ew")
     self.m11_input.grid(row=2, column=6, sticky="ew")
     self.apply_transform_button.grid(row=1, column=7, rowspan=2, sticky="ew")
+    
+    for col in self.formsTable["columns"]:
+      self.formsTable.heading(col, text=col)
+      self.formsTable.column("Id", width=40, anchor="center")
+      self.formsTable.column("Points", width=400, anchor="center", stretch=tk.YES)
+
+    h_scrollbar = ttk.Scrollbar(self.root, orient="horizontal", command=self.formsTable.xview)
+    self.formsTable.configure(xscrollcommand=h_scrollbar.set)
+    self.formsTable.grid(row=3, column=5, columnspan=3, rowspan=6, sticky="nsew")
+    scrollbar = ttk.Scrollbar(self.root, orient="vertical", command=self.formsTable.yview)
+    self.formsTable.configure(yscroll=scrollbar.set)
+    scrollbar.grid(row=3, column=8, rowspan=6, sticky="ns")
+
+    h_scrollbar.grid(row=9, column=5, columnspan=3, sticky="ew")  # <-- nova linha para barra horizontal
 
 
   def canva_click(self, event):
     if self.building: self.build.append(self.camera.get_clicked_point(event.x, event.y))
-    else: self.objects.append(PointObject("Clicked Point", self.camera.get_clicked_point(event.x, event.y)))
+    else: 
+      self.objects.append(PointObject("Clicked Point", self.camera.get_clicked_point(event.x, event.y)))
+      self.add_object_to_table(self.objects[-1])
     self.update()
 
   def finish_lines(self):
@@ -117,6 +135,7 @@ class Viewport:
     for i in range(len(self.build) - 1):
       start, end = self.build[i:i+2]
       self.objects.append(LineObject(f"Line {i+1}", start, end))
+    self.add_object_to_table(self.objects[-1])
     self.build.clear()
     self.building = False
     self.update()
@@ -124,9 +143,14 @@ class Viewport:
   def finish_polygon(self):
     if len(self.build) < 3: print("Erro: Pelo menos três pontos são necessários para formar um polígono."); return
     self.objects.append(PolygonObject("Polygon", self.build.copy()))
+    self.add_object_to_table(self.objects[-1])
     self.build.clear()
     self.building = False
     self.update()
+    #prints all objects in the console
+    print("Objetos criados:")
+    for obj in self.objects:
+      print(obj)
 
   def update(self):
     self.canva.delete("all")
@@ -164,6 +188,10 @@ class Viewport:
       except Exception as e:
         print(f"Erro ao salvar objetos: {e}")
     return self.objects
+  
+  def add_object_to_table(self, obj: Wireframe):
+    formatted_coordinates = [f"({','.join(f'{coord}' for coord in point)})" for point in obj.points]
+    self.formsTable.insert("", "end", values=(len(self.objects), ", ".join(formatted_coordinates)))
 
   def load_objects(self, objects: str) -> list[Wireframe]:
     if not objects: return []

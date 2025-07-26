@@ -1,3 +1,3 @@
 import numpy as np
 
-type Point = np.ndarray
+Point = np.ndarray
