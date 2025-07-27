@@ -1,5 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
+from tkinter import messagebox
+from tkinter import font
 from wireframe import *
 from screen import *
 
@@ -15,8 +17,6 @@ class Viewport:
 
     self.debug: bool = debug
     self.debug_objects: list[Wireframe] = [PointObject("World Origin", np.array([0, 0, 0]))]
-
-
     self.camera = Camera(np.array([0, -1, 0]), np.array([0, 0, 0]), width*0.8, height*0.8)
 
     # Ui Componentes
@@ -24,6 +24,7 @@ class Viewport:
     self.root.geometry(f"{width}x{height}")
     self.root.title(title)
     self.canva = tk.Canvas(self.root, background="white", width=0.8 * self.width, height=0.8 * self.height)
+    
     self.build_button = tk.Button(self.root, text="Build", command=self.set_building)
     self.lines_button = tk.Button(self.root, text="Lines", command=self.finish_lines)
     self.polygon_button = tk.Button(self.root, text="Polygon", command=self.finish_polygon)
@@ -38,8 +39,7 @@ class Viewport:
     self.m10_input = tk.Entry(self.root, textvariable=self.m10_value, width=5)
     self.m11_input = tk.Entry(self.root, textvariable=self.m11_value, width=5)
     self.apply_transform_button = tk.Button(self.root, text="Apply Transform", command=self.apply_transform)
-    self.formsTable = ttk.Treeview(self.root, columns=("Id", "Points"), show="headings")  
-
+    self.build_forms_table()
     self.controls()
     self.build_ui()
     self.update()
@@ -107,21 +107,35 @@ class Viewport:
     self.m10_input.grid(row=2, column=5, sticky="ew")
     self.m11_input.grid(row=2, column=6, sticky="ew")
     self.apply_transform_button.grid(row=1, column=7, rowspan=2, sticky="ew")
+
+  def build_forms_table(self):
+    self.forms_table_frame = tk.Frame(self.root, width=400, height=200, background="white")
+    self.forms_table_frame.grid(row=5, column=4, columnspan=7, rowspan=6, sticky="nsew")
+    self.forms_table_frame.grid_rowconfigure(0, weight=1)
+    self.forms_table_frame.grid_columnconfigure(0, weight=1)
+
+    self.scrollbar_x = ttk.Scrollbar(self.forms_table_frame, orient="horizontal")
+    self.scrollbar_y = ttk.Scrollbar(self.forms_table_frame, orient="vertical")
     
-    for col in self.formsTable["columns"]:
-      self.formsTable.heading(col, text=col)
-      self.formsTable.column("Id", width=40, anchor="center")
-      self.formsTable.column("Points", width=400, anchor="center", stretch=tk.YES)
+    self.formsTable = ttk.Treeview(self.forms_table_frame, columns=("Id", "Points"), show="headings", xscrollcommand=self.scrollbar_x.set, yscrollcommand=self.scrollbar_y.set)
+    self.formsTable.heading("Id", text="Id")
+    self.formsTable.heading("Points", text="Points")
+    self.formsTable.column("Id", width=50, anchor="center", stretch=tk.NO)
+    self.formsTable.column("Points", width=400, anchor="w", stretch=tk.YES)
 
-    h_scrollbar = ttk.Scrollbar(self.root, orient="horizontal", command=self.formsTable.xview)
-    self.formsTable.configure(xscrollcommand=h_scrollbar.set)
-    self.formsTable.grid(row=3, column=5, columnspan=3, rowspan=6, sticky="nsew")
-    scrollbar = ttk.Scrollbar(self.root, orient="vertical", command=self.formsTable.yview)
-    self.formsTable.configure(yscroll=scrollbar.set)
-    scrollbar.grid(row=3, column=8, rowspan=6, sticky="ns")
+    self.scrollbar_x.config(command=self.formsTable.xview)
+    self.scrollbar_y.config(command=self.formsTable.yview)
 
-    h_scrollbar.grid(row=9, column=5, columnspan=3, sticky="ew")  # <-- nova linha para barra horizontal
+    self.max_points_width = 400
 
+    self.formsTable.grid(row=0, column=0, sticky="nsew")
+    self.scrollbar_y.grid(row=0, column=1, sticky="ns")
+    self.scrollbar_x.grid(row=1, column=0, sticky="ew")
+
+    for i in range(100):
+        self.formsTable.insert("", "end", values=(f"{i}", f"Ponto {i}: ({i}, {i+1}, {i+2}) ... muitos dados aqui para testar scroll horizontal"))
+
+    self.forms_table_frame.grid_propagate(False)
 
   def canva_click(self, event):
     if self.building: self.build.append(self.camera.get_clicked_point(event.x, event.y))
@@ -147,10 +161,6 @@ class Viewport:
     self.build.clear()
     self.building = False
     self.update()
-    #prints all objects in the console
-    print("Objetos criados:")
-    for obj in self.objects:
-      print(obj)
 
   def update(self):
     self.canva.delete("all")
@@ -192,6 +202,15 @@ class Viewport:
   def add_object_to_table(self, obj: Wireframe):
     formatted_coordinates = [f"({','.join(f'{coord}' for coord in point)})" for point in obj.points]
     self.formsTable.insert("", "end", values=(len(self.objects), ", ".join(formatted_coordinates)))
+    
+    font_style = font.nametofont("TkDefaultFont")
+    font_size = font_style.measure(formatted_coordinates) + 20
+    
+    if font_size > self.max_points_width:
+      self.formsTable.column("Points", width=font_size+20, anchor="w", stretch=tk.NO)
+      self.formsTable.update_idletasks()
+      self.formsTable.xview_moveto(0) # Reset horizontal scroll position
+    self.max_points_width = max(self.max_points_width, font_size) 
 
   def load_objects(self, objects: str) -> list[Wireframe]:
     if not objects: return []

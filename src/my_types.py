@@ -1,3 +1,4 @@
 import numpy as np
+from typing import TypeAlias
 
-Point = np.ndarray
+Point: TypeAlias = np.ndarray
