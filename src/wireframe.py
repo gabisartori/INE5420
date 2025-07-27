@@ -9,7 +9,7 @@ class Wireframe:
   center: Point
   points: list[Point]
   color: str = "black"
-
+  fill_color: str = "white"
 
   def figures(self) -> list[ScreenWireframe]: raise NotImplementedError("Subclasses should implement this method")
 

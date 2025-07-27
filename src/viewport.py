@@ -1,7 +1,5 @@
 import tkinter as tk
-from tkinter import ttk
-from tkinter import messagebox
-from tkinter import font
+from tkinter import ttk, messagebox, font, colorchooser
 from wireframe import *
 from screen import *
 
@@ -39,6 +37,8 @@ class Viewport:
     self.m10_input = tk.Entry(self.root, textvariable=self.m10_value, width=5)
     self.m11_input = tk.Entry(self.root, textvariable=self.m11_value, width=5)
     self.apply_transform_button = tk.Button(self.root, text="Apply Transform", command=self.apply_transform)
+    self.change_line_color_button = tk.Button(self.root, text="Line Color", command=self.change_line_color)
+    self.change_fill_color_button = tk.Button(self.root, text="Fill Color", command=self.change_fill_color)
     self.build_forms_table()
     self.controls()
     self.build_ui()
@@ -133,6 +133,9 @@ class Viewport:
     self.scrollbar_y.grid(row=0, column=1, sticky="ns")
     self.scrollbar_x.grid(row=1, column=0, sticky="ew")
 
+    self.change_fill_color_button.grid(row=2, column=5, sticky="ew")
+    self.change_line_color_button.grid(row=2, column=6, sticky="ew")
+
     self.forms_table_frame.grid_propagate(False)
     self.formsTable.bind("<Button-3>", self.on_table_right_click)
 
@@ -173,15 +176,34 @@ class Viewport:
     all_objects = self.objects.copy()
     if self.debug: all_objects += self.debug_objects
     for obj in all_objects:
-      for edge in obj.figures():
-        # Draw line
-        if edge.end is not None:
+      figures = obj.figures()
+      if isinstance(obj, PolygonObject):
+        for edge in figures:
+          # Draw polygon edges
           start, end = self.camera.project(edge.start), self.camera.project(edge.end)
           self.canva.create_line(start[0], start[1], end[0], end[1], fill=obj.color)
-        # Draw point
-        else:
-          point = self.camera.project(edge.start)
-          self.canva.create_oval(point[0] - 2, point[1] - 2, point[0] + 2, point[1] + 2, fill=obj.color)
+        # Fill polygon
+        if obj.fill_color:
+          projected_points = [self.camera.project(edge.start) for edge in figures]
+          # fecha o poligono se necessario
+          if not np.array_equal(projected_points[0], projected_points[-1]):
+              projected_points.append(projected_points[0])
+
+          points = [coord for point in projected_points for coord in point]
+          if len(points) >= 6:  # Verifica se há pelo menos 3 pontos
+            # Desenha o polígono preenchido
+            self.canva.create_polygon(points, fill=obj.fill_color, outline=obj.color)
+
+      else:
+        for edge in figures:
+          # Draw line
+          if edge.end is not None:
+            start, end = self.camera.project(edge.start), self.camera.project(edge.end)
+            self.canva.create_line(start[0], start[1], end[0], end[1], fill=obj.color)
+          # Draw point
+          else:
+            point = self.camera.project(edge.start)
+            self.canva.create_oval(point[0] - 2, point[1] - 2, point[0] + 2, point[1] + 2, fill=obj.color)
     prev = None
     for point in self.build:
       point = self.camera.project(point)
@@ -228,6 +250,36 @@ class Viewport:
       self.formsTable.delete(item)
       self.objects = [obj for obj in self.objects if str(obj.id) != item_id]
       self.update()
+
+  def change_line_color(self):
+    selected_color = self.formsTable.selection()
+    if not selected_color:
+      messagebox.showwarning("Aviso", "Nenhum objeto selecionado.")
+      return
+
+    item_id = self.formsTable.item(selected_color, "values")[0]
+    for obj in self.objects:
+      if str(obj.id) == item_id:
+        color = colorchooser.askcolor(title="Escolha a cor da linha")
+        if color[1]:
+          obj.color = color[1]
+          self.update()
+        break
+
+  def change_fill_color(self):
+    selected_color = self.formsTable.selection()
+    if not selected_color:
+      messagebox.showwarning("Aviso", "Nenhum objeto selecionado.")
+      return
+
+    item_id = self.formsTable.item(selected_color, "values")[0]
+    for obj in self.objects:
+      if str(obj.id) == item_id:
+        color = colorchooser.askcolor(title="Escolha a cor de preenchimento")
+        if color[1]:
+          obj.fill_color = color[1]
+          self.update()
+        break
 
   def load_objects(self, objects: str) -> list[Wireframe]:
     if not objects: return []
