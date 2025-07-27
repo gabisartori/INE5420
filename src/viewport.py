@@ -16,7 +16,7 @@ class Viewport:
     self._building: bool = False
 
     self.debug: bool = debug
-    self.debug_objects: list[Wireframe] = [PointObject("World Origin", np.array([0, 0, 0]))]
+    self.debug_objects: list[Wireframe] = [PointObject("World Origin", np.array([0, 0, 0]), id="0")]
     self.camera = Camera(np.array([0, -1, 0]), np.array([0, 0, 0]), width*0.8, height*0.8)
 
     # Ui Componentes
@@ -68,6 +68,7 @@ class Viewport:
 
   def clear(self):
     self.objects.clear()
+    self.formsTable.delete(*self.formsTable.get_children())
     self.build.clear()
     self.building = False
     self.update()
@@ -132,31 +133,36 @@ class Viewport:
     self.scrollbar_y.grid(row=0, column=1, sticky="ns")
     self.scrollbar_x.grid(row=1, column=0, sticky="ew")
 
-    for i in range(100):
-        self.formsTable.insert("", "end", values=(f"{i}", f"Ponto {i}: ({i}, {i+1}, {i+2}) ... muitos dados aqui para testar scroll horizontal"))
-
     self.forms_table_frame.grid_propagate(False)
+    self.formsTable.bind("<Button-3>", self.on_table_right_click)
 
   def canva_click(self, event):
     if self.building: self.build.append(self.camera.get_clicked_point(event.x, event.y))
     else: 
-      self.objects.append(PointObject("Clicked Point", self.camera.get_clicked_point(event.x, event.y)))
+      self.objects.append(PointObject("Clicked Point", self.camera.get_clicked_point(event.x, event.y), id=str(len(self.objects)+1)))
       self.add_object_to_table(self.objects[-1])
     self.update()
 
   def finish_lines(self):
-    if len(self.build) < 2: print("Erro: Pelo menos dois pontos são necessários para formar uma linha."); return
+    if len(self.build) < 2: 
+      print("Erro: Pelo menos dois pontos são necessários para formar uma linha.")
+      messagebox.showerror("Erro", "Pelo menos dois pontos são necessários para formar uma linha.")
+      return
     for i in range(len(self.build) - 1):
       start, end = self.build[i:i+2]
-      self.objects.append(LineObject(f"Line {i+1}", start, end))
+      self.objects.append(LineObject(f"Line {i+1}", start, end, id=str(len(self.objects)+1)))
     self.add_object_to_table(self.objects[-1])
     self.build.clear()
     self.building = False
     self.update()
 
   def finish_polygon(self):
-    if len(self.build) < 3: print("Erro: Pelo menos três pontos são necessários para formar um polígono."); return
-    self.objects.append(PolygonObject("Polygon", self.build.copy()))
+    if len(self.build) < 3: 
+      print("Erro: Pelo menos três pontos são necessários para formar um polígono.")
+      messagebox.showerror("Erro", "Pelo menos três pontos são necessários para formar um polígono.")
+      return
+    
+    self.objects.append(PolygonObject("Polygon", self.build.copy(), id=str(len(self.objects)+1)))
     self.add_object_to_table(self.objects[-1])
     self.build.clear()
     self.building = False
@@ -197,6 +203,7 @@ class Viewport:
             file.write(f"{obj}\n")
       except Exception as e:
         print(f"Erro ao salvar objetos: {e}")
+        messagebox.showerror("Erro", f"Erro ao salvar objetos: {e}")
     return self.objects
   
   def add_object_to_table(self, obj: Wireframe):
@@ -212,6 +219,16 @@ class Viewport:
       self.formsTable.xview_moveto(0) # Reset horizontal scroll position
     self.max_points_width = max(self.max_points_width, font_size) 
 
+  def on_table_right_click(self, event):
+    item = self.formsTable.identify_row(event.y)
+    if not item: return
+    item_id = self.formsTable.item(item, "values")[0]
+
+    if messagebox.askyesno("Deletar objeto", f"Deletar objeto {item_id}?"):
+      self.formsTable.delete(item)
+      self.objects = [obj for obj in self.objects if str(obj.id) != item_id]
+      self.update()
+
   def load_objects(self, objects: str) -> list[Wireframe]:
     if not objects: return []
     try:
@@ -219,9 +236,11 @@ class Viewport:
         return [Wireframe.from_string(line.strip()) for line in file if line.strip() and not line.startswith("#")]
     except FileNotFoundError:
       print(f"Arquivo {objects} não encontrado.")
+      messagebox.showerror("Erro", f"Arquivo {objects} não encontrado.")
       return []
     except Exception as e:
       print(f"Erro ao carregar objetos: {e}")
+      messagebox.showerror("Erro", f"Erro ao carregar objetos: {e}")
       return []
 
   def undo(self):

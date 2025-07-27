@@ -31,23 +31,26 @@ class Wireframe:
 
 
 class PointObject(Wireframe):
-  def __init__(self, name: str, center: Point):
+  def __init__(self, name: str, center: Point, id: int = None):
     super().__init__(name, center, [center])
+    self.id = id
 
   def figures(self) -> list[ScreenWireframe]:
     return [ScreenWireframe(self.center)]
 
 class LineObject(Wireframe):
-  def __init__(self, name: str, start: Point, end: Point):
+  def __init__(self, name: str, start: Point, end: Point, id: int = None):
     super().__init__(name, np.array([(start[0] + end[0]) // 2, (start[2] + end[2]) // 2]), [start, end])
+    self.id = id
 
   def figures(self) -> list[ScreenWireframe]:
     return [ScreenWireframe(self.points[0], self.points[1])]
 
 class PolygonObject(Wireframe):
-  def __init__(self, name: str, points: list[Point]):
+  def __init__(self, name: str, points: list[Point], id: int = None):
     center = np.array([sum(p[n] for p in points) // len(points) for n in range(len(points[0]))])
     super().__init__(name, center, points)
+    self.id = id
 
   def figures(self) -> list[ScreenWireframe]:
     edges = []
