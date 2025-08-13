@@ -14,8 +14,8 @@ class Viewport:
     self._building: bool = False
 
     self.debug: bool = debug
-    self.debug_objects: list[Wireframe] = [PointObject("World Origin", np.array([0, 0, 0]), id="0")]
-    self.camera = Camera(np.array([0, -1, 0]), np.array([0, 0, 0]), width*0.8, height*0.8)
+    self.debug_objects: list[Wireframe] = [PointObject("World Origin", np.array([0, 0, 0]), id=0)]
+    self.camera = Camera(np.array([0, -1, 0]), np.array([0, 100, 0]), width*0.8, height*0.8)
 
     # Ui Componentes
     self.root: tk.Tk = tk.Tk()
@@ -50,8 +50,7 @@ class Viewport:
       m01 = float(self.m01_value.get())
       m10 = float(self.m10_value.get())
       m11 = float(self.m11_value.get())
-      transform_matrix = np.array([[m00, 0, m01],[0, 1, 0], [m10, 0, m11]])
-      self.camera.right = np.dot(transform_matrix, self.camera.right)
+      self.camera.transform_matrix = np.array([[m00, m01], [m10, m11]])
       self.update()
     except ValueError:
       print("Erro: Valores inválidos para a matriz de transformação.")
@@ -63,7 +62,7 @@ class Viewport:
     self.update()
 
   def move_camera(self, event):
-    self.camera.position = self.camera.get_clicked_point(event.x, event.y)
+    self.camera.position = self.camera.viewport_to_word(event.x, event.y)
     self.update()
 
   def clear(self):
@@ -140,9 +139,9 @@ class Viewport:
     self.formsTable.bind("<Button-3>", self.on_table_right_click)
 
   def canva_click(self, event):
-    if self.building: self.build.append(self.camera.get_clicked_point(event.x, event.y))
+    if self.building: self.build.append(self.camera.viewport_to_word(event.x, event.y))
     else: 
-      self.objects.append(PointObject("Clicked Point", self.camera.get_clicked_point(event.x, event.y), id=str(len(self.objects)+1)))
+      self.objects.append(PointObject("Clicked Point", self.camera.viewport_to_word(event.x, event.y), id=10*len(self.objects)+1))
       self.add_object_to_table(self.objects[-1])
     self.update()
 
@@ -153,7 +152,7 @@ class Viewport:
       return
     for i in range(len(self.build) - 1):
       start, end = self.build[i:i+2]
-      self.objects.append(LineObject(f"Line {i+1}", start, end, id=str(len(self.objects)+1)))
+      self.objects.append(LineObject(f"Line {i+1}", start, end, id=10*len(self.objects)+1))
     self.add_object_to_table(self.objects[-1])
     self.build.clear()
     self.building = False
@@ -165,7 +164,7 @@ class Viewport:
       messagebox.showerror("Erro", "Pelo menos três pontos são necessários para formar um polígono.")
       return
     
-    self.objects.append(PolygonObject("Polygon", self.build.copy(), id=str(len(self.objects)+1)))
+    self.objects.append(PolygonObject("Polygon", self.build.copy(), id=10*len(self.objects)+1))
     self.add_object_to_table(self.objects[-1])
     self.build.clear()
     self.building = False
@@ -180,6 +179,7 @@ class Viewport:
       if isinstance(obj, PolygonObject):
         for edge in figures:
           # Draw polygon edges
+          if edge.end is None: raise ValueError("Polygon edge has no endpoint")
           start, end = self.camera.project(edge.start), self.camera.project(edge.end)
           self.canva.create_line(start[0], start[1], end[0], end[1], fill=obj.color)
         # Fill polygon
@@ -233,7 +233,7 @@ class Viewport:
     self.formsTable.insert("", "end", values=(len(self.objects), ", ".join(formatted_coordinates)))
     
     font_style = font.nametofont("TkDefaultFont")
-    font_size = font_style.measure(formatted_coordinates) + 20
+    font_size = font_style.measure("".join(formatted_coordinates)) + 20
     
     if font_size > self.max_points_width:
       self.formsTable.column("Points", width=font_size+20, anchor="w", stretch=tk.NO)
@@ -257,7 +257,7 @@ class Viewport:
       messagebox.showwarning("Aviso", "Nenhum objeto selecionado.")
       return
 
-    item_id = self.formsTable.item(selected_color, "values")[0]
+    item_id = self.formsTable.item("".join(selected_color), "values")[0]
     for obj in self.objects:
       if str(obj.id) == item_id:
         color = colorchooser.askcolor(title="Escolha a cor da linha")
@@ -272,7 +272,7 @@ class Viewport:
       messagebox.showwarning("Aviso", "Nenhum objeto selecionado.")
       return
 
-    item_id = self.formsTable.item(selected_color, "values")[0]
+    item_id = self.formsTable.item("".join(selected_color), "values")[0]
     for obj in self.objects:
       if str(obj.id) == item_id:
         color = colorchooser.askcolor(title="Escolha a cor de preenchimento")
