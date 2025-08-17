@@ -19,7 +19,7 @@ class Viewport:
 
     # Ui Componentes
     self.root: tk.Tk = tk.Tk()
-    self.root.geometry(f"{width}x{height}")
+    #self.root.geometry(f"{width}x{height}")
     self.root.title(title)
     self.canva = tk.Canvas(self.root, background="white", width=0.8 * self.width, height=0.8 * self.height)
     
@@ -37,12 +37,24 @@ class Viewport:
     self.m10_input = tk.Entry(self.root, textvariable=self.m10_value, width=5)
     self.m11_input = tk.Entry(self.root, textvariable=self.m11_value, width=5)
     self.apply_transform_button = tk.Button(self.root, text="Apply Transform", command=self.apply_transform)
+    
     self.change_line_color_button = tk.Button(self.root, text="Line Color", command=self.change_line_color)
     self.change_fill_color_button = tk.Button(self.root, text="Fill Color", command=self.change_fill_color)
+    self.change_point_color_button = tk.Button(self.root, text="Point Color", command=self.change_point_color)
+    self.change_point_radius_button = tk.Button(self.root, text="Point Radius", command=self.change_point_radius)
+
     self.build_forms_table()
     self.controls()
     self.build_ui()
+    self.setup_grid()
     self.update()
+
+  def setup_grid(self):
+    for i in range(10):
+      self.root.grid_rowconfigure(i, weight=1)
+      self.root.grid_columnconfigure(i, weight=1)
+
+    self.root.resizable(False, False) # redimensionar travado
 
   def apply_transform(self):
     try:
@@ -77,40 +89,29 @@ class Viewport:
     self.building = False
     self.update()
 
-  def controls(self):
-    self.canva.bind("<ButtonRelease-1>", self.canva_click)
-    self.canva.bind("<Button-3>", self.move_camera)
-    self.root.bind("<Button-2>", lambda e: self.set_debug())
-    self.root.bind("<Button-4>", lambda e: self.camera.zoom_in(e.x, e.y) or self.update())
-    self.root.bind("<Button-5>", lambda e: self.camera.zoom_out(e.x, e.y) or self.update())
-    self.root.bind("<KeyPress-w>", lambda e: self.camera.move_up() or self.update())
-    self.root.bind("<KeyPress-s>", lambda e: self.camera.move_down() or self.update())
-    self.root.bind("<KeyPress-a>", lambda e: self.camera.move_left() or self.update())
-    self.root.bind("<KeyPress-d>", lambda e: self.camera.move_right() or self.update())
-    self.root.bind("<KeyPress-q>", lambda e: self.camera.move_below() or self.update())
-    self.root.bind("<KeyPress-e>", lambda e: self.camera.move_above() or self.update())
-    self.root.bind("<KeyPress-Escape>", lambda e: self.cancel_building())
-    self.root.bind("<Control-z>", lambda e: self.undo())
-    # self.root.bind("<KeyPress-h>", lambda e: self.camera.rotate_left() or self.update())
-
-
   def build_ui(self):
     self.canva.grid(row=0, column=0, columnspan=4, rowspan=10, sticky="nsew")
+    
     self.build_button.grid(row=11, column=0, sticky="ew")
     self.lines_button.grid(row=11, column=1, sticky="ew")
     self.polygon_button.grid(row=11, column=2, sticky="ew")
     self.clear_button.grid(row=11, column=3, sticky="ew")
-    self.recenter_button.grid(row=0, column=5, columnspan=4)
+    self.recenter_button.grid(row=0, column=5, columnspan=3)
 
     self.m00_input.grid(row=1, column=5, sticky="ew")
     self.m01_input.grid(row=1, column=6, sticky="ew")
     self.m10_input.grid(row=2, column=5, sticky="ew")
     self.m11_input.grid(row=2, column=6, sticky="ew")
-    self.apply_transform_button.grid(row=1, column=7, rowspan=2, sticky="ew")
+    self.apply_transform_button.grid(row=3, column=5, columnspan=2, sticky="ew")
+    
+    self.change_fill_color_button.grid(row=4, column=5, sticky="ew")
+    self.change_line_color_button.grid(row=4, column=6, sticky="ew")
+    self.change_point_color_button.grid(row=5, column=5, sticky="ew")
+    self.change_point_radius_button.grid(row=5, column=6, sticky="ew")
 
   def build_forms_table(self):
     self.forms_table_frame = tk.Frame(self.root, width=400, height=200, background="white")
-    self.forms_table_frame.grid(row=5, column=4, columnspan=7, rowspan=6, sticky="nsew")
+    self.forms_table_frame.grid(row=6, column=4, columnspan=7, rowspan=6, sticky="nsew")
     self.forms_table_frame.grid_rowconfigure(0, weight=1)
     self.forms_table_frame.grid_columnconfigure(0, weight=1)
 
@@ -132,11 +133,26 @@ class Viewport:
     self.scrollbar_y.grid(row=0, column=1, sticky="ns")
     self.scrollbar_x.grid(row=1, column=0, sticky="ew")
 
-    self.change_fill_color_button.grid(row=2, column=5, sticky="ew")
-    self.change_line_color_button.grid(row=2, column=6, sticky="ew")
 
+    
     self.forms_table_frame.grid_propagate(False)
     self.formsTable.bind("<Button-3>", self.on_table_right_click)
+
+  def controls(self):
+    self.canva.bind("<ButtonRelease-1>", self.canva_click)
+    self.canva.bind("<Button-3>", self.move_camera)
+    self.root.bind("<Button-2>", lambda e: self.set_debug())
+    self.root.bind("<Button-4>", lambda e: self.camera.zoom_in(e.x, e.y) or self.update())
+    self.root.bind("<Button-5>", lambda e: self.camera.zoom_out(e.x, e.y) or self.update())
+    self.root.bind("<KeyPress-w>", lambda e: self.camera.move_up() or self.update())
+    self.root.bind("<KeyPress-s>", lambda e: self.camera.move_down() or self.update())
+    self.root.bind("<KeyPress-a>", lambda e: self.camera.move_left() or self.update())
+    self.root.bind("<KeyPress-d>", lambda e: self.camera.move_right() or self.update())
+    self.root.bind("<KeyPress-q>", lambda e: self.camera.move_below() or self.update())
+    self.root.bind("<KeyPress-e>", lambda e: self.camera.move_above() or self.update())
+    self.root.bind("<KeyPress-Escape>", lambda e: self.cancel_building())
+    self.root.bind("<Control-z>", lambda e: self.undo())
+    # self.root.bind("<KeyPress-h>", lambda e: self.camera.rotate_left() or self.update())
 
   def canva_click(self, event):
     if self.building: self.build.append(self.camera.viewport_to_world(event.x, event.y))
@@ -229,9 +245,9 @@ class Viewport:
     return self.objects
   
   def add_object_to_table(self, obj: Wireframe):
-    formatted_coordinates = [f"({','.join(f'{coord}' for coord in point)})" for point in obj.points]
-    self.formsTable.insert("", "end", values=(len(self.objects), ", ".join(formatted_coordinates)))
-    
+    formatted_coordinates = [f"({', '.join(f'{coord:.2f}' for coord in point)})" for point in obj.points]
+    self.formsTable.insert("", "end", values=(obj.name, ", ".join(formatted_coordinates)), tags=(str(obj.id),))
+
     font_style = font.nametofont("TkDefaultFont")
     font_size = font_style.measure("".join(formatted_coordinates)) + 20
     
@@ -250,14 +266,33 @@ class Viewport:
       self.formsTable.delete(item)
       self.objects = [obj for obj in self.objects if str(obj.id) != item_id]
       self.update()
+      
+  def change_point_color(self):
+    selected_item = self.formsTable.selection()
+    
+    if not selected_item:
+      messagebox.showwarning("Aviso", "Nenhum objeto selecionado.")
+      return
+    
+    item_id = self.formsTable.item(selected_item[0], "tags")[0]
+    for obj in self.objects:
+      if str(obj.id) == item_id:
+        color = colorchooser.askcolor(title="Escolha a cor do ponto")
+        if color[1]:
+          obj.color = color[1]
+          self.update()
+        break
+
+  def change_point_radius(self):
+    pass
 
   def change_line_color(self):
-    selected_color = self.formsTable.selection()
-    if not selected_color:
+    selected_item = self.formsTable.selection()
+    if not selected_item:
       messagebox.showwarning("Aviso", "Nenhum objeto selecionado.")
       return
 
-    item_id = self.formsTable.item("".join(selected_color), "values")[0]
+    item_id = self.formsTable.item(selected_item[0], "tags")[0]
     for obj in self.objects:
       if str(obj.id) == item_id:
         color = colorchooser.askcolor(title="Escolha a cor da linha")
@@ -266,13 +301,14 @@ class Viewport:
           self.update()
         break
 
-  def change_fill_color(self):
-    selected_color = self.formsTable.selection()
-    if not selected_color:
+  def change_fill_color(self):    
+    selected_item = self.formsTable.selection()
+ 
+    if not selected_item:
       messagebox.showwarning("Aviso", "Nenhum objeto selecionado.")
       return
+    item_id = self.formsTable.item(selected_item[0], "tags")[0]
 
-    item_id = self.formsTable.item("".join(selected_color), "values")[0]
     for obj in self.objects:
       if str(obj.id) == item_id:
         color = colorchooser.askcolor(title="Escolha a cor de preenchimento")
