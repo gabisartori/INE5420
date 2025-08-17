@@ -11,17 +11,15 @@ def normalize(v: Point) -> Point:
     return v / norm if norm != 0 else v
 
 class Camera:
-  def __init__(self, normal: Point, position: Point, viewport_width:int, viewport_height: int):
+  def __init__(self, normal: Point, position: Point, viewport_width: int, viewport_height: int, zoom: float=1.0):
     self.normal: Point = normalize(normal)
     self.position: Point = position
     self.speed: int = 5
-    self.zoom: float = 1.0
+    self.zoom: float = zoom
     self.viewport_width: int = viewport_width
     self.viewport_height: int = viewport_height
-    self.center_x = viewport_width // 2
-    self.center_y = viewport_height // 2
-    self.origin_x = self.center_x
-    self.origin_y = self.center_y
+    self.viewport_focus: tuple[float, float] = (self.viewport_width // 2, self.viewport_height // 2)
+    self.camera_focus: tuple[float, float] = (0, 0)
     self.viewport_angle = 0
     self.transform_matrix: np.ndarray = np.eye(2)
 
@@ -54,16 +52,21 @@ class Camera:
   #   self.right = np.dot(rotation_matrix, self.right)
 
   def zoom_in(self, x, y):
-    # self.position = self.get_clicked_point(x, y)
-    self.transform_matrix = np.dot(self.transform_matrix, np.array([[11/10, 0], [0, 11/10]]))
+    self.zoom *= 1.1
+    self.camera_focus = self.viewport_to_camera(x, y)
 
   def zoom_out(self, x, y):
-    # self.position = self.get_clicked_point(x, y)
-    self.transform_matrix = np.dot(self.transform_matrix, np.array([[10/11, 0], [0, 10/11]]))
+    self.zoom = max(self.zoom/1.1, 0.5)
+    self.camera_focus = self.viewport_to_camera(x, y)
 
-  def recenter(self): self.position = np.array([0, 100, 0]); self.normal = np.array([0, -1, 0]); self.zoom = 1.0
+  def recenter(self):
+    self.position = np.array([0, 100, 0])
+    self.normal = np.array([0, -1, 0])
+    self.zoom = 1.0
+    self.camera_focus = (0, 0)
+    self.viewport_focus = (self.viewport_width // 2, self.viewport_height // 2)
 
-  def project(self, point: Point) -> tuple[int, int]:
+  def project(self, point: Point) -> tuple[float, float]:
     # Ignore points behind camera
     # if np.dot(self.normal, point - self.position) < 0: point = self.position - self.normal
     x, y = self.world_to_camera(point)
@@ -77,38 +80,36 @@ class Camera:
 
     return position
 
-  def world_to_camera(self, point: Point) -> tuple[int, int]:
+  def world_to_camera(self, point: Point) -> tuple[float, float]:
     # Project the point onto the camera view plane
     t = sum(self.normal[i] * (self.position[i] - point[i]) for i in range(len(point)))
     t /= sum(self.normal[i] * self.normal[i] for i in range(len(point)))
-    c = np.array([int(point[i] + t * self.normal[i]) for i in range(len(point))])
+    c = np.array([point[i] + t * self.normal[i] for i in range(len(point))])
     
     v = c - self.position
     return np.dot(v, self.right), np.dot(v, self.up)
 
-  def camera_to_world(self, x: int, y: int) -> Point:
+  def camera_to_world(self, x: float, y: float) -> Point:
     # Return a 3D point based on the camera's position and orientation
     # TODO: This creates a point at the exact position of the camera
     # It would be more useful if the user could control a distance from the camera to which clicks are applied
     # This is quite simple to implement, but it would mess with how zoom is behaving
-    print(x, y)
     return x*self.right + y*self.up + self.position
 
-  def camera_to_viewport(self, x: int, y: int) -> tuple[int, int]:
+  def camera_to_viewport(self, x: float, y: float) -> tuple[float, float]:
+    x, y = (x-self.camera_focus[0])*self.zoom + self.camera_focus[0], (y-self.camera_focus[1])*self.zoom+self.camera_focus[1]
+    x, y = x + self.viewport_focus[0], y + self.viewport_focus[1]
     y = self.viewport_height - y
+    return x, y
 
-    a = (x + self.center_x) / self.zoom - self.center_x
-    b = (y + self.center_y) / self.zoom - self.center_y
-    return int(a), int(b)
 
-  def viewport_to_camera(self, x: int, y: int) -> tuple[int, int]:
+  def viewport_to_camera(self, x: float, y: float) -> tuple[float, float]:
     y = self.viewport_height - y
-    a = (x - self.center_x) / self.zoom + self.center_x
-    b = (y - self.center_y) / self.zoom + self.center_y
-    print(a, b, self.center_x, self.center_y)
-    return int(a), int(b)
+    x, y = x - self.viewport_focus[0], y - self.viewport_focus[1]
+    x, y = (x-self.camera_focus[0])/self.zoom + self.camera_focus[0], (y-self.camera_focus[1])/self.zoom + self.camera_focus[1]
+    return x, y
 
-  def viewport_to_word(self, x: int, y: int) -> Point:
+  def viewport_to_world(self, x: float, y: float) -> Point:
     return self.camera_to_world(*self.viewport_to_camera(x, y))
 
 @dataclass

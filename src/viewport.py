@@ -62,7 +62,7 @@ class Viewport:
     self.update()
 
   def move_camera(self, event):
-    self.camera.position = self.camera.viewport_to_word(event.x, event.y)
+    self.camera.position = self.camera.viewport_to_world(event.x, event.y)
     self.update()
 
   def clear(self):
@@ -139,9 +139,9 @@ class Viewport:
     self.formsTable.bind("<Button-3>", self.on_table_right_click)
 
   def canva_click(self, event):
-    if self.building: self.build.append(self.camera.viewport_to_word(event.x, event.y))
+    if self.building: self.build.append(self.camera.viewport_to_world(event.x, event.y))
     else: 
-      self.objects.append(PointObject("Clicked Point", self.camera.viewport_to_word(event.x, event.y), id=10*len(self.objects)+1))
+      self.objects.append(PointObject("Clicked Point", self.camera.viewport_to_world(event.x, event.y), id=10*len(self.objects)+1))
       self.add_object_to_table(self.objects[-1])
     self.update()
 
