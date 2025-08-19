@@ -22,6 +22,16 @@ class Viewport:
     #self.root.geometry(f"{width}x{height}")
     self.root.title(title)
     self.canva = tk.Canvas(self.root, background="white", width=0.8 * self.width, height=0.8 * self.height)
+
+    self.color_button_frame = tk.Frame(self.root)
+    self.color_button_frame.grid(row=4, column=5, rowspan=8, sticky="ns")
+
+    # self.color_button_frame.grid_rowconfigure(0, weight=1)
+    self.transform_widget_frame = tk.Frame(self.root)
+    self.transform_widget_frame.grid(row=1, column=5, columnspan=2, sticky="nsew")
+    self.transform_widget_frame.grid_columnconfigure(0, weight=1)
+    self.transform_widget_frame.grid_columnconfigure(1, weight=1)
+    self.transform_widget_frame.config(width=100, height=100)
     
     self.build_button = tk.Button(self.root, text="Build", command=self.set_building)
     self.lines_button = tk.Button(self.root, text="Lines", command=self.finish_lines)
@@ -32,16 +42,18 @@ class Viewport:
     self.m01_value = tk.StringVar()
     self.m10_value = tk.StringVar()
     self.m11_value = tk.StringVar()
-    self.m00_input = tk.Entry(self.root, textvariable=self.m00_value, width=5)
-    self.m01_input = tk.Entry(self.root, textvariable=self.m01_value, width=5)
-    self.m10_input = tk.Entry(self.root, textvariable=self.m10_value, width=5)
-    self.m11_input = tk.Entry(self.root, textvariable=self.m11_value, width=5)
-    self.apply_transform_button = tk.Button(self.root, text="Apply Transform", command=self.apply_transform)
-    
-    self.change_line_color_button = tk.Button(self.root, text="Line Color", command=self.change_line_color)
-    self.change_fill_color_button = tk.Button(self.root, text="Fill Color", command=self.change_fill_color)
-    self.change_point_color_button = tk.Button(self.root, text="Point Color", command=self.change_point_color)
-    self.change_point_radius_button = tk.Button(self.root, text="Point Radius", command=self.change_point_radius)
+    self.m00_input = tk.Entry(self.transform_widget_frame, textvariable=self.m00_value, width=6)
+    self.m01_input = tk.Entry(self.transform_widget_frame, textvariable=self.m01_value, width=6)
+    self.m10_input = tk.Entry(self.transform_widget_frame, textvariable=self.m10_value, width=6)
+    self.m11_input = tk.Entry(self.transform_widget_frame, textvariable=self.m11_value, width=6)
+    self.apply_transform_button = tk.Button(self.transform_widget_frame, text="Apply Transform", command=self.apply_transform)
+
+    self.change_line_color_button = tk.Button(self.color_button_frame, text="Line Color", command=self.change_line_color)
+    self.change_fill_color_button = tk.Button(self.color_button_frame, text="Fill Color", command=self.change_fill_color)
+    self.change_point_color_button = tk.Button(self.color_button_frame, text="Point Color", command=self.change_point_color)
+    self.change_point_radius_button = tk.Button(self.color_button_frame, text="Point Radius", command=self.change_point_radius)
+
+    self.rotate_grid = tk.Frame(self.root)
 
     self.build_forms_table()
     self.controls()
@@ -92,22 +104,22 @@ class Viewport:
   def build_ui(self):
     self.canva.grid(row=0, column=0, columnspan=4, rowspan=10, sticky="nsew")
     
-    self.build_button.grid(row=11, column=0, sticky="ew")
-    self.lines_button.grid(row=11, column=1, sticky="ew")
-    self.polygon_button.grid(row=11, column=2, sticky="ew")
-    self.clear_button.grid(row=11, column=3, sticky="ew")
+    self.build_button.grid(row=11, column=0, sticky="ew", padx=5, pady=5)
+    self.lines_button.grid(row=11, column=1, sticky="ew", padx=5, pady=5)
+    self.polygon_button.grid(row=11, column=2, sticky="ew", padx=5, pady=5)
+    self.clear_button.grid(row=11, column=3, sticky="ew", padx=5, pady=5)
     self.recenter_button.grid(row=0, column=5, columnspan=3)
 
-    self.m00_input.grid(row=1, column=5, sticky="ew")
-    self.m01_input.grid(row=1, column=6, sticky="ew")
-    self.m10_input.grid(row=2, column=5, sticky="ew")
-    self.m11_input.grid(row=2, column=6, sticky="ew")
-    self.apply_transform_button.grid(row=3, column=5, columnspan=2, sticky="ew")
-    
-    self.change_fill_color_button.grid(row=4, column=5, sticky="ew")
-    self.change_line_color_button.grid(row=4, column=6, sticky="ew")
-    self.change_point_color_button.grid(row=5, column=5, sticky="ew")
-    self.change_point_radius_button.grid(row=5, column=6, sticky="ew")
+    self.m00_input.grid(row=0, column=0, sticky="ew")
+    self.m01_input.grid(row=0, column=1, sticky="ew")
+    self.m10_input.grid(row=1, column=0, sticky="ew")
+    self.m11_input.grid(row=1, column=1, sticky="ew")
+    self.apply_transform_button.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(5, 0))
+
+    self.change_fill_color_button.grid(row=0, column=1, sticky="ew", padx=5, pady=5)
+    self.change_line_color_button.grid(row=0, column=2, sticky="ew", padx=5, pady=5)
+    self.change_point_color_button.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
+    self.change_point_radius_button.grid(row=1, column=2, sticky="ew", padx=5, pady=5)
 
   def build_forms_table(self):
     self.forms_table_frame = tk.Frame(self.root, width=400, height=200, background="white")
