@@ -11,6 +11,7 @@ class Wireframe:
   color: str = "black"
   fill_color: str = "white"
   id: int = 0
+  radius: float = field(default=0.0, repr=False)
 
   def figures(self) -> list[ScreenWireframe]: raise NotImplementedError("Subclasses should implement this method")
 
@@ -32,8 +33,8 @@ class Wireframe:
 
 
 class PointObject(Wireframe):
-  def __init__(self, name: str, center: Point, id: int = 0):
-    super().__init__(name, center, [center], id=id)
+  def __init__(self, name: str, center: Point, id: int = 0, radius: float = 2):
+    super().__init__(name, center, [center], id=id, radius=radius)
 
   def figures(self) -> list[ScreenWireframe]:
     return [ScreenWireframe(self.center)]

@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, messagebox, font, colorchooser
+from tkinter import ttk, messagebox, font, colorchooser, simpledialog
 from wireframe import *
 from screen import *
 
@@ -219,7 +219,8 @@ class Viewport:
           # Draw point
           else:
             point = self.camera.project(edge.start)
-            self.canva.create_oval(point[0] - 2, point[1] - 2, point[0] + 2, point[1] + 2, fill=obj.color)
+            radius = self.camera.zoom * obj.radius
+            self.canva.create_oval(point[0] - radius, point[1] - radius, point[0] + radius, point[1] + radius, fill=obj.color)
     prev = None
     for point in self.build:
       point = self.camera.project(point)
@@ -284,7 +285,18 @@ class Viewport:
         break
 
   def change_point_radius(self):
-    pass
+    selected_item = self.formsTable.selection()
+    if not selected_item:
+      messagebox.showwarning("Aviso", "Nenhum objeto selecionado.")
+      return
+
+    item_id = self.formsTable.item(selected_item[0], "tags")[0]
+    for obj in self.objects:
+      if str(obj.id) == item_id:
+        obj.radius = simpledialog.askfloat("Raio do Ponto", "Digite o novo raio do ponto:", minvalue=1, maxvalue=100, initialvalue=obj.radius)
+        if obj.radius is not None:
+          self.update()
+          break
 
   def change_line_color(self):
     selected_item = self.formsTable.selection()
