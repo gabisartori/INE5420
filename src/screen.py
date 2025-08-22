@@ -43,21 +43,11 @@ class Camera:
 
   def move_above(self): self.position[1] += max(self.speed/self.zoom, 1)
 
-  # def rotate_left(self):
-  #   rotation_matrix = np.array([
-  #     [math.cos(math.radians(5)), 0, -math.sin(math.radians(5))],
-  #     [0, 1, 0],
-  #     [math.sin(math.radians(5)), 0, math.cos(math.radians(5))]
-  #   ])
-  #   self.right = np.dot(rotation_matrix, self.right)
-
   def zoom_in(self, x, y):
     self.zoom *= 1.1
-    self.camera_focus = self.viewport_to_camera(x, y)
 
   def zoom_out(self, x, y):
-    self.zoom = max(self.zoom/1.1, 0.5)
-    self.camera_focus = self.viewport_to_camera(x, y)
+    self.zoom /= 1.1
 
   def recenter(self):
     self.position = np.array([0, 100, 0])
@@ -66,7 +56,7 @@ class Camera:
     self.camera_focus = (0, 0)
     self.viewport_focus = (self.viewport_width // 2, self.viewport_height // 2)
 
-  def project(self, point: Point) -> tuple[float, float]:
+  def world_to_viewport(self, point: Point) -> tuple[float, float]:
     # Ignore points behind camera
     # if np.dot(self.normal, point - self.position) < 0: point = self.position - self.normal
     x, y = self.world_to_camera(point)
@@ -97,16 +87,15 @@ class Camera:
     return x*self.right + y*self.up + self.position
 
   def camera_to_viewport(self, x: float, y: float) -> tuple[float, float]:
-    x, y = (x-self.camera_focus[0])*self.zoom + self.camera_focus[0], (y-self.camera_focus[1])*self.zoom+self.camera_focus[1]
-    x, y = x + self.viewport_focus[0], y + self.viewport_focus[1]
+    x = x*self.zoom + self.viewport_focus[0]
+    y = y*self.zoom + self.viewport_focus[1]
     y = self.viewport_height - y
     return x, y
 
-
   def viewport_to_camera(self, x: float, y: float) -> tuple[float, float]:
     y = self.viewport_height - y
-    x, y = x - self.viewport_focus[0], y - self.viewport_focus[1]
-    x, y = (x-self.camera_focus[0])/self.zoom + self.camera_focus[0], (y-self.camera_focus[1])/self.zoom + self.camera_focus[1]
+    x = (x-self.viewport_focus[0])/self.zoom
+    y = (y-self.viewport_focus[1])/self.zoom
     return x, y
 
   def viewport_to_world(self, x: float, y: float) -> Point:

@@ -33,7 +33,7 @@ class Wireframe:
 
 
 class PointObject(Wireframe):
-  def __init__(self, name: str, center: Point, id: int = 0, radius: float = 2):
+  def __init__(self, name: str, center: Point, id: int = 0, radius: float = 5):
     super().__init__(name, center, [center], id=id, radius=radius)
 
   def figures(self) -> list[ScreenWireframe]:

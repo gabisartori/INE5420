@@ -19,8 +19,10 @@ class Viewport:
 
     # Ui Componentes
     self.root: tk.Tk = tk.Tk()
-    #self.root.geometry(f"{width}x{height}")
+    self.root.geometry(f"{width}x{height}")
+    self.root.resizable(True, True)
     self.root.title(title)
+    
     self.canva = tk.Canvas(self.root, background="white", width=0.8 * self.width, height=0.8 * self.height)
 
     self.color_button_frame = tk.Frame(self.root)
@@ -38,15 +40,15 @@ class Viewport:
     self.polygon_button = tk.Button(self.root, text="Polygon", command=self.finish_polygon)
     self.clear_button = tk.Button(self.root, text="Clear", command=self.clear)
     self.recenter_button = tk.Button(self.root, text="Recenter", command=lambda: self.camera.recenter() or self.update())
-    self.m00_value = tk.StringVar()
-    self.m01_value = tk.StringVar()
-    self.m10_value = tk.StringVar()
-    self.m11_value = tk.StringVar()
-    self.m00_input = tk.Entry(self.transform_widget_frame, textvariable=self.m00_value, width=6)
-    self.m01_input = tk.Entry(self.transform_widget_frame, textvariable=self.m01_value, width=6)
-    self.m10_input = tk.Entry(self.transform_widget_frame, textvariable=self.m10_value, width=6)
-    self.m11_input = tk.Entry(self.transform_widget_frame, textvariable=self.m11_value, width=6)
-    self.apply_transform_button = tk.Button(self.transform_widget_frame, text="Apply Transform", command=self.apply_transform)
+    # self.m00_value = tk.StringVar()
+    # self.m01_value = tk.StringVar()
+    # self.m10_value = tk.StringVar()
+    # self.m11_value = tk.StringVar()
+    # self.m00_input = tk.Entry(self.transform_widget_frame, textvariable=self.m00_value, width=6)
+    # self.m01_input = tk.Entry(self.transform_widget_frame, textvariable=self.m01_value, width=6)
+    # self.m10_input = tk.Entry(self.transform_widget_frame, textvariable=self.m10_value, width=6)
+    # self.m11_input = tk.Entry(self.transform_widget_frame, textvariable=self.m11_value, width=6)
+    # self.apply_transform_button = tk.Button(self.transform_widget_frame, text="Apply Transform", command=self.apply_transform)
 
     self.change_line_color_button = tk.Button(self.color_button_frame, text="Line Color", command=self.change_line_color)
     self.change_fill_color_button = tk.Button(self.color_button_frame, text="Fill Color", command=self.change_fill_color)
@@ -68,16 +70,16 @@ class Viewport:
 
     self.root.resizable(False, False) # redimensionar travado
 
-  def apply_transform(self):
-    try:
-      m00 = float(self.m00_value.get())
-      m01 = float(self.m01_value.get())
-      m10 = float(self.m10_value.get())
-      m11 = float(self.m11_value.get())
-      self.camera.transform_matrix = np.array([[m00, m01], [m10, m11]])
-      self.update()
-    except ValueError:
-      print("Erro: Valores inválidos para a matriz de transformação.")
+  # def apply_transform(self):
+  #   try:
+  #     m00 = float(self.m00_value.get())
+  #     m01 = float(self.m01_value.get())
+  #     m10 = float(self.m10_value.get())
+  #     m11 = float(self.m11_value.get())
+  #     self.camera.transform_matrix = np.array([[m00, m01], [m10, m11]])
+  #     self.update()
+  #   except ValueError:
+  #     print("Erro: Valores inválidos para a matriz de transformação.")
 
   def set_building(self): self.building = True
 
@@ -102,7 +104,7 @@ class Viewport:
     self.update()
 
   def build_ui(self):
-    self.canva.grid(row=0, column=0, columnspan=4, rowspan=10, sticky="nsew")
+    self.canva.grid(row=0, column=0, columnspan=4, rowspan=10)
     
     self.build_button.grid(row=11, column=0, sticky="ew", padx=5, pady=5)
     self.lines_button.grid(row=11, column=1, sticky="ew", padx=5, pady=5)
@@ -110,11 +112,11 @@ class Viewport:
     self.clear_button.grid(row=11, column=3, sticky="ew", padx=5, pady=5)
     self.recenter_button.grid(row=0, column=5, columnspan=3)
 
-    self.m00_input.grid(row=0, column=0, sticky="ew")
-    self.m01_input.grid(row=0, column=1, sticky="ew")
-    self.m10_input.grid(row=1, column=0, sticky="ew")
-    self.m11_input.grid(row=1, column=1, sticky="ew")
-    self.apply_transform_button.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(5, 0))
+    # self.m00_input.grid(row=0, column=0, sticky="ew")
+    # self.m01_input.grid(row=0, column=1, sticky="ew")
+    # self.m10_input.grid(row=1, column=0, sticky="ew")
+    # self.m11_input.grid(row=1, column=1, sticky="ew")
+    # self.apply_transform_button.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(5, 0))
 
     self.change_fill_color_button.grid(row=0, column=1, sticky="ew", padx=5, pady=5)
     self.change_line_color_button.grid(row=0, column=2, sticky="ew", padx=5, pady=5)
@@ -168,9 +170,7 @@ class Viewport:
 
   def canva_click(self, event):
     if self.building: self.build.append(self.camera.viewport_to_world(event.x, event.y))
-    else: 
-      self.objects.append(PointObject("Clicked Point", self.camera.viewport_to_world(event.x, event.y), id=10*len(self.objects)+1))
-      self.add_object_to_table(self.objects[-1])
+    else:  self.objects.append(PointObject("Clicked Point", self.camera.viewport_to_world(event.x, event.y), id=10*len(self.objects)+1))
     self.update()
 
   def finish_lines(self):
@@ -181,7 +181,7 @@ class Viewport:
     for i in range(len(self.build) - 1):
       start, end = self.build[i:i+2]
       self.objects.append(LineObject(f"Line {i+1}", start, end, id=10*len(self.objects)+1))
-    self.add_object_to_table(self.objects[-1])
+
     self.build.clear()
     self.building = False
     self.update()
@@ -193,7 +193,6 @@ class Viewport:
       return
     
     self.objects.append(PolygonObject("Polygon", self.build.copy(), id=10*len(self.objects)+1))
-    self.add_object_to_table(self.objects[-1])
     self.build.clear()
     self.building = False
     self.update()
@@ -208,11 +207,11 @@ class Viewport:
         for edge in figures:
           # Draw polygon edges
           if edge.end is None: raise ValueError("Polygon edge has no endpoint")
-          start, end = self.camera.project(edge.start), self.camera.project(edge.end)
+          start, end = self.camera.world_to_viewport(edge.start), self.camera.world_to_viewport(edge.end)
           self.canva.create_line(start[0], start[1], end[0], end[1], fill=obj.color)
         # Fill polygon
         if obj.fill_color:
-          projected_points = [self.camera.project(edge.start) for edge in figures]
+          projected_points = [self.camera.world_to_viewport(edge.start) for edge in figures]
           # fecha o poligono se necessario
           if not np.array_equal(projected_points[0], projected_points[-1]):
               projected_points.append(projected_points[0])
@@ -226,16 +225,21 @@ class Viewport:
         for edge in figures:
           # Draw line
           if edge.end is not None:
-            start, end = self.camera.project(edge.start), self.camera.project(edge.end)
+            start, end = self.camera.world_to_viewport(edge.start), self.camera.world_to_viewport(edge.end)
             self.canva.create_line(start[0], start[1], end[0], end[1], fill=obj.color)
           # Draw point
           else:
-            point = self.camera.project(edge.start)
-            radius = self.camera.zoom * obj.radius
+            point = self.camera.world_to_viewport(edge.start)
+            radius = obj.radius
             self.canva.create_oval(point[0] - radius, point[1] - radius, point[0] + radius, point[1] + radius, fill=obj.color)
+    
+    self.formsTable.delete(*self.formsTable.get_children())
+    for obj in self.objects:
+      self.add_object_to_table(obj)
+
     prev = None
     for point in self.build:
-      point = self.camera.project(point)
+      point = self.camera.world_to_viewport(point)
       self.canva.create_oval(point[0] - 2, point[1] - 2, point[0] + 2, point[1] + 2, fill="red")
       if prev is not None: self.canva.create_line(prev[0], prev[1], point[0], point[1], fill="red")
       prev = point
@@ -305,7 +309,7 @@ class Viewport:
     item_id = self.formsTable.item(selected_item[0], "tags")[0]
     for obj in self.objects:
       if str(obj.id) == item_id:
-        obj.radius = simpledialog.askfloat("Raio do Ponto", "Digite o novo raio do ponto:", minvalue=1, maxvalue=100, initialvalue=obj.radius)
+        obj.radius = simpledialog.askfloat("Raio do Ponto", "Digite o novo raio do ponto:", minvalue=1, maxvalue=100, initialvalue=obj.radius) or 0.0
         if obj.radius is not None:
           self.update()
           break
