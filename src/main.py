@@ -1,8 +1,11 @@
 import viewport
-import sys
+import argparse
 
-input_file = sys.argv[1] if len(sys.argv) > 1 else None
+parser = argparse.ArgumentParser()
+parser.add_argument("-i", "--input", help="Path to the input file", type=str, default=None, dest="input_file")
+parser.add_argument("-o", "--output", help="Path to the output file", type=str, default=None, dest="output_file")
+args = parser.parse_args()
 
 
-screen = viewport.Viewport(1200, 800, input=input_file, output="../output.obj")
+screen = viewport.Viewport(1200, 800, input=args.input_file, output=args.output_file)
 objects = screen.run()

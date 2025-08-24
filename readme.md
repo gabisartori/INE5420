@@ -3,10 +3,15 @@
 Este repositório contém um Sistema Gráfico Interativo (SGI), capaz de representar e manipular objetos tridimensionais em modelo de arame.
 
 ## Execução
-O programa recebe como argumento um arquivo .obj com a lista de objetos a serem inicializados. Caso nenhum argumento seja passado, ou o arquivo não seja encontrado, o SGI executa sem nenhum objeto pré-inicializado.
 ```
-python3 src/main.py <filepath>
+python src/main.py -i <input file> -o <output file>
 ```
+Ambos argumentos são opcionais. Caso não haja arquivo de entrada, o SGI inciará sem nenhum objeto pré-criado e, caso não haja arquivo de saída, o SGI não tentará salvar seus objetos ao final da execução.
+
+```
+python3 src/main.py -h
+```
+Retorna a lista de funcionalidades do programa
 
 ## Controles
 As utilidades do SGI são acessíveis por meio das seguintes entradas de instruções

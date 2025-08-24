@@ -4,8 +4,8 @@ from wireframe import *
 from screen import *
 
 class Viewport:
-  def __init__(self, width, height, title="INE5420", input: str | None=None, output: str="", debug: bool=False):
-    self.output: str = output
+  def __init__(self, width, height, title="INE5420", input: str | None=None, output: str | None=None, debug: bool=False):
+    self.output: str | None = output 
     
     self.width: int = width
     self.height: int = height
