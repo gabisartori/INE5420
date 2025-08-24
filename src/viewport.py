@@ -4,12 +4,12 @@ from wireframe import *
 from screen import *
 
 class Viewport:
-  def __init__(self, width, height, title="INE5420", input: str="", output: str="", debug: bool=False):
+  def __init__(self, width, height, title="INE5420", input: str | None=None, output: str="", debug: bool=False):
     self.output: str = output
     
     self.width: int = width
     self.height: int = height
-    self.objects: list[Wireframe] = self.load_objects(input)
+    self.objects: list[Wireframe] = self.load_objects(input) if input else []
     self.build: list[Point] = []
     self._building: bool = False
 
