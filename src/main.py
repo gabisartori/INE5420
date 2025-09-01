@@ -7,5 +7,5 @@ parser.add_argument("-o", "--output", help="Path to the output file", type=str, 
 args = parser.parse_args()
 
 
-screen = viewport.Viewport(1200, 800, input=args.input_file, output=args.output_file)
+screen = viewport.Viewport(1400, 900, input=args.input_file, output=args.output_file)
 objects = screen.run()

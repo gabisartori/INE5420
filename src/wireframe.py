@@ -30,10 +30,21 @@ class Wireframe:
       return LineObject(name, points[0], points[1])
     else:
       return PolygonObject(name, points)
-
+    
+  def transform2d_xz(self, M: np.ndarray) -> None:
+      """Aplica M (3x3 homogênea) aos pontos no plano XZ, mantendo Y."""
+      new_pts = []
+      for p in self.points:
+          x, z = float(p[0]), float(p[2])
+          x2, z2, _ = M @ np.array([x, z, 1.0])
+          q = p.astype(float).copy()
+          q[0], q[2] = x2, z2
+          new_pts.append(q)
+      self.points = new_pts
+      self.center = np.mean(np.stack(self.points), axis=0)
 
 class PointObject(Wireframe):
-  def __init__(self, name: str, center: Point, id: int = 0, radius: float = 5):
+  def __init__(self, name: str, center: Point, id: int = 0, radius: float = 2):
     super().__init__(name, center, [center], id=id, radius=radius)
 
   def figures(self) -> list[ScreenWireframe]:

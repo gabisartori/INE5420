@@ -39,16 +39,19 @@ class Viewport:
     self.lines_button = tk.Button(self.root, text="Lines", command=self.finish_lines)
     self.polygon_button = tk.Button(self.root, text="Polygon", command=self.finish_polygon)
     self.clear_button = tk.Button(self.root, text="Clear", command=self.clear)
+
     self.recenter_button = tk.Button(self.root, text="Recenter", command=lambda: self.camera.recenter() or self.update())
-    # self.m00_value = tk.StringVar()
-    # self.m01_value = tk.StringVar()
-    # self.m10_value = tk.StringVar()
-    # self.m11_value = tk.StringVar()
-    # self.m00_input = tk.Entry(self.transform_widget_frame, textvariable=self.m00_value, width=6)
-    # self.m01_input = tk.Entry(self.transform_widget_frame, textvariable=self.m01_value, width=6)
-    # self.m10_input = tk.Entry(self.transform_widget_frame, textvariable=self.m10_value, width=6)
-    # self.m11_input = tk.Entry(self.transform_widget_frame, textvariable=self.m11_value, width=6)
-    # self.apply_transform_button = tk.Button(self.transform_widget_frame, text="Apply Transform", command=self.apply_transform)
+    self.exit_button = tk.Button(self.root, text="Exit", command=self.root.quit)
+
+    self.m00_value = tk.StringVar()
+    self.m01_value = tk.StringVar()
+    self.m10_value = tk.StringVar()
+    self.m11_value = tk.StringVar()
+    self.m00_input = tk.Entry(self.transform_widget_frame, textvariable=self.m00_value, width=6)
+    self.m01_input = tk.Entry(self.transform_widget_frame, textvariable=self.m01_value, width=6)
+    self.m10_input = tk.Entry(self.transform_widget_frame, textvariable=self.m10_value, width=6)
+    self.m11_input = tk.Entry(self.transform_widget_frame, textvariable=self.m11_value, width=6)
+    self.apply_transform_button = tk.Button(self.transform_widget_frame, text="Apply Transform", command=self.apply_transform)
 
     self.change_line_color_button = tk.Button(self.color_button_frame, text="Line Color", command=self.change_line_color)
     self.change_fill_color_button = tk.Button(self.color_button_frame, text="Fill Color", command=self.change_fill_color)
@@ -70,16 +73,43 @@ class Viewport:
 
     self.root.resizable(False, False) # redimensionar travado
 
-  # def apply_transform(self):
-  #   try:
-  #     m00 = float(self.m00_value.get())
-  #     m01 = float(self.m01_value.get())
-  #     m10 = float(self.m10_value.get())
-  #     m11 = float(self.m11_value.get())
-  #     self.camera.transform_matrix = np.array([[m00, m01], [m10, m11]])
-  #     self.update()
-  #   except ValueError:
-  #     print("Erro: Valores inválidos para a matriz de transformação.")
+  def apply_transform(self):
+      if not self.m00_input.get(): self.m00_value.set("1.0")
+      if not self.m01_input.get(): self.m01_value.set("0.0")
+      if not self.m10_input.get(): self.m10_value.set("0.0")
+      if not self.m11_input.get(): self.m11_value.set("1.0")
+
+      selected_item = self.formsTable.selection()
+      if not selected_item:
+          messagebox.showwarning("Aviso", "Nenhum objeto selecionado.")
+          return
+
+      try:
+          m00 = float(self.m00_value.get())
+          m01 = float(self.m01_value.get())
+          m10 = float(self.m10_value.get())
+          m11 = float(self.m11_value.get())
+      except ValueError:
+          messagebox.showerror("Erro", "Valores inválidos para a matriz.")
+          return
+
+      item_id = self.formsTable.item(selected_item[0], "tags")[0]
+      target = next((o for o in self.objects if str(o.id) == item_id), None)
+      if target is None:
+          messagebox.showwarning("Aviso", "Objeto não encontrado.")
+          return
+
+      A = np.array([[m00, m01, 0.0],
+                    [m10, m11, 0.0],
+                    [0.0, 0.0, 1.0]], dtype=float)
+
+      cx, cz = float(target.center[0]), float(target.center[2])
+      T  = np.array([[1,0, cx],[0,1, cz],[0,0,1]], dtype=float)
+      Ti = np.array([[1,0,-cx],[0,1,-cz],[0,0,1]], dtype=float)
+      M  = T @ A @ Ti
+
+      target.transform2d_xz(M)
+      self.update()
 
   def set_building(self): self.building = True
 
@@ -112,11 +142,11 @@ class Viewport:
     self.clear_button.grid(row=11, column=3, sticky="ew", padx=5, pady=5)
     self.recenter_button.grid(row=0, column=5, columnspan=3)
 
-    # self.m00_input.grid(row=0, column=0, sticky="ew")
-    # self.m01_input.grid(row=0, column=1, sticky="ew")
-    # self.m10_input.grid(row=1, column=0, sticky="ew")
-    # self.m11_input.grid(row=1, column=1, sticky="ew")
-    # self.apply_transform_button.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(5, 0))
+    self.m00_input.grid(row=0, column=0, sticky="ew")
+    self.m01_input.grid(row=0, column=1, sticky="ew")
+    self.m10_input.grid(row=1, column=0, sticky="ew")
+    self.m11_input.grid(row=1, column=1, sticky="ew")
+    self.apply_transform_button.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(5, 0))
 
     self.change_fill_color_button.grid(row=0, column=1, sticky="ew", padx=5, pady=5)
     self.change_line_color_button.grid(row=0, column=2, sticky="ew", padx=5, pady=5)
@@ -133,6 +163,7 @@ class Viewport:
     self.scrollbar_y = ttk.Scrollbar(self.forms_table_frame, orient="vertical")
     
     self.formsTable = ttk.Treeview(self.forms_table_frame, columns=("Id", "Points"), show="headings", xscrollcommand=self.scrollbar_x.set, yscrollcommand=self.scrollbar_y.set)
+    
     self.formsTable.heading("Id", text="Id")
     self.formsTable.heading("Points", text="Points")
     self.formsTable.column("Id", width=50, anchor="center", stretch=tk.NO)
@@ -146,11 +177,10 @@ class Viewport:
     self.formsTable.grid(row=0, column=0, sticky="nsew")
     self.scrollbar_y.grid(row=0, column=1, sticky="ns")
     self.scrollbar_x.grid(row=1, column=0, sticky="ew")
-
-
     
     self.forms_table_frame.grid_propagate(False)
     self.formsTable.bind("<Button-3>", self.on_table_right_click)
+    self.formsTable.pack(fill=tk.BOTH, expand=True, pady=10)
 
   def controls(self):
     self.canva.bind("<ButtonRelease-1>", self.canva_click)
@@ -166,7 +196,7 @@ class Viewport:
     self.root.bind("<KeyPress-e>", lambda e: self.camera.move_above() or self.update())
     self.root.bind("<KeyPress-Escape>", lambda e: self.cancel_building())
     self.root.bind("<Control-z>", lambda e: self.undo())
-    # self.root.bind("<KeyPress-h>", lambda e: self.camera.rotate_left() or self.update())
+    self.root.bind("<KeyPress-h>", lambda e: self.camera.rotate_left() or self.update())
 
   def canva_click(self, event):
     if self.building: self.build.append(self.camera.viewport_to_world(event.x, event.y))
