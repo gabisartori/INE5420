@@ -31,7 +31,7 @@ class Viewport:
 
     # colors
     self.color_button_frame = tk.Frame(self.root)
-    self.color_button_frame.grid(row=5, column=5, rowspan=8, sticky="ns")
+    self.color_button_frame.grid(row=4, column=5, rowspan=8, sticky="ns")
 
     self.change_line_color_button = tk.Button(self.color_button_frame, text="Line Color", command=self.change_line_color)
     self.change_fill_color_button = tk.Button(self.color_button_frame, text="Fill Color", command=self.change_fill_color)
@@ -66,10 +66,7 @@ class Viewport:
 
     # translate frame
     self.translate_frame = tk.Frame(self.root)
-    self.translate_frame.grid(row=3, column=5, columnspan=1, sticky="nsew")
-
-    self.translate_button = tk.Button(self.translate_frame, text="Translate", command=self.translate)
-    self.translate_button.grid(row=0, column=0, sticky="ew")
+    self.translate_frame.grid(row=2, column=5, columnspan=1, sticky="nsew")
 
     insert_x_label = tk.Label(self.translate_frame, text="X:")
     insert_x_label.grid(row=0, column=1, sticky="ew")
@@ -81,20 +78,17 @@ class Viewport:
     self.translate_y = tk.StringVar()
     self.translate_y_entry = tk.Entry(self.translate_frame, textvariable=self.translate_y, width=6)
 
-    # insert_z_label = tk.Label(self.translate_frame, text="Z:")
-    # insert_z_label.grid(row=0, column=5, sticky="ew")
-    # self.translate_z = tk.StringVar()
-    # self.translate_z_entry = tk.Entry(self.translate_frame, textvariable=self.translate_z, width=6)
-
     self.translate_x_entry.grid(row=0, column=2, sticky="ew")
     self.translate_y_entry.grid(row=0, column=4, sticky="ew")
-    #self.translate_z_entry.grid(row=0, column=6, sticky="ew")
+    
+    self.translate_button = tk.Button(self.translate_frame, text="Translate", command=self.translate)
+    self.translate_button.grid(row=0, column=0, sticky="ew")
 
     # rotate frame
     self.rotate_frame = tk.Frame(self.root)
-    self.rotate_frame.grid(row=4, column=5, columnspan=1, sticky="nsew")
+    self.rotate_frame.grid(row=3, column=5, columnspan=1, sticky="nsew")
 
-    rotate_label = tk.Label(self.rotate_frame, text="Rotate 15°:")
+    rotate_label = tk.Label(self.rotate_frame, text="Rotate:")
     rotate_label.grid(row=0, column=0, sticky="w")
 
     self.rotate_left_button = tk.Button(self.rotate_frame, text="⟲", command=lambda: self.rotate("left"))
@@ -102,6 +96,13 @@ class Viewport:
 
     self.rotate_right_button = tk.Button(self.rotate_frame, text="⟳", command=lambda: self.rotate("right"))
     self.rotate_right_button.grid(row=0, column=2, sticky="ew")
+
+    self.rotate_degrees = tk.StringVar()
+    self.rotate_degrees_entry = tk.Entry(self.rotate_frame, textvariable=self.rotate_degrees, width=6)
+    self.rotate_degrees_entry.grid(row=0, column=3, sticky="ew")
+
+    degree_symbol_label = tk.Label(self.rotate_frame, text="°")
+    degree_symbol_label.grid(row=0, column=4, sticky="w")
 
     around_point_label = tk.Label(self.rotate_frame, text="Around Point:")
     around_point_label.grid(row=1, column=0, sticky="w")
@@ -124,6 +125,9 @@ class Viewport:
     for i in range(10):
       self.root.grid_rowconfigure(i, weight=1)
       self.root.grid_columnconfigure(i, weight=1)
+      
+    for i in range(11, 21):
+      self.root.grid_rowconfigure(i, weight=0)
 
     self.root.resizable(False, False) # redimensionar travado
 
@@ -173,14 +177,21 @@ class Viewport:
       self.update()
 
   def rotate(self, direction: str):
+      # if an object is selected, rotates around its center
+      # if no object is selected, rotates around the camera position's center
+      # if a pivot point is specified, rotates around that point
+      # if an angle is specified, rotates by that angle
+      # if angle is not specified, uses the default value (15)
+      rotate_degrees = self.rotate_degrees.get() if self.rotate_degrees.get() else "15"
+    
       if direction == "left":
-          self.rotation_angle -= 15
+          self.rotation_angle -= float(rotate_degrees)
       elif direction == "right":
-          self.rotation_angle += 15
+          self.rotation_angle += float(rotate_degrees)
       else:
         return
 
-      angle = -15 if direction == "left" else 15
+      angle = -float(rotate_degrees) if direction == "left" else float(rotate_degrees)
 
       radians = math.radians(angle)
       cos = math.cos(radians)
@@ -200,12 +211,10 @@ class Viewport:
             px = float(px_str)
             pz = float(pz_str)
 
-            # Rotaciona em torno do ponto fornecido
             T  = np.array([[1, 0, px], [0, 1, pz], [0, 0, 1]], dtype=float)
             Ti = np.array([[1, 0, -px], [0, 1, -pz], [0, 0, 1]], dtype=float)
             M  = T @ R @ Ti
 
-            # Aplica a todos os objetos
             for target in self.objects:
                 target.transform2d_xz(M)
 
@@ -259,14 +268,9 @@ class Viewport:
               messagebox.showwarning("Aviso", "Objeto não encontrado.")
               return
           target.transform2d_xz(translation_matrix)
-          # Aplica tz no eixo Y diretamente (profundidade)
-          # target.points = [np.array([p[0], p[1] + tz, p[2]]) for p in target.points]
-          # target.center[1] += tz
       else:
           for target in self.objects:
               target.transform2d_xz(translation_matrix)
-              # target.points = [np.array([p[0], p[1] + tz, p[2]]) for p in target.points]
-              # target.center[1] += tz
 
       self.update()
 
@@ -357,7 +361,7 @@ class Viewport:
     self.root.bind("<KeyPress-e>", lambda e: self.camera.move_above() or self.update())
     self.root.bind("<KeyPress-Escape>", lambda e: self.cancel_building())
     self.root.bind("<Control-z>", lambda e: self.undo())
-    self.root.bind("<KeyPress-h>", lambda e: self.camera.rotate_left() or self.update())
+    # self.root.bind("<KeyPress-h>", lambda e: self.camera.rotate_left() or self.update())
 
   def canva_click(self, event):
     if self.building: self.build.append(self.camera.viewport_to_world(event.x, event.y))
@@ -388,10 +392,12 @@ class Viewport:
     self.building = False
     self.update()
 
-  def update(self):
+  def update(self):        
     self.canva.delete("all")
     all_objects = self.objects.copy()
+    
     if self.debug: all_objects += self.debug_objects
+    
     for obj in all_objects:
       figures = obj.figures()
       if isinstance(obj, PolygonObject):
@@ -400,9 +406,11 @@ class Viewport:
           if edge.end is None: raise ValueError("Polygon edge has no endpoint")
           start, end = self.camera.world_to_viewport(edge.start), self.camera.world_to_viewport(edge.end)
           self.canva.create_line(start[0], start[1], end[0], end[1], fill=obj.color)
+        
         # Fill polygon
         if obj.fill_color:
           projected_points = [self.camera.world_to_viewport(edge.start) for edge in figures]
+          
           # fecha o poligono se necessario
           if not np.array_equal(projected_points[0], projected_points[-1]):
               projected_points.append(projected_points[0])
@@ -414,10 +422,12 @@ class Viewport:
 
       else:
         for edge in figures:
+          
           # Draw line
           if edge.end is not None:
             start, end = self.camera.world_to_viewport(edge.start), self.camera.world_to_viewport(edge.end)
             self.canva.create_line(start[0], start[1], end[0], end[1], fill=obj.color)
+          
           # Draw point
           else:
             point = self.camera.world_to_viewport(edge.start)
