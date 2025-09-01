@@ -12,6 +12,7 @@ class Wireframe:
   fill_color: str = "white"
   id: int = 0
   radius: float = field(default=0.0, repr=False)
+  transform_matrix: np.ndarray = field(default_factory=lambda: np.identity(3), repr=False)
 
   def figures(self) -> list[ScreenWireframe]: raise NotImplementedError("Subclasses should implement this method")
 
@@ -31,6 +32,28 @@ class Wireframe:
     else:
       return PolygonObject(name, points)
     
+  def apply_matrix(self):
+    new_pts = []
+    for p in self.points:
+        x, z = float(p[0]), float(p[2])
+        x2, z2, _ = self.transform_matrix @ np.array([x, z, 1.0])
+        q = p.astype(float).copy()
+        q[0], q[2] = x2, z2
+        new_pts.append(q)
+    self.points = new_pts
+    self.center = np.mean(np.stack(self.points), axis=0)
+    self.transform_matrix = np.identity(3)  # Reset após aplicar
+
+  def apply_transform(self, M: np.ndarray):
+    self.transform_matrix = M @ self.transform_matrix
+  
+  def apply_point(M, p):
+    x, z = float(p[0]), float(p[2])
+    x2, z2, _ = M @ np.array([x, z, 1])
+    q = p.astype(float).copy()
+    q[0], q[2] = x2, z2
+    return q
+
   def transform2d_xz(self, M: np.ndarray) -> None:
       """Aplica M (3x3 homogênea) aos pontos no plano XZ, mantendo Y."""
       new_pts = []

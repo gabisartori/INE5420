@@ -12,10 +12,14 @@ class Viewport:
     self.objects: list[Wireframe] = self.load_objects(input) if input else []
     self.build: list[Point] = []
     self._building: bool = False
+    self.rotation_angle: float = 0.0
+    self.scale: float = 1.0
+    self.transform_matrix = np.identity(2)
 
     self.debug: bool = debug
     self.debug_objects: list[Wireframe] = [PointObject("World Origin", np.array([0, 0, 0]), id=0)]
     self.camera = Camera(np.array([0, -1, 0]), np.array([0, 100, 0]), width*0.8, height*0.8)
+    self.original_points: list[Point] = [Point(p.x, p.y, p.z) for p in self.objects]
 
     # Ui Componentes
     self.root: tk.Tk = tk.Tk()
@@ -41,7 +45,7 @@ class Viewport:
     self.clear_button = tk.Button(self.root, text="Clear", command=self.clear)
 
     self.recenter_button = tk.Button(self.root, text="Recenter", command=lambda: self.camera.recenter() or self.update())
-    self.exit_button = tk.Button(self.root, text="Exit", command=self.root.quit)
+    self.exit_button = tk.Button(self.root, text="Exit", command=self.root.quit, bg="red", fg="white")
 
     self.m00_value = tk.StringVar()
     self.m01_value = tk.StringVar()
@@ -58,7 +62,28 @@ class Viewport:
     self.change_point_color_button = tk.Button(self.color_button_frame, text="Point Color", command=self.change_point_color)
     self.change_point_radius_button = tk.Button(self.color_button_frame, text="Point Radius", command=self.change_point_radius)
 
-    self.rotate_grid = tk.Frame(self.root)
+    self.rotate_frame = tk.Frame(self.root)
+    self.rotate_frame.grid(row=2, column=5, columnspan=1, sticky="nsew")
+
+    rotate_label = tk.Label(self.rotate_frame, text="Rotate 15°:")
+    rotate_label.grid(row=0, column=0, sticky="w")
+
+    self.rotate_left_button = tk.Button(self.rotate_frame, text="⟲", command=lambda: self.rotate("left"))
+    self.rotate_left_button.grid(row=0, column=1, sticky="ew")
+
+    self.rotate_right_button = tk.Button(self.rotate_frame, text="⟳", command=lambda: self.rotate("right"))
+    self.rotate_right_button.grid(row=0, column=2, sticky="ew")
+
+    around_point_label = tk.Label(self.rotate_frame, text="Around Point:")
+    around_point_label.grid(row=1, column=0, sticky="w")
+
+    self.around_point_x = tk.StringVar()
+    self.around_point_y = tk.StringVar()
+    self.around_point_x_entry = tk.Entry(self.rotate_frame, textvariable=self.around_point_x, width=6)
+    self.around_point_y_entry = tk.Entry(self.rotate_frame, textvariable=self.around_point_y, width=6)
+
+    self.around_point_x_entry.grid(row=1, column=1, sticky="ew")
+    self.around_point_y_entry.grid(row=1, column=2, sticky="ew")
 
     self.build_forms_table()
     self.controls()
@@ -73,7 +98,7 @@ class Viewport:
 
     self.root.resizable(False, False) # redimensionar travado
 
-  def apply_transform(self):
+  def apply_transform(self, pivot=None):
       if not self.m00_input.get(): self.m00_value.set("1.0")
       if not self.m01_input.get(): self.m01_value.set("0.0")
       if not self.m10_input.get(): self.m10_value.set("0.0")
@@ -102,13 +127,89 @@ class Viewport:
       A = np.array([[m00, m01, 0.0],
                     [m10, m11, 0.0],
                     [0.0, 0.0, 1.0]], dtype=float)
+      
+      if pivot is None:
+          cx, cz = float(target.center[0]), float(target.center[2])
+      else:
+          cx, cz = pivot
 
-      cx, cz = float(target.center[0]), float(target.center[2])
-      T  = np.array([[1,0, cx],[0,1, cz],[0,0,1]], dtype=float)
-      Ti = np.array([[1,0,-cx],[0,1,-cz],[0,0,1]], dtype=float)
-      M  = T @ A @ Ti
+      T = np.array([[1,0,cx],[0,1,cz],[0,0,1]])
+      Ti = np.array([[1,0,-cx],[0,1,-cz],[0,0,1]])
+      M = T @ A @ Ti
+
+      target.transform_matrix = M @ target.transform_matrix  # Acumula a transformação
+      target.apply_matrix()
 
       target.transform2d_xz(M)
+      self.update()
+
+  def rotate(self, direction: str):
+      if direction == "left":
+          self.rotation_angle -= 15
+      elif direction == "right":
+          self.rotation_angle += 15
+      else:
+        return
+
+      angle = -15 if direction == "left" else 15
+
+      radians = math.radians(angle)
+      cos = math.cos(radians)
+      sin = math.sin(radians)
+      
+      R = np.array([
+          [cos, sin, 0.0],
+          [-sin, cos, 0.0],
+          [0.0,  0.0, 1.0]
+      ], dtype=float)
+
+      px_str = self.around_point_x.get()
+      pz_str = self.around_point_y.get()
+      
+      if px_str and pz_str:
+        try:
+            px = float(px_str)
+            pz = float(pz_str)
+
+            # Rotaciona em torno do ponto fornecido
+            T  = np.array([[1, 0, px], [0, 1, pz], [0, 0, 1]], dtype=float)
+            Ti = np.array([[1, 0, -px], [0, 1, -pz], [0, 0, 1]], dtype=float)
+            M  = T @ R @ Ti
+
+            # Aplica a todos os objetos
+            for target in self.objects:
+                target.transform2d_xz(M)
+
+        except ValueError:
+            messagebox.showerror("Erro", "Coordenadas do ponto inválidas.")
+            return
+      else:
+
+        selected_item = self.formsTable.selection()
+        if selected_item:
+          item_id = self.formsTable.item(selected_item[0], "tags")[0]
+          target = next((o for o in self.objects if str(o.id) == item_id), None)
+
+          if target is None:
+              messagebox.showwarning("Aviso", "Objeto não encontrado.")
+              return
+
+          cx, cz = float(target.center[0]), float(target.center[2])
+
+          T  = np.array([[1, 0, cx], [0, 1, cz], [0, 0, 1]], dtype=float)
+          Ti = np.array([[1, 0, -cx], [0, 1, -cz], [0, 0, 1]], dtype=float)
+          M  = T @ R @ Ti
+
+          target.transform2d_xz(M)
+        else:
+          cx, cz = float(self.camera.position[0]), float(self.camera.position[2])
+          T  = np.array([[1, 0, cx], [0, 1, cz], [0, 0, 1]], dtype=float)
+          Ti = np.array([[1, 0, -cx], [0, 1, -cz], [0, 0, 1]], dtype=float)
+          M  = T @ R @ Ti
+
+          for target in self.objects:
+              target.transform2d_xz(M)
+
       self.update()
 
   def set_building(self): self.building = True
@@ -140,6 +241,8 @@ class Viewport:
     self.lines_button.grid(row=11, column=1, sticky="ew", padx=5, pady=5)
     self.polygon_button.grid(row=11, column=2, sticky="ew", padx=5, pady=5)
     self.clear_button.grid(row=11, column=3, sticky="ew", padx=5, pady=5)
+    
+    self.exit_button.grid(row=0, column=6, columnspan=1)
     self.recenter_button.grid(row=0, column=5, columnspan=3)
 
     self.m00_input.grid(row=0, column=0, sticky="ew")
