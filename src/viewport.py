@@ -29,23 +29,30 @@ class Viewport:
     
     self.canva = tk.Canvas(self.root, background="white", width=0.8 * self.width, height=0.8 * self.height)
 
+    # colors
     self.color_button_frame = tk.Frame(self.root)
-    self.color_button_frame.grid(row=4, column=5, rowspan=8, sticky="ns")
+    self.color_button_frame.grid(row=5, column=5, rowspan=8, sticky="ns")
 
-    # self.color_button_frame.grid_rowconfigure(0, weight=1)
-    self.transform_widget_frame = tk.Frame(self.root)
-    self.transform_widget_frame.grid(row=1, column=5, columnspan=2, sticky="nsew")
-    self.transform_widget_frame.grid_columnconfigure(0, weight=1)
-    self.transform_widget_frame.grid_columnconfigure(1, weight=1)
-    self.transform_widget_frame.config(width=100, height=100)
-    
+    self.change_line_color_button = tk.Button(self.color_button_frame, text="Line Color", command=self.change_line_color)
+    self.change_fill_color_button = tk.Button(self.color_button_frame, text="Fill Color", command=self.change_fill_color)
+    self.change_point_color_button = tk.Button(self.color_button_frame, text="Point Color", command=self.change_point_color)
+    self.change_point_radius_button = tk.Button(self.color_button_frame, text="Point Radius", command=self.change_point_radius)
+
+    # camera controls
+    self.recenter_button = tk.Button(self.root, text="Recenter", command=lambda: self.camera.recenter() or self.update())
+    self.exit_button = tk.Button(self.root, text="Exit", command=self.root.quit, bg="red", fg="white")
+
     self.build_button = tk.Button(self.root, text="Build", command=self.set_building)
     self.lines_button = tk.Button(self.root, text="Lines", command=self.finish_lines)
     self.polygon_button = tk.Button(self.root, text="Polygon", command=self.finish_polygon)
     self.clear_button = tk.Button(self.root, text="Clear", command=self.clear)
 
-    self.recenter_button = tk.Button(self.root, text="Recenter", command=lambda: self.camera.recenter() or self.update())
-    self.exit_button = tk.Button(self.root, text="Exit", command=self.root.quit, bg="red", fg="white")
+    # transform frame
+    self.transform_widget_frame = tk.Frame(self.root)
+    self.transform_widget_frame.grid(row=1, column=5, columnspan=2, sticky="nsew")
+    self.transform_widget_frame.grid_columnconfigure(0, weight=1)
+    self.transform_widget_frame.grid_columnconfigure(1, weight=1)
+    self.transform_widget_frame.config(width=100, height=100)
 
     self.m00_value = tk.StringVar()
     self.m01_value = tk.StringVar()
@@ -57,13 +64,35 @@ class Viewport:
     self.m11_input = tk.Entry(self.transform_widget_frame, textvariable=self.m11_value, width=6)
     self.apply_transform_button = tk.Button(self.transform_widget_frame, text="Apply Transform", command=self.apply_transform)
 
-    self.change_line_color_button = tk.Button(self.color_button_frame, text="Line Color", command=self.change_line_color)
-    self.change_fill_color_button = tk.Button(self.color_button_frame, text="Fill Color", command=self.change_fill_color)
-    self.change_point_color_button = tk.Button(self.color_button_frame, text="Point Color", command=self.change_point_color)
-    self.change_point_radius_button = tk.Button(self.color_button_frame, text="Point Radius", command=self.change_point_radius)
+    # translate frame
+    self.translate_frame = tk.Frame(self.root)
+    self.translate_frame.grid(row=3, column=5, columnspan=1, sticky="nsew")
 
+    self.translate_button = tk.Button(self.translate_frame, text="Translate", command=self.translate)
+    self.translate_button.grid(row=0, column=0, sticky="ew")
+
+    insert_x_label = tk.Label(self.translate_frame, text="X:")
+    insert_x_label.grid(row=0, column=1, sticky="ew")
+    self.translate_x = tk.StringVar()
+    self.translate_x_entry = tk.Entry(self.translate_frame, textvariable=self.translate_x, width=6)
+
+    insert_y_label = tk.Label(self.translate_frame, text="Y:")
+    insert_y_label.grid(row=0, column=3, sticky="ew")
+    self.translate_y = tk.StringVar()
+    self.translate_y_entry = tk.Entry(self.translate_frame, textvariable=self.translate_y, width=6)
+
+    # insert_z_label = tk.Label(self.translate_frame, text="Z:")
+    # insert_z_label.grid(row=0, column=5, sticky="ew")
+    # self.translate_z = tk.StringVar()
+    # self.translate_z_entry = tk.Entry(self.translate_frame, textvariable=self.translate_z, width=6)
+
+    self.translate_x_entry.grid(row=0, column=2, sticky="ew")
+    self.translate_y_entry.grid(row=0, column=4, sticky="ew")
+    #self.translate_z_entry.grid(row=0, column=6, sticky="ew")
+
+    # rotate frame
     self.rotate_frame = tk.Frame(self.root)
-    self.rotate_frame.grid(row=2, column=5, columnspan=1, sticky="nsew")
+    self.rotate_frame.grid(row=4, column=5, columnspan=1, sticky="nsew")
 
     rotate_label = tk.Label(self.rotate_frame, text="Rotate 15°:")
     rotate_label.grid(row=0, column=0, sticky="w")
@@ -209,6 +238,35 @@ class Viewport:
 
           for target in self.objects:
               target.transform2d_xz(M)
+
+      self.update()
+
+  def translate(self):
+      tx = float(self.translate_x.get()) if self.translate_x.get() else 0
+      ty = float(self.translate_y.get()) if self.translate_y.get() else 0
+      #tz = float(self.translate_z.get()) if self.translate_z.get() else 0
+
+      translation_matrix = np.array([[1, 0, tx],
+                                    [0, 1, ty],
+                                    [0, 0, 1]], dtype=float)
+
+      selected_item = self.formsTable.selection()
+      if selected_item:
+          item_id = self.formsTable.item(selected_item[0], "tags")[0]
+          target = next((o for o in self.objects if str(o.id) == item_id), None)
+
+          if target is None:
+              messagebox.showwarning("Aviso", "Objeto não encontrado.")
+              return
+          target.transform2d_xz(translation_matrix)
+          # Aplica tz no eixo Y diretamente (profundidade)
+          # target.points = [np.array([p[0], p[1] + tz, p[2]]) for p in target.points]
+          # target.center[1] += tz
+      else:
+          for target in self.objects:
+              target.transform2d_xz(translation_matrix)
+              # target.points = [np.array([p[0], p[1] + tz, p[2]]) for p in target.points]
+              # target.center[1] += tz
 
       self.update()
 
