@@ -177,83 +177,83 @@ class Viewport:
       self.update()
 
   def rotate(self, direction: str):
-      # if an object is selected, rotates around its center
-      # if no object is selected, rotates around the camera position's center
-      # if a pivot point is specified, rotates around that point
-      # if an angle is specified, rotates by that angle
-      # if angle is not specified, uses the default value (15)
-      rotate_degrees = self.rotate_degrees.get() if self.rotate_degrees.get() else "15"
+    # only rotates if an object is selected
+    # if a pivot point is specified, rotates around that point
+    # if an angle is specified, rotates by that angle
+    # if angle is not specified, uses the default value (15)
+    rotate_degrees = self.rotate_degrees.get() if self.rotate_degrees.get() else "15"
+  
+    if direction == "left":
+        self.rotation_angle -= float(rotate_degrees)
+    elif direction == "right":
+        self.rotation_angle += float(rotate_degrees)
+    else:
+      return
+
+    angle = -float(rotate_degrees) if direction == "left" else float(rotate_degrees)
+
+    radians = math.radians(angle)
+    cos = math.cos(radians)
+    sin = math.sin(radians)
     
-      if direction == "left":
-          self.rotation_angle -= float(rotate_degrees)
-      elif direction == "right":
-          self.rotation_angle += float(rotate_degrees)
-      else:
-        return
+    R = np.array([
+        [cos, sin, 0.0],
+        [-sin, cos, 0.0],
+        [0.0,  0.0, 1.0]
+    ], dtype=float)
 
-      angle = -float(rotate_degrees) if direction == "left" else float(rotate_degrees)
+    px_str = self.around_point_x.get()
+    pz_str = self.around_point_y.get()
+    
+    if px_str and pz_str:
+      try:
+          px = float(px_str)
+          pz = float(pz_str)
 
-      radians = math.radians(angle)
-      cos = math.cos(radians)
-      sin = math.sin(radians)
-      
-      R = np.array([
-          [cos, sin, 0.0],
-          [-sin, cos, 0.0],
-          [0.0,  0.0, 1.0]
-      ], dtype=float)
-
-      px_str = self.around_point_x.get()
-      pz_str = self.around_point_y.get()
-      
-      if px_str and pz_str:
-        try:
-            px = float(px_str)
-            pz = float(pz_str)
-
-            T  = np.array([[1, 0, px], [0, 1, pz], [0, 0, 1]], dtype=float)
-            Ti = np.array([[1, 0, -px], [0, 1, -pz], [0, 0, 1]], dtype=float)
-            M  = T @ R @ Ti
-
-            for target in self.objects:
-                target.transform2d_xz(M)
-
-        except ValueError:
-            messagebox.showerror("Erro", "Coordenadas do ponto inválidas.")
-            return
-      else:
-
-        selected_item = self.formsTable.selection()
-        if selected_item:
-          item_id = self.formsTable.item(selected_item[0], "tags")[0]
-          target = next((o for o in self.objects if str(o.id) == item_id), None)
-
-          if target is None:
-              messagebox.showwarning("Aviso", "Objeto não encontrado.")
-              return
-
-          cx, cz = float(target.center[0]), float(target.center[2])
-
-          T  = np.array([[1, 0, cx], [0, 1, cz], [0, 0, 1]], dtype=float)
-          Ti = np.array([[1, 0, -cx], [0, 1, -cz], [0, 0, 1]], dtype=float)
-          M  = T @ R @ Ti
-
-          target.transform2d_xz(M)
-        else:
-          cx, cz = float(self.camera.position[0]), float(self.camera.position[2])
-          T  = np.array([[1, 0, cx], [0, 1, cz], [0, 0, 1]], dtype=float)
-          Ti = np.array([[1, 0, -cx], [0, 1, -cz], [0, 0, 1]], dtype=float)
+          T  = np.array([[1, 0, px], [0, 1, pz], [0, 0, 1]], dtype=float)
+          Ti = np.array([[1, 0, -px], [0, 1, -pz], [0, 0, 1]], dtype=float)
           M  = T @ R @ Ti
 
           for target in self.objects:
               target.transform2d_xz(M)
 
-      self.update()
+      except ValueError:
+          messagebox.showerror("Erro", "Coordenadas do ponto inválidas.")
+          return
+    else:
+      selected_item = self.formsTable.selection()
+      if not selected_item:
+        messagebox.showwarning("Aviso", "Nenhum objeto selecionado.")
+        return
+
+      item_id = self.formsTable.item(selected_item[0], "tags")[0]
+      target = next((o for o in self.objects if str(o.id) == item_id), None)
+
+      if target is None:
+          messagebox.showwarning("Aviso", "Objeto não encontrado.")
+          return
+
+      cx, cz = float(target.center[0]), float(target.center[2])
+
+      T  = np.array([[1, 0, cx], [0, 1, cz], [0, 0, 1]], dtype=float)
+      Ti = np.array([[1, 0, -cx], [0, 1, -cz], [0, 0, 1]], dtype=float)
+      M  = T @ R @ Ti
+
+      target.transform2d_xz(M)
+      # else:
+      #   cx, cz = float(self.camera.position[0]), float(self.camera.position[2])
+      #   T  = np.array([[1, 0, cx], [0, 1, cz], [0, 0, 1]], dtype=float)
+      #   Ti = np.array([[1, 0, -cx], [0, 1, -cz], [0, 0, 1]], dtype=float)
+      #   M  = T @ R @ Ti
+
+      #   for target in self.objects:
+      #       target.transform2d_xz(M)
+
+    self.update()
 
   def translate(self):
       tx = float(self.translate_x.get()) if self.translate_x.get() else 0
       ty = float(self.translate_y.get()) if self.translate_y.get() else 0
-      #tz = float(self.translate_z.get()) if self.translate_z.get() else 0
 
       translation_matrix = np.array([[1, 0, tx],
                                     [0, 1, ty],
