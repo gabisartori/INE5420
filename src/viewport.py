@@ -21,7 +21,7 @@ class Viewport:
     self.camera = Camera(np.array([0, -1, 0]), np.array([0, 100, 0]), width*0.8, height*0.8)
     self.original_points: list[Point] = [Point(p.x, p.y, p.z) for p in self.objects]
 
-    # Ui Componentes
+    # Ui components
     self.root: tk.Tk = tk.Tk()
     self.root.geometry(f"{width}x{height}")
     self.root.resizable(True, True)
@@ -170,7 +170,7 @@ class Viewport:
       Ti = np.array([[1,0,-cx],[0,1,-cz],[0,0,1]])
       M = T @ A @ Ti
 
-      target.transform_matrix = M @ target.transform_matrix  # Acumula a transformação
+      target.transform_matrix = M @ target.transform_matrix
       target.apply_matrix()
 
       target.transform2d_xz(M)
@@ -207,19 +207,29 @@ class Viewport:
     
     if px_str and pz_str:
       try:
-          px = float(px_str)
-          pz = float(pz_str)
+        px = float(px_str)
+        pz = float(pz_str)
+        
+        selected_item = self.formsTable.selection()
+        if not selected_item:
+          messagebox.showwarning("Aviso", "Nenhum objeto selecionado.")
+          return
+        
+        item_id = self.formsTable.item(selected_item[0], "tags")[0]
+        target = next((o for o in self.objects if str(o.id) == item_id), None)
 
-          T  = np.array([[1, 0, px], [0, 1, pz], [0, 0, 1]], dtype=float)
-          Ti = np.array([[1, 0, -px], [0, 1, -pz], [0, 0, 1]], dtype=float)
-          M  = T @ R @ Ti
+        T  = np.array([[1, 0, px], [0, 1, pz], [0, 0, 1]], dtype=float)
+        Ti = np.array([[1, 0, -px], [0, 1, -pz], [0, 0, 1]], dtype=float)
+        M  = T @ R @ Ti
 
-          for target in self.objects:
-              target.transform2d_xz(M)
+        target.transform2d_xz(M)
+
+        # for target in self.objects:
+        #     target.transform2d_xz(M)
 
       except ValueError:
-          messagebox.showerror("Erro", "Coordenadas do ponto inválidas.")
-          return
+        messagebox.showerror("Erro", "Coordenadas do ponto inválidas.")
+        return
     else:
       selected_item = self.formsTable.selection()
       if not selected_item:
@@ -252,27 +262,30 @@ class Viewport:
     self.update()
 
   def translate(self):
-      tx = float(self.translate_x.get()) if self.translate_x.get() else 0
-      ty = float(self.translate_y.get()) if self.translate_y.get() else 0
+    tx = float(self.translate_x.get()) if self.translate_x.get() else 0
+    ty = float(self.translate_y.get()) if self.translate_y.get() else 0
 
-      translation_matrix = np.array([[1, 0, tx],
-                                    [0, 1, ty],
-                                    [0, 0, 1]], dtype=float)
+    translation_matrix = np.array([[1, 0, tx],
+                                  [0, 1, ty],
+                                  [0, 0, 1]], dtype=float)
 
-      selected_item = self.formsTable.selection()
-      if selected_item:
-          item_id = self.formsTable.item(selected_item[0], "tags")[0]
-          target = next((o for o in self.objects if str(o.id) == item_id), None)
+    selected_item = self.formsTable.selection()
+    if not selected_item:
+        messagebox.showwarning("Aviso", "Nenhum objeto selecionado.")
+        return
 
-          if target is None:
-              messagebox.showwarning("Aviso", "Objeto não encontrado.")
-              return
-          target.transform2d_xz(translation_matrix)
-      else:
-          for target in self.objects:
-              target.transform2d_xz(translation_matrix)
+    item_id = self.formsTable.item(selected_item[0], "tags")[0]
+    target = next((o for o in self.objects if str(o.id) == item_id), None)
 
-      self.update()
+    if target is None:
+        messagebox.showwarning("Aviso", "Objeto não encontrado.")
+        return
+    target.transform2d_xz(translation_matrix)
+    # else:
+    #     for target in self.objects:
+    #         target.transform2d_xz(translation_matrix)
+
+    self.update()
 
   def set_building(self): self.building = True
 
@@ -416,8 +429,7 @@ class Viewport:
               projected_points.append(projected_points[0])
 
           points = [coord for point in projected_points for coord in point]
-          if len(points) >= 6:  # Verifica se há pelo menos 3 pontos
-            # Desenha o polígono preenchido
+          if len(points) >= 6:  
             self.canva.create_polygon(points, fill=obj.fill_color, outline=obj.color)
 
       else:
