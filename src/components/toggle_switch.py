@@ -9,8 +9,8 @@ class ToggleSwitch(tk.Canvas):
         self.height = height
         self.is_on = False
 
-        self.bg_rect = self.create_oval(4, 4, width-5, height-5, fill="#ccc", outline="")
-        self.knob = self.create_oval(4, 4, height-5, height-5, fill="#fff", outline="")
+        self.bg_rect = self.create_oval(6, 6, width-8, height-8, fill="#ccc", outline="")
+        self.knob = self.create_oval(6, 6, height-6, height-6, fill="#fff", outline="")
 
         self.bind("<Button-1>", self.toggle)
 

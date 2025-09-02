@@ -5,6 +5,8 @@ from screen import *
 from components.toggle_switch import *
 from components.color_scheme import ColorScheme
 
+#from .ui_builder import build_ui
+
 class Viewport:
   def __init__(self, width, height, title="INE5420", input: str | None=None, output: str | None=None, debug: bool=False):
     self.output: str | None = output 
@@ -28,11 +30,16 @@ class Viewport:
     self.root.geometry(f"{width}x{height}")
     self.root.resizable(True, True)
     self.root.title(title)
+
+    self.canva = tk.Canvas(self.root, background=ColorScheme.LIGHT_BG.value, width=0.8 * self.width, height=0.8 * self.height)
     
-    self.canva = tk.Canvas(self.root, background="white", width=0.8 * self.width, height=0.8 * self.height)
+    # creates elements on the right
+    self.right_panel = tk.Frame(self.root)
+    self.right_panel.grid(row=0, column=4, rowspan=10, columnspan=7, sticky="nsew", padx=5, pady=5)
+    self.right_panel.grid_columnconfigure(0, weight=1)
     
-    self.toggle_light_dark = ToggleSwitch(self.root, width=80, height=40, on_toggle=self.toggle_light_dark_mode)
-    self.toggle_light_dark.grid(row=0, column=7, padx=5, pady=5)
+    self.exit_button = tk.Button(self.right_panel, text="Exit", command=self.root.quit, bg="red", fg="white")
+    self.toggle_light_dark = ToggleSwitch(self.right_panel, width=80, height=40, on_toggle=self.toggle_light_dark_mode)
     
     # colors
     self.color_button_frame = tk.Frame(self.root)
@@ -44,8 +51,7 @@ class Viewport:
     self.change_point_radius_button = tk.Button(self.color_button_frame, text="Point Radius", command=self.change_point_radius)
 
     # camera controls
-    self.recenter_button = tk.Button(self.root, text="Recenter", command=lambda: self.camera.recenter() or self.update())
-    self.exit_button = tk.Button(self.root, text="Exit", command=self.root.quit, bg="red", fg="white")
+    self.recenter_button = tk.Button(self.right_panel, text="Recenter", command=lambda: self.camera.recenter() or self.update())
 
     self.build_button = tk.Button(self.root, text="Build", command=self.set_building)
     self.lines_button = tk.Button(self.root, text="Lines", command=self.finish_lines)
@@ -134,6 +140,7 @@ class Viewport:
       self.transform_widget_frame.config(bg=ColorScheme.DARK_BG.value)
       self.translate_frame.config(bg=ColorScheme.DARK_BG.value)
       self.rotate_frame.config(bg=ColorScheme.DARK_BG.value)
+      self.right_panel.config(bg=ColorScheme.DARK_BG.value)
     else:
       self.root.config(bg=ColorScheme.LIGHT_BG.value)
       self.canva.config(bg=ColorScheme.LIGHT_CANVAS.value)
@@ -141,7 +148,8 @@ class Viewport:
       self.transform_widget_frame.config(bg=ColorScheme.LIGHT_BG.value)
       self.translate_frame.config(bg=ColorScheme.LIGHT_BG.value)
       self.rotate_frame.config(bg=ColorScheme.LIGHT_BG.value)
-
+      self.right_panel.config(bg=ColorScheme.LIGHT_BG.value)
+      
   def setup_grid(self):
     for i in range(10):
       self.root.grid_rowconfigure(i, weight=1)
@@ -332,15 +340,16 @@ class Viewport:
     self.update()
 
   def build_ui(self):
-    self.canva.grid(row=0, column=0, columnspan=4, rowspan=10)
+    self.canva.grid(row=0, column=0, columnspan=4, rowspan=10, sticky="nsew", padx=5, pady=5)
     
     self.build_button.grid(row=11, column=0, sticky="ew", padx=5, pady=5)
     self.lines_button.grid(row=11, column=1, sticky="ew", padx=5, pady=5)
     self.polygon_button.grid(row=11, column=2, sticky="ew", padx=5, pady=5)
     self.clear_button.grid(row=11, column=3, sticky="ew", padx=5, pady=5)
     
-    self.exit_button.grid(row=0, column=6, columnspan=1)
-    self.recenter_button.grid(row=0, column=5, columnspan=3)
+    self.toggle_light_dark.grid(row=0, column=1, padx=5, pady=5)
+    self.exit_button.grid(row=0, column=7, columnspan=1)
+    self.recenter_button.grid(row=0, column=0, columnspan=3)
 
     self.m00_input.grid(row=0, column=0, sticky="ew")
     self.m01_input.grid(row=0, column=1, sticky="ew")

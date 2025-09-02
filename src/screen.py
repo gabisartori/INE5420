@@ -3,7 +3,7 @@ import math
 
 import tkinter as tk
 from dataclasses import dataclass
-from my_types import Point
+from components.my_types import Point
 
 def normalize(v: Point) -> Point:
     """Normalize a vector."""

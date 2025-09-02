@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from screen import ScreenWireframe
-from my_types import Point
+from components.my_types import Point
 import numpy as np
 
 @dataclass
