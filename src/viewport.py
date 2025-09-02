@@ -2,6 +2,8 @@ import tkinter as tk
 from tkinter import ttk, messagebox, font, colorchooser, simpledialog
 from wireframe import *
 from screen import *
+from components.toggle_switch import *
+from components.color_scheme import ColorScheme
 
 class Viewport:
   def __init__(self, width, height, title="INE5420", input: str | None=None, output: str | None=None, debug: bool=False):
@@ -28,7 +30,10 @@ class Viewport:
     self.root.title(title)
     
     self.canva = tk.Canvas(self.root, background="white", width=0.8 * self.width, height=0.8 * self.height)
-
+    
+    self.toggle_light_dark = ToggleSwitch(self.root, width=80, height=40, on_toggle=self.toggle_light_dark_mode)
+    self.toggle_light_dark.grid(row=0, column=7, padx=5, pady=5)
+    
     # colors
     self.color_button_frame = tk.Frame(self.root)
     self.color_button_frame.grid(row=4, column=5, rowspan=8, sticky="ns")
@@ -121,6 +126,22 @@ class Viewport:
     self.setup_grid()
     self.update()
 
+  def toggle_light_dark_mode(self, state):
+    if state: # dark mode
+      self.root.config(bg=ColorScheme.DARK_BG.value)
+      self.canva.config(bg=ColorScheme.DARK_CANVAS.value)
+      self.color_button_frame.config(bg=ColorScheme.DARK_BG.value)
+      self.transform_widget_frame.config(bg=ColorScheme.DARK_BG.value)
+      self.translate_frame.config(bg=ColorScheme.DARK_BG.value)
+      self.rotate_frame.config(bg=ColorScheme.DARK_BG.value)
+    else:
+      self.root.config(bg=ColorScheme.LIGHT_BG.value)
+      self.canva.config(bg=ColorScheme.LIGHT_CANVAS.value)
+      self.color_button_frame.config(bg=ColorScheme.LIGHT_BG.value)
+      self.transform_widget_frame.config(bg=ColorScheme.LIGHT_BG.value)
+      self.translate_frame.config(bg=ColorScheme.LIGHT_BG.value)
+      self.rotate_frame.config(bg=ColorScheme.LIGHT_BG.value)
+
   def setup_grid(self):
     for i in range(10):
       self.root.grid_rowconfigure(i, weight=1)
@@ -129,8 +150,9 @@ class Viewport:
     for i in range(11, 21):
       self.root.grid_rowconfigure(i, weight=0)
 
-    self.root.resizable(False, False) # redimensionar travado
-
+    #self.root.resizable(False, False) # redimensionar travado
+    self.toggle_light_dark_mode(False)
+    
   def apply_transform(self, pivot=None):
       if not self.m00_input.get(): self.m00_value.set("1.0")
       if not self.m01_input.get(): self.m01_value.set("0.0")
