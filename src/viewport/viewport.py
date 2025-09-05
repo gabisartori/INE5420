@@ -4,6 +4,7 @@ from wireframe import *
 from screen import *
 from components.toggle_switch import *
 from components.color_scheme import ColorScheme
+from data.usr_preferences import *
 
 #from .ui_builder import build_ui
 
@@ -25,22 +26,28 @@ class Viewport:
     self.camera = Camera(np.array([0, -1, 0]), np.array([0, 100, 0]), width*0.8, height*0.8)
     self.original_points: list[Point] = [Point(p.x, p.y, p.z) for p in self.objects]
 
+    self.preferences = load_user_preferences()
+    self.show_onboarding = self.preferences.get("show_onboarding", True)
+    self.theme = self.preferences.get("theme", "light")
+
     # Ui components
     self.root: tk.Tk = tk.Tk()
     self.root.geometry(f"{width}x{height}")
     self.root.resizable(True, True)
     self.root.title(title)
 
-    self.canva = tk.Canvas(self.root, background=ColorScheme.LIGHT_BG.value, width=0.8 * self.width, height=0.8 * self.height)
-    
+    self.canva = tk.Canvas(self.root, background=ColorScheme.LIGHT_BG.value, width=int(0.8 * self.width), height=int(0.8 * self.height))
+    self.normal_cursor_button = tk.Button(self.canva, text="➤", command=self.enable_normal_cursor)
+    self.drag_cursor_button = tk.Button(self.canva, text="✥", command=self.enable_drag_cursor)
     # creates elements on the right
     self.right_panel = tk.Frame(self.root)
     self.right_panel.grid(row=0, column=4, rowspan=10, columnspan=7, sticky="nsew", padx=5, pady=5)
     self.right_panel.grid_columnconfigure(0, weight=1)
     
-    self.exit_button = tk.Button(self.right_panel, text="Exit", command=self.root.quit, bg="red", fg="white")
-    self.toggle_light_dark = ToggleSwitch(self.right_panel, width=80, height=40, on_toggle=self.toggle_light_dark_mode)
-    
+    self.root.protocol("WM_DELETE_WINDOW", self.exit)
+    self.exit_button = tk.Button(self.right_panel, text="Exit", command=self.exit, bg="red", fg="white")
+    self.toggle_light_dark = ToggleSwitch(self.right_panel, width=80, height=40, on_toggle=self.toggle_light_dark_mode, bg=ColorScheme.LIGHT_BG.value if self.theme == "light" else ColorScheme.DARK_BG.value)
+
     # colors
     self.color_button_frame = tk.Frame(self.root)
     self.color_button_frame.grid(row=4, column=5, rowspan=8, sticky="ns")
@@ -149,7 +156,8 @@ class Viewport:
       self.translate_frame.config(bg=ColorScheme.LIGHT_BG.value)
       self.rotate_frame.config(bg=ColorScheme.LIGHT_BG.value)
       self.right_panel.config(bg=ColorScheme.LIGHT_BG.value)
-      
+    self.theme = "light" if not state else "dark"
+    
   def setup_grid(self):
     for i in range(10):
       self.root.grid_rowconfigure(i, weight=1)
@@ -159,8 +167,15 @@ class Viewport:
       self.root.grid_rowconfigure(i, weight=0)
 
     #self.root.resizable(False, False) # redimensionar travado
-    self.toggle_light_dark_mode(False)
+    self.toggle_light_dark.toggle() if self.theme == "dark" else None
+    self.toggle_light_dark_mode(False) if self.theme == "light" else self.toggle_light_dark_mode(True)
     
+  def enable_normal_cursor(self):
+    self.root.config(cursor="")
+
+  def enable_drag_cursor(self):
+    self.root.config(cursor="hand2")
+
   def apply_transform(self, pivot=None):
       if not self.m00_input.get(): self.m00_value.set("1.0")
       if not self.m01_input.get(): self.m01_value.set("0.0")
@@ -317,8 +332,11 @@ class Viewport:
 
     self.update()
 
-  def set_building(self): self.building = True
-
+  def set_building(self): 
+    if not self.building:
+      self.building = True
+      self.build_button.config(command=self.cancel_building, text="Cancel", bg="red", fg="white")
+    
   def set_debug(self):
     self.debug = not self.debug
     self.update()
@@ -337,6 +355,7 @@ class Viewport:
   def cancel_building(self):
     self.build.clear()
     self.building = False
+    self.build_button.config(command=self.set_building, text="Build", fg="black", bg= ColorScheme.DEFAULT_BUTTON_COLOR.value)
     self.update()
 
   def build_ui(self):
@@ -361,6 +380,9 @@ class Viewport:
     self.change_line_color_button.grid(row=0, column=2, sticky="ew", padx=5, pady=5)
     self.change_point_color_button.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
     self.change_point_radius_button.grid(row=1, column=2, sticky="ew", padx=5, pady=5)
+
+    self.canva.create_window(10, 10, anchor="nw", window=self.normal_cursor_button)
+    self.canva.create_window(10, 50, anchor="nw", window=self.drag_cursor_button)
 
   def build_forms_table(self):
     self.forms_table_frame = tk.Frame(self.root, width=400, height=200, background="white")
@@ -421,9 +443,7 @@ class Viewport:
       start, end = self.build[i:i+2]
       self.objects.append(LineObject(f"Line {i+1}", start, end, id=10*len(self.objects)+1))
 
-    self.build.clear()
-    self.building = False
-    self.update()
+    self.cancel_building()
 
   def finish_polygon(self):
     if len(self.build) < 3: 
@@ -432,9 +452,7 @@ class Viewport:
       return
     
     self.objects.append(PolygonObject("Polygon", self.build.copy(), id=10*len(self.objects)+1))
-    self.build.clear()
-    self.building = False
-    self.update()
+    self.cancel_building()
 
   def update(self):        
     self.canva.delete("all")
@@ -610,6 +628,15 @@ class Viewport:
     elif self.objects:
       self.objects.pop()
     self.update()
+
+  def exit(self):
+    if messagebox.askokcancel("Sair", "Deseja sair?"):
+      usr_pref = {
+          "theme": self.theme,
+          "show_onboarding": self.show_onboarding
+      }
+      save_user_preferences(usr_pref)
+      self.root.quit()          
 
   @property
   def building(self) -> bool: return self._building

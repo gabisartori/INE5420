@@ -72,6 +72,7 @@ class PointObject(Wireframe):
 
   def figures(self) -> list[ScreenWireframe]:
     return [ScreenWireframe(self.center)]
+  
 
 class LineObject(Wireframe):
   def __init__(self, name: str, start: Point, end: Point, id: int = 0):

@@ -42,6 +42,23 @@ class Camera:
   def move_below(self): self.position[1] -= max(self.speed/self.zoom, 1)
 
   def move_above(self): self.position[1] += max(self.speed/self.zoom, 1)
+  
+  def rotate_right(self, degrees=5):
+    # algoritmo gerar descricao em SCN
+    # 0: crie ou mova a window onde desejar
+    # 1: translade Wc para a origem (Translade o mundo de [-Wcx,-Wcy])
+    # 2: determine vup e o angulo de vup com Y
+    # 3: rotacione o mundo de forma a alinhar vup com o eixo y (rotacione o mundo por -theta(Y, vup))
+    # 4: normalize o conteudo da window, realizando um escalonamento do mundo
+    # 5: armazene as coordenadas SCN de cada objeto (voce vai usar na transformada de viewport)
+    theta = math.radians(degrees)
+    c, s = math.cos(theta), math.sin(theta)
+    R = np.array([[c, -s], [s, c]])
+    self.transform_matrix = R @ self.transform_matrix
+    self.right = normalize(R @ self.right[[0,2]])
+    self.up = normalize(R @ self.up[[0,2]])
+    self.normal = normalize(np.cross(self.right, self.up))
+    self.viewport_angle = (self.viewport_angle + degrees) % 360
 
   def zoom_in(self, x, y):
     self.zoom *= 1.1

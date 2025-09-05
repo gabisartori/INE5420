@@ -11,7 +11,7 @@ class ToggleSwitch(tk.Canvas):
 
         self.bg_rect = self.create_oval(6, 6, width-8, height-8, fill="#ccc", outline="")
         self.knob = self.create_oval(6, 6, height-6, height-6, fill="#fff", outline="")
-
+        self.configure(background=kwargs.get("bg", ColorScheme.LIGHT_BG.value))
         self.bind("<Button-1>", self.toggle)
 
     def toggle(self, event=None):

@@ -10,3 +10,6 @@ class ColorScheme(Enum):
     DARK_BG = "#333"
     DARK_TEXT = "#fff"
     DARK_BUTTON = "#555"
+    
+    DEFAULT_BUTTON_COLOR = "#f0f0f0"
+    
