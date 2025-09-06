@@ -6,6 +6,7 @@ from components.toggle_switch import *
 from components.color_scheme import ColorScheme
 from data.usr_preferences import *
 from components.my_types import Point, CursorTypes
+from components.DescritorOBJ import DescritorOBJ
 
 #from .ui_builder import build_ui
 
@@ -638,9 +639,10 @@ class Viewport:
     self.root.mainloop()
     if self.output:
       try:
-        with open(self.output, "w") as file:
-          for obj in self.objects:
-            file.write(f"{obj}\n")
+        descriptor = DescritorOBJ(self.objects, self.output)
+        descriptor.clear_obj_files()
+        descriptor.save_to_file()
+            
       except Exception as e:
         print(f"Erro ao salvar objetos: {e}")
         messagebox.showerror("Erro", f"Erro ao salvar objetos: {e}")
