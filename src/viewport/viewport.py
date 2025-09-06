@@ -5,6 +5,7 @@ from screen import *
 from components.toggle_switch import *
 from components.color_scheme import ColorScheme
 from data.usr_preferences import *
+from components.my_types import Point, CursorTypes
 
 #from .ui_builder import build_ui
 
@@ -20,6 +21,7 @@ class Viewport:
     self.rotation_angle: float = 0.0
     self.scale: float = 1.0
     self.transform_matrix = np.identity(2)
+    self.cursor_type = CursorTypes.NORMAL
 
     self.debug: bool = debug
     self.debug_objects: list[Wireframe] = [PointObject("World Origin", np.array([0, 0, 0]), id=0)]
@@ -37,8 +39,10 @@ class Viewport:
     self.root.title(title)
 
     self.canva = tk.Canvas(self.root, background=ColorScheme.LIGHT_BG.value, width=int(0.8 * self.width), height=int(0.8 * self.height))
-    self.normal_cursor_button = tk.Button(self.canva, text="➤", command=self.enable_normal_cursor)
-    self.drag_cursor_button = tk.Button(self.canva, text="✥", command=self.enable_drag_cursor)
+    self.normal_cursor_button = tk.Button(self.canva, text="➤", font=("Arial",12), command=self.enable_normal_cursor, bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
+    self.drag_cursor_button = tk.Button(self.canva, text="✥", font=("Arial",12), command=self.enable_drag_cursor, bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
+    self.rotate_canvas_button = tk.Button(self.canva, text="↻", font=("Arial",12), command=self.enable_rotate_window_cursor, bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
+    
     # creates elements on the right
     self.right_panel = tk.Frame(self.root)
     self.right_panel.grid(row=0, column=4, rowspan=10, columnspan=7, sticky="nsew", padx=5, pady=5)
@@ -86,13 +90,13 @@ class Viewport:
     self.translate_frame = tk.Frame(self.root)
     self.translate_frame.grid(row=2, column=5, columnspan=1, sticky="nsew")
 
-    insert_x_label = tk.Label(self.translate_frame, text="X:")
-    insert_x_label.grid(row=0, column=1, sticky="ew")
+    self.insert_x_label = tk.Label(self.translate_frame, text="X:")
+    self.insert_x_label.grid(row=0, column=1, sticky="ew")
     self.translate_x = tk.StringVar()
     self.translate_x_entry = tk.Entry(self.translate_frame, textvariable=self.translate_x, width=6)
 
-    insert_y_label = tk.Label(self.translate_frame, text="Y:")
-    insert_y_label.grid(row=0, column=3, sticky="ew")
+    self.insert_y_label = tk.Label(self.translate_frame, text="Y:")
+    self.insert_y_label.grid(row=0, column=3, sticky="ew")
     self.translate_y = tk.StringVar()
     self.translate_y_entry = tk.Entry(self.translate_frame, textvariable=self.translate_y, width=6)
 
@@ -106,8 +110,8 @@ class Viewport:
     self.rotate_frame = tk.Frame(self.root)
     self.rotate_frame.grid(row=3, column=5, columnspan=1, sticky="nsew")
 
-    rotate_label = tk.Label(self.rotate_frame, text="Rotate:")
-    rotate_label.grid(row=0, column=0, sticky="w")
+    self.rotate_label = tk.Label(self.rotate_frame, text="Rotate object:")
+    self.rotate_label.grid(row=0, column=0, sticky="w")
 
     self.rotate_left_button = tk.Button(self.rotate_frame, text="⟲", command=lambda: self.rotate("left"))
     self.rotate_left_button.grid(row=0, column=1, sticky="ew")
@@ -119,11 +123,11 @@ class Viewport:
     self.rotate_degrees_entry = tk.Entry(self.rotate_frame, textvariable=self.rotate_degrees, width=6)
     self.rotate_degrees_entry.grid(row=0, column=3, sticky="ew")
 
-    degree_symbol_label = tk.Label(self.rotate_frame, text="°")
-    degree_symbol_label.grid(row=0, column=4, sticky="w")
+    self.degree_symbol_label = tk.Label(self.rotate_frame, text="°")
+    self.degree_symbol_label.grid(row=0, column=4, sticky="w")
 
-    around_point_label = tk.Label(self.rotate_frame, text="Around Point:")
-    around_point_label.grid(row=1, column=0, sticky="w")
+    self.around_point_label = tk.Label(self.rotate_frame, text="Around Point:")
+    self.around_point_label.grid(row=1, column=0, sticky="w")
 
     self.around_point_x = tk.StringVar()
     self.around_point_y = tk.StringVar()
@@ -140,6 +144,8 @@ class Viewport:
     self.update()
 
   def toggle_light_dark_mode(self, state):
+    self.theme = "light" if not state else "dark"
+
     if state: # dark mode
       self.root.config(bg=ColorScheme.DARK_BG.value)
       self.canva.config(bg=ColorScheme.DARK_CANVAS.value)
@@ -147,7 +153,35 @@ class Viewport:
       self.transform_widget_frame.config(bg=ColorScheme.DARK_BG.value)
       self.translate_frame.config(bg=ColorScheme.DARK_BG.value)
       self.rotate_frame.config(bg=ColorScheme.DARK_BG.value)
+      self.recenter_button.config(bg=ColorScheme.LIGHT_HIGH_CONTRAST_BUTTON.value, fg=ColorScheme.LIGHT_HIGH_CONTRAST_TEXT.value)      
+
       self.right_panel.config(bg=ColorScheme.DARK_BG.value)
+      self.rotate_label.config(bg=ColorScheme.DARK_BG.value, fg=ColorScheme.DARK_TEXT.value)
+      self.rotate_left_button.config(bg=ColorScheme.LIGHT_HIGH_CONTRAST_BUTTON.value, fg=ColorScheme.LIGHT_HIGH_CONTRAST_TEXT.value)
+      self.rotate_right_button.config(bg=ColorScheme.LIGHT_HIGH_CONTRAST_BUTTON.value, fg=ColorScheme.LIGHT_HIGH_CONTRAST_TEXT.value)
+      self.around_point_label.config(bg=ColorScheme.DARK_BG.value, fg=ColorScheme.DARK_TEXT.value)
+      
+      self.m00_input.config(bg=ColorScheme.DARK_BUTTON_INPUT.value)
+      self.m01_input.config(bg=ColorScheme.DARK_BUTTON_INPUT.value)
+      self.m10_input.config(bg=ColorScheme.DARK_BUTTON_INPUT.value)
+      self.m11_input.config(bg=ColorScheme.DARK_BUTTON_INPUT.value)
+      
+      self.around_point_x_entry.config(bg=ColorScheme.DARK_BUTTON_INPUT.value)
+      self.around_point_y_entry.config(bg=ColorScheme.DARK_BUTTON_INPUT.value)
+      self.translate_x_entry.config(bg=ColorScheme.DARK_BUTTON_INPUT.value)
+      self.translate_y_entry.config(bg=ColorScheme.DARK_BUTTON_INPUT.value)
+      self.rotate_degrees_entry.config(bg=ColorScheme.DARK_BUTTON_INPUT.value)
+      self.degree_symbol_label.config(bg=ColorScheme.DARK_BG.value, fg=ColorScheme.DARK_TEXT.value)
+      
+      self.apply_transform_button.config(bg=ColorScheme.LIGHT_HIGH_CONTRAST_BUTTON.value, fg=ColorScheme.LIGHT_HIGH_CONTRAST_TEXT.value)
+      self.translate_button.config(bg=ColorScheme.LIGHT_HIGH_CONTRAST_BUTTON.value, fg=ColorScheme.LIGHT_HIGH_CONTRAST_TEXT.value)         
+      self.change_fill_color_button.config(bg=ColorScheme.LIGHT_HIGH_CONTRAST_BUTTON.value, fg=ColorScheme.LIGHT_HIGH_CONTRAST_TEXT.value)
+      self.change_line_color_button.config(bg=ColorScheme.LIGHT_HIGH_CONTRAST_BUTTON.value, fg=ColorScheme.LIGHT_HIGH_CONTRAST_TEXT.value)
+      self.change_point_color_button.config(bg=ColorScheme.LIGHT_HIGH_CONTRAST_BUTTON.value, fg=ColorScheme.LIGHT_HIGH_CONTRAST_TEXT.value)
+      self.change_point_radius_button.config(bg=ColorScheme.LIGHT_HIGH_CONTRAST_BUTTON.value, fg=ColorScheme.LIGHT_HIGH_CONTRAST_TEXT.value)
+      self.insert_x_label.config(bg=ColorScheme.DARK_BG.value, fg=ColorScheme.DARK_TEXT.value)
+      self.insert_y_label.config(bg=ColorScheme.DARK_BG.value, fg=ColorScheme.DARK_TEXT.value)
+      self.forms_table_frame.config(bg=ColorScheme.DARK_CANVAS.value)
     else:
       self.root.config(bg=ColorScheme.LIGHT_BG.value)
       self.canva.config(bg=ColorScheme.LIGHT_CANVAS.value)
@@ -155,8 +189,38 @@ class Viewport:
       self.transform_widget_frame.config(bg=ColorScheme.LIGHT_BG.value)
       self.translate_frame.config(bg=ColorScheme.LIGHT_BG.value)
       self.rotate_frame.config(bg=ColorScheme.LIGHT_BG.value)
+      self.recenter_button.config(bg=ColorScheme.DARK_HIGH_CONTRAST_BUTTON.value, fg=ColorScheme.DARK_HIGH_CONTRAST_TEXT.value)
+    
       self.right_panel.config(bg=ColorScheme.LIGHT_BG.value)
-    self.theme = "light" if not state else "dark"
+      self.rotate_label.config(bg=ColorScheme.LIGHT_BG.value, fg=ColorScheme.LIGHT_TEXT.value)
+      self.rotate_left_button.config(bg=ColorScheme.DARK_HIGH_CONTRAST_BUTTON.value, fg=ColorScheme.DARK_HIGH_CONTRAST_TEXT.value)
+      self.rotate_right_button.config(bg=ColorScheme.DARK_HIGH_CONTRAST_BUTTON.value, fg=ColorScheme.DARK_HIGH_CONTRAST_TEXT.value)
+      self.around_point_label.config(bg=ColorScheme.LIGHT_BG.value, fg=ColorScheme.LIGHT_TEXT.value)
+      
+      self.m00_input.config(bg=ColorScheme.LIGHT_CANVAS.value)
+      self.m01_input.config(bg=ColorScheme.LIGHT_CANVAS.value)
+      self.m10_input.config(bg=ColorScheme.LIGHT_CANVAS.value)
+      self.m11_input.config(bg=ColorScheme.LIGHT_CANVAS.value)
+      
+      self.around_point_x_entry.config(bg=ColorScheme.LIGHT_CANVAS.value)
+      self.around_point_y_entry.config(bg=ColorScheme.LIGHT_CANVAS.value)
+      self.translate_x_entry.config(bg=ColorScheme.LIGHT_CANVAS.value)
+      self.translate_y_entry.config(bg=ColorScheme.LIGHT_CANVAS.value)
+      self.rotate_degrees_entry.config(bg=ColorScheme.LIGHT_CANVAS.value)
+      self.degree_symbol_label.config(bg=ColorScheme.LIGHT_BG.value, fg=ColorScheme.LIGHT_TEXT.value)
+      
+      self.apply_transform_button.config(bg=ColorScheme.DARK_HIGH_CONTRAST_BUTTON.value, fg=ColorScheme.DARK_HIGH_CONTRAST_TEXT.value)
+      self.translate_button.config(bg=ColorScheme.DARK_HIGH_CONTRAST_BUTTON.value, fg=ColorScheme.DARK_HIGH_CONTRAST_TEXT.value)         
+      self.change_fill_color_button.config(bg=ColorScheme.DARK_HIGH_CONTRAST_BUTTON.value, fg=ColorScheme.DARK_HIGH_CONTRAST_TEXT.value)
+      self.change_line_color_button.config(bg=ColorScheme.DARK_HIGH_CONTRAST_BUTTON.value, fg=ColorScheme.DARK_HIGH_CONTRAST_TEXT.value)
+      self.change_point_color_button.config(bg=ColorScheme.DARK_HIGH_CONTRAST_BUTTON.value, fg=ColorScheme.DARK_HIGH_CONTRAST_TEXT.value)
+      self.change_point_radius_button.config(bg=ColorScheme.DARK_HIGH_CONTRAST_BUTTON.value, fg=ColorScheme.DARK_HIGH_CONTRAST_TEXT.value)
+      self.insert_x_label.config(bg=ColorScheme.LIGHT_BG.value, fg=ColorScheme.LIGHT_TEXT.value)
+      self.insert_y_label.config(bg=ColorScheme.LIGHT_BG.value, fg=ColorScheme.LIGHT_TEXT.value)
+      self.forms_table_frame.config(bg=ColorScheme.LIGHT_CANVAS.value)
+      self.formsTable.config()
+    self.build_forms_table()
+    self.update()
     
   def setup_grid(self):
     for i in range(10):
@@ -171,10 +235,28 @@ class Viewport:
     self.toggle_light_dark_mode(False) if self.theme == "light" else self.toggle_light_dark_mode(True)
     
   def enable_normal_cursor(self):
-    self.root.config(cursor="")
+    self.cursor_type = CursorTypes.NORMAL
+    self.canva.config(cursor="")
+    self.normal_cursor_button.config(bg="red")
+    self.drag_cursor_button.config(bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
+    self.rotate_canvas_button.config(bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
+    self.update()
 
   def enable_drag_cursor(self):
-    self.root.config(cursor="hand2")
+    self.cursor_type = CursorTypes.DRAG
+    self.canva.config(cursor="hand2")
+    self.drag_cursor_button.config(bg="blue")
+    self.normal_cursor_button.config(bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
+    self.rotate_canvas_button.config(bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
+    self.update()
+
+  def enable_rotate_window_cursor(self):
+    self.cursor_type = CursorTypes.ROTATE_WINDOW
+    self.canva.config(cursor="exchange")
+    self.drag_cursor_button.config(bg="green")
+    self.normal_cursor_button.config(bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
+    self.drag_cursor_button.config(bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
+    self.update()
 
   def apply_transform(self, pivot=None):
       if not self.m00_input.get(): self.m00_value.set("1.0")
@@ -335,6 +417,7 @@ class Viewport:
   def set_building(self): 
     if not self.building:
       self.building = True
+      self.enable_normal_cursor()
       self.build_button.config(command=self.cancel_building, text="Cancel", bg="red", fg="white")
     
   def set_debug(self):
@@ -359,6 +442,10 @@ class Viewport:
     self.update()
 
   def build_ui(self):
+    self.canva.create_window(10, 10, anchor="nw", window=self.normal_cursor_button)
+    self.canva.create_window(10, 50, anchor="nw", window=self.drag_cursor_button)
+    self.canva.create_window(10, 90, anchor="nw", window=self.rotate_canvas_button)
+
     self.canva.grid(row=0, column=0, columnspan=4, rowspan=10, sticky="nsew", padx=5, pady=5)
     
     self.build_button.grid(row=11, column=0, sticky="ew", padx=5, pady=5)
@@ -381,20 +468,49 @@ class Viewport:
     self.change_point_color_button.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
     self.change_point_radius_button.grid(row=1, column=2, sticky="ew", padx=5, pady=5)
 
-    self.canva.create_window(10, 10, anchor="nw", window=self.normal_cursor_button)
-    self.canva.create_window(10, 50, anchor="nw", window=self.drag_cursor_button)
-
   def build_forms_table(self):
-    self.forms_table_frame = tk.Frame(self.root, width=400, height=200, background="white")
+    style = ttk.Style()
+    style.theme_use('default')  # usar tema padrão
+
+    if self.theme == "dark":
+        bg_color = ColorScheme.DARK_CANVAS.value
+        text_color = ColorScheme.DARK_TEXT.value
+        selected_bg = "#333366"
+        selected_fg = "white"
+    else:
+        bg_color = ColorScheme.LIGHT_CANVAS.value
+        text_color = ColorScheme.LIGHT_TEXT.value
+        selected_bg = "#cce5ff"
+        selected_fg = "black"
+
+    style.configure("Custom.Treeview",
+                    background=bg_color,
+                    foreground=text_color,
+                    fieldbackground=bg_color,
+                    bordercolor=bg_color,
+                    borderwidth=0)
+
+    style.map("Custom.Treeview",
+              background=[('selected', selected_bg)],
+              foreground=[('selected', selected_fg)])
+
+    self.forms_table_frame = tk.Frame(self.root, width=400, height=200, background=bg_color)
     self.forms_table_frame.grid(row=6, column=4, columnspan=7, rowspan=6, sticky="nsew")
     self.forms_table_frame.grid_rowconfigure(0, weight=1)
     self.forms_table_frame.grid_columnconfigure(0, weight=1)
 
     self.scrollbar_x = ttk.Scrollbar(self.forms_table_frame, orient="horizontal")
     self.scrollbar_y = ttk.Scrollbar(self.forms_table_frame, orient="vertical")
-    
-    self.formsTable = ttk.Treeview(self.forms_table_frame, columns=("Id", "Points"), show="headings", xscrollcommand=self.scrollbar_x.set, yscrollcommand=self.scrollbar_y.set)
-    
+
+    self.formsTable = ttk.Treeview(
+        self.forms_table_frame,
+        columns=("Id", "Points"),
+        show="headings",
+        xscrollcommand=self.scrollbar_x.set,
+        yscrollcommand=self.scrollbar_y.set,
+        style="Custom.Treeview"
+    )
+
     self.formsTable.heading("Id", text="Id")
     self.formsTable.heading("Points", text="Points")
     self.formsTable.column("Id", width=50, anchor="center", stretch=tk.NO)
@@ -412,7 +528,7 @@ class Viewport:
     self.forms_table_frame.grid_propagate(False)
     self.formsTable.bind("<Button-3>", self.on_table_right_click)
     self.formsTable.pack(fill=tk.BOTH, expand=True, pady=10)
-
+      
   def controls(self):
     self.canva.bind("<ButtonRelease-1>", self.canva_click)
     self.canva.bind("<Button-3>", self.move_camera)
@@ -430,9 +546,12 @@ class Viewport:
     # self.root.bind("<KeyPress-h>", lambda e: self.camera.rotate_left() or self.update())
 
   def canva_click(self, event):
-    if self.building: self.build.append(self.camera.viewport_to_world(event.x, event.y))
-    else:  self.objects.append(PointObject("Clicked Point", self.camera.viewport_to_world(event.x, event.y), id=10*len(self.objects)+1))
-    self.update()
+    if self.cursor_type == CursorTypes.NORMAL:
+      if self.building: self.build.append(self.camera.viewport_to_world(event.x, event.y))
+      else:  self.objects.append(PointObject("Clicked Point", self.camera.viewport_to_world(event.x, event.y), id=10*len(self.objects)+1))
+      self.update()
+    elif self.cursor_type == CursorTypes.DRAG:
+      self.move_camera(event)
 
   def finish_lines(self):
     if len(self.build) < 2: 
@@ -511,6 +630,10 @@ class Viewport:
       self.canva.create_line(0, self.height*0.4, self.width, self.height*0.4, fill="blue")
       self.canva.create_line(self.width*0.4, 0, self.width*0.4, self.height, fill="blue")
 
+    self.canva.create_window(10, 10, anchor="nw", window=self.normal_cursor_button)
+    self.canva.create_window(10, 50, anchor="nw", window=self.drag_cursor_button)
+    self.canva.create_window(10, 90, anchor="nw", window=self.rotate_canvas_button)
+    
   def run(self) -> list[Wireframe]:
     self.root.mainloop()
     if self.output:

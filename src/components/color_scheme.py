@@ -5,11 +5,16 @@ class ColorScheme(Enum):
     LIGHT_BG = "#f0f0f0"
     LIGHT_TEXT = "#000"
     LIGHT_BUTTON = "#f0f0f0"
+    LIGHT_HIGH_CONTRAST_BUTTON = "#555"
+    LIGHT_HIGH_CONTRAST_TEXT = "#fff"
 
     DARK_CANVAS = "#555"
     DARK_BG = "#333"
     DARK_TEXT = "#fff"
     DARK_BUTTON = "#555"
-    
+    DARK_HIGH_CONTRAST_BUTTON = "#f0f0f0"
+    DARK_HIGH_CONTRAST_TEXT = "#000"
+    DARK_BUTTON_INPUT = "#afaeae"
+
     DEFAULT_BUTTON_COLOR = "#f0f0f0"
-    
+
