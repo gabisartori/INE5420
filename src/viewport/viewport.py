@@ -38,12 +38,18 @@ class Viewport:
     self.root.geometry(f"{width}x{height}")
     self.root.resizable(True, True)
     self.root.title(title)
+    
+    self.start_x = None
+    self.start_y = None
 
     self.canva = tk.Canvas(self.root, background=ColorScheme.LIGHT_BG.value, width=int(0.8 * self.width), height=int(0.8 * self.height))
     self.normal_cursor_button = tk.Button(self.canva, text="➤", font=("Arial",12), command=self.enable_normal_cursor, bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
-    self.drag_cursor_button = tk.Button(self.canva, text="✥", font=("Arial",12), command=self.enable_drag_cursor, bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
+    self.drag_cursor_button = tk.Button(self.canva, text="✥", font=("Arial",12), bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
     self.rotate_canvas_button = tk.Button(self.canva, text="↻", font=("Arial",12), command=self.enable_rotate_window_cursor, bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
     
+    self.rotate_canvas_left_button = tk.Button(self.canva, text="⟲", font=("Arial",12), command=lambda: self.camera.rotate(-5) or self.update(), bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
+    self.rotate_canvas_right_button = tk.Button(self.canva, text="⟳", font=("Arial",12), command=lambda: self.camera.rotate(5) or self.update(), bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
+
     # creates elements on the right
     self.right_panel = tk.Frame(self.root)
     self.right_panel.grid(row=0, column=4, rowspan=10, columnspan=7, sticky="nsew", padx=5, pady=5)
@@ -143,6 +149,29 @@ class Viewport:
     self.build_ui()
     self.setup_grid()
     self.update()
+    
+  def build_debug_grid(self):
+    canva_width=int(0.8 * self.width)
+    canva_height=int(0.8 * self.height)
+    
+    max_range = max(canva_width, canva_height)
+    
+    for i in range(-max_range, max_range, 75):
+      start_h = self.camera.world_to_viewport(np.array([-500, 0, i]))
+      end_h = self.camera.world_to_viewport(np.array([500, 0, i]))
+      self.canva.create_line(start_h[0], start_h[1], end_h[0], end_h[1], fill=ColorScheme.LIGHT_DEBUG_GRID.value)
+      
+      start_v = self.camera.world_to_viewport(np.array([i, 0, -500]))
+      end_v = self.camera.world_to_viewport(np.array([i, 0, 500]))
+      self.canva.create_line(start_v[0], start_v[1], end_v[0], end_v[1], fill=ColorScheme.LIGHT_DEBUG_GRID.value)
+
+    # Draw axes labels
+    origin = self.camera.world_to_viewport(np.array([0, 0, 0]))
+    self.canva.create_text(origin[0] + 15, origin[1] - 10, text="(0,0)", fill=ColorScheme.LIGHT_TEXT.value if self.theme == "light" else ColorScheme.DARK_TEXT.value, font=("Arial", 10, "bold"))
+    self.canva.create_text(origin[0] + 15, origin[1] + 10, text="Z+", fill=ColorScheme.LIGHT_TEXT.value if self.theme == "light" else ColorScheme.DARK_TEXT.value, font=("Arial", 10))
+    self.canva.create_text(origin[0] - 15, origin[1] + 10, text="Z-", fill=ColorScheme.LIGHT_TEXT.value if self.theme == "light" else ColorScheme.DARK_TEXT.value, font=("Arial", 10))
+    self.canva.create_text(origin[0] + 10, origin[1] - 15, text="X+", fill=ColorScheme.LIGHT_TEXT.value if self.theme == "light" else ColorScheme.DARK_TEXT.value, font=("Arial", 10))
+    self.canva.create_text(origin[0] - 10, origin[1] + 15, text="X-", fill=ColorScheme.LIGHT_TEXT.value if self.theme == "light" else ColorScheme.DARK_TEXT.value, font=("Arial", 10))
 
   def toggle_light_dark_mode(self, state):
     self.theme = "light" if not state else "dark"
@@ -243,21 +272,41 @@ class Viewport:
     self.rotate_canvas_button.config(bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
     self.update()
 
-  def enable_drag_cursor(self):
+  def enable_drag_cursor(self, event):
     self.cursor_type = CursorTypes.DRAG
     self.canva.config(cursor="hand2")
     self.drag_cursor_button.config(bg="blue")
     self.normal_cursor_button.config(bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
     self.rotate_canvas_button.config(bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
+    
+    self.start_x = event.x
+    self.start_y = event.y
+    
     self.update()
 
   def enable_rotate_window_cursor(self):
     self.cursor_type = CursorTypes.ROTATE_WINDOW
     self.canva.config(cursor="exchange")
-    self.drag_cursor_button.config(bg="green")
+    self.rotate_canvas_button.config(bg="green")
     self.normal_cursor_button.config(bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
     self.drag_cursor_button.config(bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
     self.update()
+    
+  def on_mouse_drag(self, event):
+    if self.cursor_type == CursorTypes.DRAG:
+      dx = event.x - self.start_x
+      dy = event.y - self.start_y
+      self.camera.move_right(-dx * 0.5)
+      self.camera.move_up(dy * 0.5)
+      self.start_x = event.x
+      self.start_y = event.y
+      self.update()
+    elif self.cursor_type == CursorTypes.ROTATE_WINDOW:
+      dx = event.x - self.start_x
+      angle = dx * 0.5
+      self.camera.rotate(angle)
+      self.start_x = event.x
+      self.update()
 
   def apply_transform(self, pivot=None):
       if not self.m00_input.get(): self.m00_value.set("1.0")
@@ -443,11 +492,9 @@ class Viewport:
     self.update()
 
   def build_ui(self):
-    self.canva.create_window(10, 10, anchor="nw", window=self.normal_cursor_button)
-    self.canva.create_window(10, 50, anchor="nw", window=self.drag_cursor_button)
-    self.canva.create_window(10, 90, anchor="nw", window=self.rotate_canvas_button)
-
     self.canva.grid(row=0, column=0, columnspan=4, rowspan=10, sticky="nsew", padx=5, pady=5)
+    self.canva.grid_rowconfigure(0, weight=0)
+    self.canva.grid_columnconfigure(0, weight=0)
     
     self.build_button.grid(row=11, column=0, sticky="ew", padx=5, pady=5)
     self.lines_button.grid(row=11, column=1, sticky="ew", padx=5, pady=5)
@@ -545,7 +592,9 @@ class Viewport:
     self.root.bind("<KeyPress-Escape>", lambda e: self.cancel_building())
     self.root.bind("<Control-z>", lambda e: self.undo())
     # self.root.bind("<KeyPress-h>", lambda e: self.camera.rotate_left() or self.update())
-
+    self.canva.bind("<B1-Motion>", self.on_mouse_drag)
+    self.drag_cursor_button.bind("<Button-1>", self.enable_drag_cursor)
+    
   def canva_click(self, event):
     if self.cursor_type == CursorTypes.NORMAL:
       if self.building: self.build.append(self.camera.viewport_to_world(event.x, event.y))
@@ -602,14 +651,11 @@ class Viewport:
             self.canva.create_polygon(points, fill=obj.fill_color, outline=obj.color)
 
       else:
-        for edge in figures:
-          
-          # Draw line
+        for edge in figures:       
           if edge.end is not None:
             start, end = self.camera.world_to_viewport(edge.start), self.camera.world_to_viewport(edge.end)
             self.canva.create_line(start[0], start[1], end[0], end[1], fill=obj.color)
           
-          # Draw point
           else:
             point = self.camera.world_to_viewport(edge.start)
             radius = obj.radius
@@ -626,15 +672,17 @@ class Viewport:
       if prev is not None: self.canva.create_line(prev[0], prev[1], point[0], point[1], fill="red")
       prev = point
     
-    # Draw axes
     if self.debug:
       self.canva.create_line(0, self.height*0.4, self.width, self.height*0.4, fill="blue")
       self.canva.create_line(self.width*0.4, 0, self.width*0.4, self.height, fill="blue")
-
+      self.build_debug_grid()
+      
     self.canva.create_window(10, 10, anchor="nw", window=self.normal_cursor_button)
     self.canva.create_window(10, 50, anchor="nw", window=self.drag_cursor_button)
     self.canva.create_window(10, 90, anchor="nw", window=self.rotate_canvas_button)
-    
+    self.canva.create_window(10, self.height - 90, anchor="nw", window=self.rotate_canvas_left_button)
+    self.canva.create_window(60, self.height - 90, anchor="nw", window=self.rotate_canvas_right_button)
+ 
   def run(self) -> list[Wireframe]:
     self.root.mainloop()
     if self.output:
@@ -718,7 +766,6 @@ class Viewport:
 
   def change_fill_color(self):    
     selected_item = self.formsTable.selection()
- 
     if not selected_item:
       messagebox.showwarning("Aviso", "Nenhum objeto selecionado.")
       return

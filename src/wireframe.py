@@ -73,7 +73,6 @@ class PointObject(Wireframe):
   def figures(self) -> list[ScreenWireframe]:
     return [ScreenWireframe(self.center)]
   
-
 class LineObject(Wireframe):
   def __init__(self, name: str, start: Point, end: Point, id: int = 0):
     super().__init__(name, np.array([(start[0] + end[0]) // 2, (start[2] + end[2]) // 2]), [start, end], id=id)
