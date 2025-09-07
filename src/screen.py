@@ -22,6 +22,8 @@ class Camera:
     self.camera_focus: tuple[float, float] = (0, 0)
     self.viewport_angle = 0
     self.transform_matrix: np.ndarray = np.eye(2)
+    self.max_zoom = 100.0
+    self.min_zoom = 0.1
 
     UP = np.array([0, 1, 0])
     if np.array_equal(normal, UP) or np.array_equal(normal, -UP):
@@ -52,6 +54,7 @@ class Camera:
   def move_above(self): self.position[1] += max(self.speed/self.zoom, 1)
   
   def rotate(self, degrees=5):
+    degrees = int(degrees)
     angle_rad = np.radians(degrees)
 
     cos_a = np.cos(angle_rad)  
@@ -137,10 +140,10 @@ class Camera:
   #   # self.viewport_angle = (self.viewport_angle + degrees) % 360
 
   def zoom_in(self, x, y):
-    self.zoom *= 1.1
+    if self.zoom <= self.max_zoom: self.zoom *= 1.1
 
   def zoom_out(self, x, y):
-    self.zoom /= 1.1
+    if self.zoom >= self.min_zoom: self.zoom /= 1.1
 
   def recenter(self):
     self.position = np.array([0, 100, 0])

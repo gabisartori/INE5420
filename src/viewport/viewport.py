@@ -45,10 +45,12 @@ class Viewport:
     self.canva = tk.Canvas(self.root, background=ColorScheme.LIGHT_BG.value, width=int(0.8 * self.width), height=int(0.8 * self.height))
     self.normal_cursor_button = tk.Button(self.canva, text="➤", font=("Arial",12), command=self.enable_normal_cursor, bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
     self.drag_cursor_button = tk.Button(self.canva, text="✥", font=("Arial",12), bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
-    self.rotate_canvas_button = tk.Button(self.canva, text="↻", font=("Arial",12), command=self.enable_rotate_window_cursor, bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
+    #self.rotate_canvas_button = tk.Button(self.canva, text="↻", font=("Arial",12), command=self.enable_rotate_window_cursor, bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
     
-    self.rotate_canvas_left_button = tk.Button(self.canva, text="⟲", font=("Arial",12), command=lambda: self.camera.rotate(-5) or self.update(), bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
-    self.rotate_canvas_right_button = tk.Button(self.canva, text="⟳", font=("Arial",12), command=lambda: self.camera.rotate(5) or self.update(), bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
+    self.input_rotate_canvas = tk.StringVar()
+    self.rotate_canvas_entry = tk.Entry(self.canva, textvariable=self.input_rotate_canvas, width=3, font=("Arial",17), bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)  
+    self.rotate_canvas_left_button = tk.Button(self.canva, text="⟲", font=("Arial",12), command=lambda: self.camera.rotate(self.input_rotate_canvas.get() if self.input_rotate_canvas.get() else -5) or self.update(), bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
+    self.rotate_canvas_right_button = tk.Button(self.canva, text="⟳", font=("Arial",12), command=lambda: self.camera.rotate(self.input_rotate_canvas.get() if self.input_rotate_canvas.get() else 5) or self.update(), bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
 
     # creates elements on the right
     self.right_panel = tk.Frame(self.root)
@@ -71,10 +73,10 @@ class Viewport:
     # camera controls
     self.recenter_button = tk.Button(self.right_panel, text="Recenter", command=lambda: self.camera.recenter() or self.update())
 
-    self.build_button = tk.Button(self.root, text="Build", command=self.set_building)
-    self.lines_button = tk.Button(self.root, text="Lines", command=self.finish_lines)
-    self.polygon_button = tk.Button(self.root, text="Polygon", command=self.finish_polygon)
-    self.clear_button = tk.Button(self.root, text="Clear", command=self.clear)
+    self.build_button = tk.Button(self.root, text="Build", command=self.set_building, bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
+    self.lines_button = tk.Button(self.root, text="Lines", command=self.finish_lines, bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
+    self.polygon_button = tk.Button(self.root, text="Polygon", command=self.finish_polygon, bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
+    self.clear_button = tk.Button(self.root, text="Clear", command=self.clear, bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
 
     # transform frame
     self.transform_widget_frame = tk.Frame(self.root)
@@ -151,21 +153,34 @@ class Viewport:
     self.update()
     
   def build_debug_grid(self):
-    canva_width=int(0.8 * self.width)
-    canva_height=int(0.8 * self.height)
-    
-    max_range = max(canva_width, canva_height)
-    
-    for i in range(-max_range, max_range, 75):
-      start_h = self.camera.world_to_viewport(np.array([-500, 0, i]))
-      end_h = self.camera.world_to_viewport(np.array([500, 0, i]))
-      self.canva.create_line(start_h[0], start_h[1], end_h[0], end_h[1], fill=ColorScheme.LIGHT_DEBUG_GRID.value)
-      
-      start_v = self.camera.world_to_viewport(np.array([i, 0, -500]))
-      end_v = self.camera.world_to_viewport(np.array([i, 0, 500]))
-      self.canva.create_line(start_v[0], start_v[1], end_v[0], end_v[1], fill=ColorScheme.LIGHT_DEBUG_GRID.value)
+    step = 75
+    min_zoom = self.camera.min_zoom 
 
-    # Draw axes labels
+    width = self.width
+    height = self.height
+  
+    max_world_width = width / min_zoom
+    max_world_height = height / min_zoom
+    max_range = int(max(max_world_width, max_world_height) / 2)  # /2 para ter metade pra cada lado do centro
+    
+    start = ( -max_range // step ) * step
+    end = ( max_range // step + 1 ) * step
+
+    for i in range(start, end, step):
+        start_h = self.camera.world_to_viewport(np.array([-max_range, 0, i]))
+        end_h = self.camera.world_to_viewport(np.array([max_range, 0, i]))
+        self.canva.create_line(
+            start_h[0], start_h[1], end_h[0], end_h[1],
+            fill=ColorScheme.LIGHT_DEBUG_GRID.value if self.theme == "light" else ColorScheme.DARK_DEBUG_GRID.value
+        )
+
+        start_v = self.camera.world_to_viewport(np.array([i, 0, -max_range]))
+        end_v = self.camera.world_to_viewport(np.array([i, 0, max_range]))
+        self.canva.create_line(
+            start_v[0], start_v[1], end_v[0], end_v[1],
+            fill=ColorScheme.LIGHT_DEBUG_GRID.value if self.theme == "light" else ColorScheme.DARK_DEBUG_GRID.value
+        )
+
     origin = self.camera.world_to_viewport(np.array([0, 0, 0]))
     self.canva.create_text(origin[0] + 15, origin[1] - 10, text="(0,0)", fill=ColorScheme.LIGHT_TEXT.value if self.theme == "light" else ColorScheme.DARK_TEXT.value, font=("Arial", 10, "bold"))
     self.canva.create_text(origin[0] + 15, origin[1] + 10, text="Z+", fill=ColorScheme.LIGHT_TEXT.value if self.theme == "light" else ColorScheme.DARK_TEXT.value, font=("Arial", 10))
@@ -269,7 +284,7 @@ class Viewport:
     self.canva.config(cursor="")
     self.normal_cursor_button.config(bg="red")
     self.drag_cursor_button.config(bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
-    self.rotate_canvas_button.config(bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
+    #self.rotate_canvas_button.config(bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
     self.update()
 
   def enable_drag_cursor(self, event):
@@ -277,7 +292,7 @@ class Viewport:
     self.canva.config(cursor="hand2")
     self.drag_cursor_button.config(bg="blue")
     self.normal_cursor_button.config(bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
-    self.rotate_canvas_button.config(bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
+    #self.rotate_canvas_button.config(bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
     
     self.start_x = event.x
     self.start_y = event.y
@@ -287,7 +302,7 @@ class Viewport:
   def enable_rotate_window_cursor(self):
     self.cursor_type = CursorTypes.ROTATE_WINDOW
     self.canva.config(cursor="exchange")
-    self.rotate_canvas_button.config(bg="green")
+    #self.rotate_canvas_button.config(bg="green")
     self.normal_cursor_button.config(bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
     self.drag_cursor_button.config(bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
     self.update()
@@ -627,7 +642,12 @@ class Viewport:
     self.canva.delete("all")
     all_objects = self.objects.copy()
     
-    if self.debug: all_objects += self.debug_objects
+    if self.debug:
+      all_objects += self.debug_objects
+      self.build_debug_grid()
+      self.canva.create_line(0, self.height*0.4, self.width, self.height*0.4, fill="blue")
+      self.canva.create_line(self.width*0.4, 0, self.width*0.4, self.height, fill="blue")
+      
     
     for obj in all_objects:
       figures = obj.figures()
@@ -672,17 +692,13 @@ class Viewport:
       if prev is not None: self.canva.create_line(prev[0], prev[1], point[0], point[1], fill="red")
       prev = point
     
-    if self.debug:
-      self.canva.create_line(0, self.height*0.4, self.width, self.height*0.4, fill="blue")
-      self.canva.create_line(self.width*0.4, 0, self.width*0.4, self.height, fill="blue")
-      self.build_debug_grid()
-      
     self.canva.create_window(10, 10, anchor="nw", window=self.normal_cursor_button)
     self.canva.create_window(10, 50, anchor="nw", window=self.drag_cursor_button)
-    self.canva.create_window(10, 90, anchor="nw", window=self.rotate_canvas_button)
+    #self.canva.create_window(10, 90, anchor="nw", window=self.rotate_canvas_button)
     self.canva.create_window(10, self.height - 90, anchor="nw", window=self.rotate_canvas_left_button)
     self.canva.create_window(60, self.height - 90, anchor="nw", window=self.rotate_canvas_right_button)
- 
+    self.canva.create_window(110, self.height - 90, anchor="nw", window=self.rotate_canvas_entry)
+
   def run(self) -> list[Wireframe]:
     self.root.mainloop()
     if self.output:
