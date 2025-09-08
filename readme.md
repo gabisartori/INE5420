@@ -21,4 +21,5 @@ As utilidades do SGI são acessíveis por meio das seguintes entradas de instru�
 - **Alterar propriedades dos objetos:** No canto direito inferior da interface, se encontra uma lista de todos os objetos armazenados no SGI, basta clicar no objeto desejado e usar os outros botões da interface para escolher qual atributo será alterado e qual será o novo valor.
 - **Objetos de auxílio:** Ao apertar o botão do meio do mouse, pode-se ativar a visualização de linhas que facilitam a identificação do centro da tela e, também, um ponto que indica a origem do mundo.
 - **Transformadas 2D:** Todas as transformadas exigem que um objeto esteja selecionado. 
-- **Rotação:** Por padrão, um objeto será rotacionado em torno do seu próprio eixo. Para rotacionar ao longo de outro ponto ou em torno da origem do mundo(0,0), basta fornecê-lo no input "Around Point". Se nenhum valor for fornecido, o objeto será rotacionado em 15 graus.
+- **Rotação de objetos:** Por padrão, um objeto será rotacionado em torno do seu próprio eixo. Para rotacionar ao longo de outro ponto ou em torno da origem do mundo(0,0), basta fornecê-lo no input "Around Point". Se nenhum valor for fornecido, o objeto será rotacionado em 15 graus.
+- **Rotação da Window:** Quando ângulo específico não for inserido, rotaciona a janela em 5 graus.
