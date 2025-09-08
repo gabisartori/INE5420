@@ -6,14 +6,14 @@ from components.toggle_switch import *
 from components.color_scheme import ColorScheme
 from data.usr_preferences import *
 from components.my_types import Point, CursorTypes
-from components.DescritorOBJ import DescritorOBJ
 
 #from .ui_builder import build_ui
 
 class Viewport:
   def __init__(self, width, height, title="INE5420", input: str | None=None, output: str | None=None, debug: bool=False):
-    self.output: str | None = output 
-    
+    self.output: str | None = output
+    self.input: str | None = input
+
     self.width: int = width
     self.height: int = height
     self.objects: list[Wireframe] = self.load_objects(input) if input else []
@@ -27,7 +27,6 @@ class Viewport:
     self.debug: bool = debug
     self.debug_objects: list[Wireframe] = [PointObject("World Origin", np.array([0, 0, 0]), id=0)]
     self.camera = Camera(np.array([0, -1, 0]), np.array([0, 100, 0]), width*0.8, height*0.8)
-    self.original_points: list[Point] = [Point(p.x, p.y, p.z) for p in self.objects]
 
     self.preferences = load_user_preferences()
     self.show_onboarding = self.preferences.get("show_onboarding", True)
@@ -44,7 +43,7 @@ class Viewport:
 
     self.canva = tk.Canvas(self.root, background=ColorScheme.LIGHT_BG.value, width=int(0.8 * self.width), height=int(0.8 * self.height))
     self.normal_cursor_button = tk.Button(self.canva, text="➤", font=("Arial",12), command=self.enable_normal_cursor, bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
-    self.drag_cursor_button = tk.Button(self.canva, text="✥", font=("Arial",12), bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
+    #self.drag_cursor_button = tk.Button(self.canva, text="✥", font=("Arial",12), bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
     #self.rotate_canvas_button = tk.Button(self.canva, text="↻", font=("Arial",12), command=self.enable_rotate_window_cursor, bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
     
     self.input_rotate_canvas = tk.StringVar()
@@ -183,10 +182,10 @@ class Viewport:
 
     origin = self.camera.world_to_viewport(np.array([0, 0, 0]))
     self.canva.create_text(origin[0] + 15, origin[1] - 10, text="(0,0)", fill=ColorScheme.LIGHT_TEXT.value if self.theme == "light" else ColorScheme.DARK_TEXT.value, font=("Arial", 10, "bold"))
-    self.canva.create_text(origin[0] + 15, origin[1] + 10, text="Z+", fill=ColorScheme.LIGHT_TEXT.value if self.theme == "light" else ColorScheme.DARK_TEXT.value, font=("Arial", 10))
-    self.canva.create_text(origin[0] - 15, origin[1] + 10, text="Z-", fill=ColorScheme.LIGHT_TEXT.value if self.theme == "light" else ColorScheme.DARK_TEXT.value, font=("Arial", 10))
-    self.canva.create_text(origin[0] + 10, origin[1] - 15, text="X+", fill=ColorScheme.LIGHT_TEXT.value if self.theme == "light" else ColorScheme.DARK_TEXT.value, font=("Arial", 10))
-    self.canva.create_text(origin[0] - 10, origin[1] + 15, text="X-", fill=ColorScheme.LIGHT_TEXT.value if self.theme == "light" else ColorScheme.DARK_TEXT.value, font=("Arial", 10))
+    # self.canva.create_text(origin[0] + 15, origin[1] + 10, text="Z+", fill=ColorScheme.LIGHT_TEXT.value if self.theme == "light" else ColorScheme.DARK_TEXT.value, font=("Arial", 10))
+    # self.canva.create_text(origin[0] - 15, origin[1] + 10, text="Z-", fill=ColorScheme.LIGHT_TEXT.value if self.theme == "light" else ColorScheme.DARK_TEXT.value, font=("Arial", 10))
+    # self.canva.create_text(origin[0] + 10, origin[1] - 15, text="X+", fill=ColorScheme.LIGHT_TEXT.value if self.theme == "light" else ColorScheme.DARK_TEXT.value, font=("Arial", 10))
+    # self.canva.create_text(origin[0] - 10, origin[1] + 15, text="X-", fill=ColorScheme.LIGHT_TEXT.value if self.theme == "light" else ColorScheme.DARK_TEXT.value, font=("Arial", 10))
 
   def toggle_light_dark_mode(self, state):
     self.theme = "light" if not state else "dark"
@@ -275,7 +274,7 @@ class Viewport:
     for i in range(11, 21):
       self.root.grid_rowconfigure(i, weight=0)
 
-    #self.root.resizable(False, False) # redimensionar travado
+    self.root.resizable(False, False) # redimensionar travado
     self.toggle_light_dark.toggle() if self.theme == "dark" else None
     self.toggle_light_dark_mode(False) if self.theme == "light" else self.toggle_light_dark_mode(True)
     
@@ -283,14 +282,14 @@ class Viewport:
     self.cursor_type = CursorTypes.NORMAL
     self.canva.config(cursor="")
     self.normal_cursor_button.config(bg="red")
-    self.drag_cursor_button.config(bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
+    #self.drag_cursor_button.config(bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
     #self.rotate_canvas_button.config(bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
     self.update()
 
   def enable_drag_cursor(self, event):
     self.cursor_type = CursorTypes.DRAG
     self.canva.config(cursor="hand2")
-    self.drag_cursor_button.config(bg="blue")
+    #self.drag_cursor_button.config(bg="blue")
     self.normal_cursor_button.config(bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
     #self.rotate_canvas_button.config(bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
     
@@ -304,7 +303,7 @@ class Viewport:
     self.canva.config(cursor="exchange")
     #self.rotate_canvas_button.config(bg="green")
     self.normal_cursor_button.config(bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
-    self.drag_cursor_button.config(bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
+    #self.drag_cursor_button.config(bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
     self.update()
     
   def on_mouse_drag(self, event):
@@ -608,7 +607,7 @@ class Viewport:
     self.root.bind("<Control-z>", lambda e: self.undo())
     # self.root.bind("<KeyPress-h>", lambda e: self.camera.rotate_left() or self.update())
     self.canva.bind("<B1-Motion>", self.on_mouse_drag)
-    self.drag_cursor_button.bind("<Button-1>", self.enable_drag_cursor)
+    #self.drag_cursor_button.bind("<Button-1>", self.enable_drag_cursor)
     
   def canva_click(self, event):
     if self.cursor_type == CursorTypes.NORMAL:
@@ -693,7 +692,7 @@ class Viewport:
       prev = point
     
     self.canva.create_window(10, 10, anchor="nw", window=self.normal_cursor_button)
-    self.canva.create_window(10, 50, anchor="nw", window=self.drag_cursor_button)
+    #self.canva.create_window(10, 50, anchor="nw", window=self.drag_cursor_button)
     #self.canva.create_window(10, 90, anchor="nw", window=self.rotate_canvas_button)
     self.canva.create_window(10, self.height - 90, anchor="nw", window=self.rotate_canvas_left_button)
     self.canva.create_window(60, self.height - 90, anchor="nw", window=self.rotate_canvas_right_button)
@@ -703,10 +702,9 @@ class Viewport:
     self.root.mainloop()
     if self.output:
       try:
-        descriptor = DescritorOBJ(self.objects, self.output)
-        descriptor.clear_obj_files()
-        descriptor.save_to_file()
-            
+        with open(self.output, "w") as file:
+          for obj in self.objects:
+            file.write(f"{obj}\n")
       except Exception as e:
         print(f"Erro ao salvar objetos: {e}")
         messagebox.showerror("Erro", f"Erro ao salvar objetos: {e}")

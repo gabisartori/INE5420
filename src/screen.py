@@ -77,68 +77,6 @@ class Camera:
     self.viewport_angle += degrees
     self.viewport_angle %= 360
 
-  # def rotate(self, degrees=5):
-  #   # 0: Obter o centro da câmera para translação
-  #   tx, tz = -self.position[0], -self.position[2]  # negativo para transladar mundo ao redor da câmera
-    
-  #   # 1: Matriz de translação para levar o centro ao ponto (0,0)
-  #   T = np.array([
-  #       [1, 0, tx],
-  #       [0, 1, tz],
-  #       [0, 0, 1]
-  #   ])
-    
-  #   # 2: Matriz de rotação em torno da origem (ângulo positivo para sentido anti-horário)
-  #   theta = math.radians(degrees)
-  #   c, s = math.cos(theta), math.sin(theta)
-  #   R = np.array([
-  #       [c, -s, 0],
-  #       [s,  c, 0],
-  #       [0,  0, 1]
-  #   ])
-    
-  #   # 3: Matriz inversa da translação para voltar para a posição original
-  #   Ti = np.array([
-  #       [1, 0, -tx],
-  #       [0, 1, -tz],
-  #       [0, 0, 1]
-  #   ])
-    
-  #   # 4: Atualizar matriz de transformação acumulada:
-  #   # a ordem correta para aplicar transformações no mundo é Ti * R * T * M
-  #   # Ou seja, primeiro translada o mundo para a origem, depois rotaciona, depois translada de volta
-  #   M = self.transform_matrix
-  #   self.transform_matrix = Ti @ R @ T @ M
-    
-  #   # 5: Atualizar os vetores do sistema de coordenadas da câmera (direita e up) na projeção 2D
-  #   right_2d = self.right[[0, 2]]
-  #   up_2d = self.up[[0, 2]]
-    
-  #   def normalize(v):
-  #       norm = np.linalg.norm(v)
-  #       return v / norm if norm != 0 else v
-    
-  #   right_rot = normalize(R[:2, :2] @ right_2d)
-  #   up_rot = normalize(R[:2, :2] @ up_2d)
-    
-  #   self.right[0], self.right[2] = right_rot
-  #   self.up[0], self.up[2] = up_rot
-    
-  #   # 6: Corrigir normal da câmera (direção da câmera)
-  #   self.normal = normalize(np.cross(self.right, self.up))
-    
-  #   # 7: Atualizar ângulo da viewport (para controle)
-  #   self.viewport_angle = (self.viewport_angle + degrees) % 360
-
-  #   # theta = math.radians(degrees)
-  #   # c, s = math.cos(theta), math.sin(theta)
-  #   # R = np.array([[c, -s], [s, c]])
-  #   # self.transform_matrix = R @ self.transform_matrix
-  #   # self.right = normalize(R @ self.right[[0,2]])
-  #   # self.up = normalize(R @ self.up[[0,2]])
-  #   # self.normal = normalize(np.cross(self.right, self.up))
-  #   # self.viewport_angle = (self.viewport_angle + degrees) % 360
-
   def zoom_in(self, x, y):
     if self.zoom <= self.max_zoom: self.zoom *= 1.1
 
