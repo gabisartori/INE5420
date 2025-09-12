@@ -43,7 +43,7 @@ class Viewport:
 
     self.canva = tk.Canvas(self.root, background=ColorScheme.LIGHT_BG.value, width=int(0.8 * self.width), height=int(0.8 * self.height))
     self.normal_cursor_button = tk.Button(self.canva, text="➤", font=("Arial",12), command=self.enable_normal_cursor, bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
-    #self.drag_cursor_button = tk.Button(self.canva, text="✥", font=("Arial",12), bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
+    self.drag_cursor_button = tk.Button(self.canva, text="✥", font=("Arial",12), bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
     #self.rotate_canvas_button = tk.Button(self.canva, text="↻", font=("Arial",12), command=self.enable_rotate_window_cursor, bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
     
     self.input_rotate_canvas = tk.StringVar()
@@ -59,10 +59,11 @@ class Viewport:
     self.root.protocol("WM_DELETE_WINDOW", self.exit)
     self.exit_button = tk.Button(self.right_panel, text="Exit", command=self.exit, bg="red", fg="white")
     self.toggle_light_dark = ToggleSwitch(self.right_panel, width=80, height=40, on_toggle=self.toggle_light_dark_mode, bg=ColorScheme.LIGHT_BG.value if self.theme == "light" else ColorScheme.DARK_BG.value)
+    self.help_button = tk.Button(self.right_panel, text="Help", command=self.show_help, bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
 
     # colors
     self.color_button_frame = tk.Frame(self.root)
-    self.color_button_frame.grid(row=4, column=5, rowspan=8, sticky="ns")
+    self.color_button_frame.grid(row=5, column=5, rowspan=1, columnspan=1, sticky="ns")
 
     self.change_line_color_button = tk.Button(self.color_button_frame, text="Line Color", command=self.change_line_color)
     self.change_fill_color_button = tk.Button(self.color_button_frame, text="Fill Color", command=self.change_fill_color)
@@ -79,7 +80,7 @@ class Viewport:
 
     # transform frame
     self.transform_widget_frame = tk.Frame(self.root)
-    self.transform_widget_frame.grid(row=1, column=5, columnspan=2, sticky="nsew")
+    self.transform_widget_frame.grid(row=2, column=5, columnspan=2, sticky="nsew")
     self.transform_widget_frame.grid_columnconfigure(0, weight=1)
     self.transform_widget_frame.grid_columnconfigure(1, weight=1)
     self.transform_widget_frame.config(width=100, height=100)
@@ -96,7 +97,7 @@ class Viewport:
 
     # translate frame
     self.translate_frame = tk.Frame(self.root)
-    self.translate_frame.grid(row=2, column=5, columnspan=1, sticky="nsew")
+    self.translate_frame.grid(row=3, column=5, columnspan=1, sticky="nsew")
 
     self.insert_x_label = tk.Label(self.translate_frame, text="X:")
     self.insert_x_label.grid(row=0, column=1, sticky="ew")
@@ -116,7 +117,7 @@ class Viewport:
 
     # rotate frame
     self.rotate_frame = tk.Frame(self.root)
-    self.rotate_frame.grid(row=3, column=5, columnspan=1, sticky="nsew")
+    self.rotate_frame.grid(row=4, column=5, columnspan=1, sticky="nsew")
 
     self.rotate_label = tk.Label(self.rotate_frame, text="Rotate object:")
     self.rotate_label.grid(row=0, column=0, sticky="w")
@@ -282,14 +283,14 @@ class Viewport:
     self.cursor_type = CursorTypes.NORMAL
     self.canva.config(cursor="")
     self.normal_cursor_button.config(bg="red")
-    #self.drag_cursor_button.config(bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
+    self.drag_cursor_button.config(bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
     #self.rotate_canvas_button.config(bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
     self.update()
 
   def enable_drag_cursor(self, event):
     self.cursor_type = CursorTypes.DRAG
     self.canva.config(cursor="hand2")
-    #self.drag_cursor_button.config(bg="blue")
+    self.drag_cursor_button.config(bg="blue")
     self.normal_cursor_button.config(bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
     #self.rotate_canvas_button.config(bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
     
@@ -303,7 +304,7 @@ class Viewport:
     self.canva.config(cursor="exchange")
     #self.rotate_canvas_button.config(bg="green")
     self.normal_cursor_button.config(bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
-    #self.drag_cursor_button.config(bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
+    self.drag_cursor_button.config(bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
     self.update()
     
   def on_mouse_drag(self, event):
@@ -515,20 +516,40 @@ class Viewport:
     self.polygon_button.grid(row=11, column=2, sticky="ew", padx=5, pady=5)
     self.clear_button.grid(row=11, column=3, sticky="ew", padx=5, pady=5)
     
-    self.toggle_light_dark.grid(row=0, column=1, padx=5, pady=5)
+    self.toggle_light_dark.grid(row=0, column=0, padx=5)
     self.exit_button.grid(row=0, column=7, columnspan=1)
-    self.recenter_button.grid(row=0, column=0, columnspan=3)
+    self.help_button.grid(row=0, column=6, padx=5, pady=5)
+    
+    self.recenter_button.grid(row=1, column=3, columnspan=1, pady=5)
 
-    self.m00_input.grid(row=0, column=0, sticky="ew")
-    self.m01_input.grid(row=0, column=1, sticky="ew")
-    self.m10_input.grid(row=1, column=0, sticky="ew")
-    self.m11_input.grid(row=1, column=1, sticky="ew")
-    self.apply_transform_button.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(5, 0))
+    self.m00_input.grid(row=1, column=0, sticky="ew")
+    self.m01_input.grid(row=1, column=1, sticky="ew")
+    self.m10_input.grid(row=2, column=0, sticky="ew")
+    self.m11_input.grid(row=2, column=1, sticky="ew")
+    self.apply_transform_button.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(5, 0))
 
     self.change_fill_color_button.grid(row=0, column=1, sticky="ew", padx=5, pady=5)
     self.change_line_color_button.grid(row=0, column=2, sticky="ew", padx=5, pady=5)
     self.change_point_color_button.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
     self.change_point_radius_button.grid(row=1, column=2, sticky="ew", padx=5, pady=5)
+
+  def show_help(self):
+    # opens window with readme content
+    help_window = tk.Toplevel(self.root)
+    help_window.title("Help")
+    help_window.geometry("600x400")
+    help_window.resizable(True, True)
+    
+    help_text = tk.Text(help_window, wrap=tk.WORD)
+    help_text.pack(expand=True, fill=tk.BOTH)
+    
+    with open("user_guide.txt", "r") as f:
+      content = f.read()
+      help_text.insert(tk.END, content)
+      
+    help_text.config(state=tk.DISABLED)  # make the text read-only
+    
+    
 
   def build_forms_table(self):
     style = ttk.Style()
@@ -607,7 +628,7 @@ class Viewport:
     self.root.bind("<Control-z>", lambda e: self.undo())
     # self.root.bind("<KeyPress-h>", lambda e: self.camera.rotate_left() or self.update())
     self.canva.bind("<B1-Motion>", self.on_mouse_drag)
-    #self.drag_cursor_button.bind("<Button-1>", self.enable_drag_cursor)
+    self.drag_cursor_button.bind("<Button-1>", self.enable_drag_cursor)
     
   def canva_click(self, event):
     if self.cursor_type == CursorTypes.NORMAL:
@@ -692,7 +713,7 @@ class Viewport:
       prev = point
     
     self.canva.create_window(10, 10, anchor="nw", window=self.normal_cursor_button)
-    #self.canva.create_window(10, 50, anchor="nw", window=self.drag_cursor_button)
+    self.canva.create_window(10, 50, anchor="nw", window=self.drag_cursor_button)
     #self.canva.create_window(10, 90, anchor="nw", window=self.rotate_canvas_button)
     self.canva.create_window(10, self.height - 90, anchor="nw", window=self.rotate_canvas_left_button)
     self.canva.create_window(60, self.height - 90, anchor="nw", window=self.rotate_canvas_right_button)
