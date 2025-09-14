@@ -24,7 +24,9 @@ class Camera:
     self.transform_matrix: np.ndarray = np.eye(2)
     self.max_zoom = 100.0
     self.min_zoom = 0.1
-
+    self.h_viewport_margin = int(0.1 * self.viewport_height)
+    self.v_viewport_margin = int(0.02 * self.viewport_width)
+    
     UP = np.array([0, 1, 0])
     if np.array_equal(normal, UP) or np.array_equal(normal, -UP):
       self.right = np.array([1, 0, 0])
@@ -134,6 +136,14 @@ class Camera:
 
   def viewport_to_world(self, x: float, y: float) -> Point:
     return self.camera_to_world(*self.viewport_to_camera(x, y))
+    
+  def is_point_in_viewport(self, point: Point) -> bool:
+    x, y = self.world_to_camera(point)
+    half_width = (self.viewport_width / self.zoom) / 2
+    half_height = (self.viewport_height / self.zoom) / 2
+    center_x, center_y = self.camera_focus
+    return (center_x - half_width <= x <= center_x + half_width and
+            center_y - half_height <= y <= center_y + half_height)
 
 @dataclass
 class ScreenWireframe:

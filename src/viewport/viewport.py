@@ -6,6 +6,7 @@ from components.toggle_switch import *
 from components.color_scheme import ColorScheme
 from data.usr_preferences import *
 from components.my_types import Point, CursorTypes
+from .clipping import Clipping, ClippingAlgorithm
 
 #from .ui_builder import build_ui
 
@@ -31,6 +32,7 @@ class Viewport:
     self.preferences = load_user_preferences()
     self.show_onboarding = self.preferences.get("show_onboarding", True)
     self.theme = self.preferences.get("theme", "light")
+    self.clipping_algorithm = ClippingAlgorithm[self.preferences.get("clipping_algorithm", "COHEN_SUTHERLAND")]
 
     # Ui components
     self.root: tk.Tk = tk.Tk()
@@ -41,7 +43,7 @@ class Viewport:
     self.start_x = None
     self.start_y = None
 
-    self.canva = tk.Canvas(self.root, background=ColorScheme.LIGHT_BG.value, width=int(0.8 * self.width), height=int(0.8 * self.height))
+    self.canva = tk.Canvas(self.root, background=ColorScheme.LIGHT_BG.value, width=int(self.camera.viewport_width+ self.camera.v_viewport_margin), height=int(self.camera.viewport_height + self.camera.h_viewport_margin))
     self.normal_cursor_button = tk.Button(self.canva, text="➤", font=("Arial",12), command=self.enable_normal_cursor, bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
     self.drag_cursor_button = tk.Button(self.canva, text="✥", font=("Arial",12), bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
     #self.rotate_canvas_button = tk.Button(self.canva, text="↻", font=("Arial",12), command=self.enable_rotate_window_cursor, bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
@@ -53,7 +55,7 @@ class Viewport:
 
     # creates elements on the right
     self.right_panel = tk.Frame(self.root)
-    self.right_panel.grid(row=0, column=4, rowspan=10, columnspan=7, sticky="nsew", padx=5, pady=5)
+    self.right_panel.grid(row=0, column=4, rowspan=15, columnspan=7, sticky="nsew", padx=5, pady=5)
     self.right_panel.grid_columnconfigure(0, weight=1)
     
     self.root.protocol("WM_DELETE_WINDOW", self.exit)
@@ -61,9 +63,17 @@ class Viewport:
     self.toggle_light_dark = ToggleSwitch(self.right_panel, width=80, height=40, on_toggle=self.toggle_light_dark_mode, bg=ColorScheme.LIGHT_BG.value if self.theme == "light" else ColorScheme.DARK_BG.value)
     self.help_button = tk.Button(self.right_panel, text="Help", command=self.show_help, bg=ColorScheme.DEFAULT_BUTTON_COLOR.value)
 
+
+    self.clipping_frame = tk.Frame(self.root)
+    self.clipping_frame.grid(row=7, column=5, columnspan=1, sticky="nsew", pady=5)
+    self.co_btn = tk.Radiobutton(self.clipping_frame, text="Cohen-Sutherland", variable=tk.IntVar(value=self.clipping_algorithm.value), value=ClippingAlgorithm.COHEN_SUTHERLAND.value, command=lambda: self.set_clipping_algorithm(ClippingAlgorithm.COHEN_SUTHERLAND))
+    self.lb_btn = tk.Radiobutton(self.clipping_frame, text="Liang-Barsky", variable=tk.IntVar(value=self.clipping_algorithm.value), value=ClippingAlgorithm.LIANG_BARSKY.value, command=lambda: self.set_clipping_algorithm(ClippingAlgorithm.LIANG_BARSKY))
+    self.co_btn.grid(row=0, column=0, sticky="nw")
+    self.lb_btn.grid(row=0, column=1, sticky="nw")
+
     # colors
     self.color_button_frame = tk.Frame(self.root)
-    self.color_button_frame.grid(row=5, column=5, rowspan=1, columnspan=1, sticky="ns")
+    self.color_button_frame.grid(row=8, column=5, rowspan=1, columnspan=1)
 
     self.change_line_color_button = tk.Button(self.color_button_frame, text="Line Color", command=self.change_line_color)
     self.change_fill_color_button = tk.Button(self.color_button_frame, text="Fill Color", command=self.change_fill_color)
@@ -80,7 +90,7 @@ class Viewport:
 
     # transform frame
     self.transform_widget_frame = tk.Frame(self.root)
-    self.transform_widget_frame.grid(row=2, column=5, columnspan=2, sticky="nsew")
+    self.transform_widget_frame.grid(row=2, column=5, columnspan=2, pady=5,sticky="nsew")
     self.transform_widget_frame.grid_columnconfigure(0, weight=1)
     self.transform_widget_frame.grid_columnconfigure(1, weight=1)
     self.transform_widget_frame.config(width=100, height=100)
@@ -167,27 +177,23 @@ class Viewport:
     end = ( max_range // step + 1 ) * step
 
     for i in range(start, end, step):
-        start_h = self.camera.world_to_viewport(np.array([-max_range, 0, i]))
-        end_h = self.camera.world_to_viewport(np.array([max_range, 0, i]))
-        self.canva.create_line(
-            start_h[0], start_h[1], end_h[0], end_h[1],
-            fill=ColorScheme.LIGHT_DEBUG_GRID.value if self.theme == "light" else ColorScheme.DARK_DEBUG_GRID.value
-        )
+      start_h = self.camera.world_to_viewport(np.array([-max_range, 0, i]))
+      end_h = self.camera.world_to_viewport(np.array([max_range, 0, i]))
+      self.canva.create_line(
+          start_h[0], start_h[1], end_h[0], end_h[1],
+          fill=ColorScheme.LIGHT_DEBUG_GRID.value if self.theme == "light" else ColorScheme.DARK_DEBUG_GRID.value
+      )
 
-        start_v = self.camera.world_to_viewport(np.array([i, 0, -max_range]))
-        end_v = self.camera.world_to_viewport(np.array([i, 0, max_range]))
-        self.canva.create_line(
-            start_v[0], start_v[1], end_v[0], end_v[1],
-            fill=ColorScheme.LIGHT_DEBUG_GRID.value if self.theme == "light" else ColorScheme.DARK_DEBUG_GRID.value
-        )
+      start_v = self.camera.world_to_viewport(np.array([i, 0, -max_range]))
+      end_v = self.camera.world_to_viewport(np.array([i, 0, max_range]))
+      self.canva.create_line(
+          start_v[0], start_v[1], end_v[0], end_v[1],
+          fill=ColorScheme.LIGHT_DEBUG_GRID.value if self.theme == "light" else ColorScheme.DARK_DEBUG_GRID.value
+      )
 
     origin = self.camera.world_to_viewport(np.array([0, 0, 0]))
     self.canva.create_text(origin[0] + 15, origin[1] - 10, text="(0,0)", fill=ColorScheme.LIGHT_TEXT.value if self.theme == "light" else ColorScheme.DARK_TEXT.value, font=("Arial", 10, "bold"))
-    # self.canva.create_text(origin[0] + 15, origin[1] + 10, text="Z+", fill=ColorScheme.LIGHT_TEXT.value if self.theme == "light" else ColorScheme.DARK_TEXT.value, font=("Arial", 10))
-    # self.canva.create_text(origin[0] - 15, origin[1] + 10, text="Z-", fill=ColorScheme.LIGHT_TEXT.value if self.theme == "light" else ColorScheme.DARK_TEXT.value, font=("Arial", 10))
-    # self.canva.create_text(origin[0] + 10, origin[1] - 15, text="X+", fill=ColorScheme.LIGHT_TEXT.value if self.theme == "light" else ColorScheme.DARK_TEXT.value, font=("Arial", 10))
-    # self.canva.create_text(origin[0] - 10, origin[1] + 15, text="X-", fill=ColorScheme.LIGHT_TEXT.value if self.theme == "light" else ColorScheme.DARK_TEXT.value, font=("Arial", 10))
-
+    
   def toggle_light_dark_mode(self, state):
     self.theme = "light" if not state else "dark"
 
@@ -227,6 +233,11 @@ class Viewport:
       self.insert_x_label.config(bg=ColorScheme.DARK_BG.value, fg=ColorScheme.DARK_TEXT.value)
       self.insert_y_label.config(bg=ColorScheme.DARK_BG.value, fg=ColorScheme.DARK_TEXT.value)
       self.forms_table_frame.config(bg=ColorScheme.DARK_CANVAS.value)
+
+      self.clipping_frame.config(bg=ColorScheme.DARK_BG.value)
+      self.co_btn.config(bg=ColorScheme.DARK_BG.value, fg=ColorScheme.DARK_TEXT.value, selectcolor=ColorScheme.DARK_BG.value)
+      self.lb_btn.config(bg=ColorScheme.DARK_BG.value, fg=ColorScheme.DARK_TEXT.value, selectcolor=ColorScheme.DARK_BG.value)
+      
     else:
       self.root.config(bg=ColorScheme.LIGHT_BG.value)
       self.canva.config(bg=ColorScheme.LIGHT_CANVAS.value)
@@ -262,9 +273,29 @@ class Viewport:
       self.change_point_radius_button.config(bg=ColorScheme.DARK_HIGH_CONTRAST_BUTTON.value, fg=ColorScheme.DARK_HIGH_CONTRAST_TEXT.value)
       self.insert_x_label.config(bg=ColorScheme.LIGHT_BG.value, fg=ColorScheme.LIGHT_TEXT.value)
       self.insert_y_label.config(bg=ColorScheme.LIGHT_BG.value, fg=ColorScheme.LIGHT_TEXT.value)
+      
+      self.clipping_frame.config(bg=ColorScheme.LIGHT_BG.value)
+      self.co_btn.config(bg=ColorScheme.LIGHT_BG.value, fg=ColorScheme.LIGHT_TEXT.value, selectcolor=ColorScheme.LIGHT_BG.value)
+      self.lb_btn.config(bg=ColorScheme.LIGHT_BG.value, fg=ColorScheme.LIGHT_TEXT.value, selectcolor=ColorScheme.LIGHT_BG.value)
+      
       self.forms_table_frame.config(bg=ColorScheme.LIGHT_CANVAS.value)
       self.formsTable.config()
+    
     self.build_forms_table()
+    self.update()
+    
+  def set_clipping_algorithm(self, algorithm: ClippingAlgorithm):
+    self.clipping_algorithm = algorithm
+    self.preferences["clipping_algorithm"] = algorithm.name
+    save_user_preferences(self.preferences)
+    
+    # toogle the radio buttons
+    if algorithm == ClippingAlgorithm.COHEN_SUTHERLAND:
+      self.co_btn.select()
+      self.lb_btn.deselect()
+    elif algorithm == ClippingAlgorithm.LIANG_BARSKY:
+      self.lb_btn.select()
+      self.co_btn.deselect()
     self.update()
     
   def setup_grid(self):
@@ -272,7 +303,7 @@ class Viewport:
       self.root.grid_rowconfigure(i, weight=1)
       self.root.grid_columnconfigure(i, weight=1)
       
-    for i in range(11, 21):
+    for i in range(11, 31):
       self.root.grid_rowconfigure(i, weight=0)
 
     self.root.resizable(False, False) # redimensionar travado
@@ -324,49 +355,49 @@ class Viewport:
       self.update()
 
   def apply_transform(self, pivot=None):
-      if not self.m00_input.get(): self.m00_value.set("1.0")
-      if not self.m01_input.get(): self.m01_value.set("0.0")
-      if not self.m10_input.get(): self.m10_value.set("0.0")
-      if not self.m11_input.get(): self.m11_value.set("1.0")
+    if not self.m00_input.get(): self.m00_value.set("1.0")
+    if not self.m01_input.get(): self.m01_value.set("0.0")
+    if not self.m10_input.get(): self.m10_value.set("0.0")
+    if not self.m11_input.get(): self.m11_value.set("1.0")
 
-      selected_item = self.formsTable.selection()
-      if not selected_item:
-          messagebox.showwarning("Aviso", "Nenhum objeto selecionado.")
-          return
+    selected_item = self.formsTable.selection()
+    if not selected_item:
+      messagebox.showwarning("Aviso", "Nenhum objeto selecionado.")
+      return
 
-      try:
-          m00 = float(self.m00_value.get())
-          m01 = float(self.m01_value.get())
-          m10 = float(self.m10_value.get())
-          m11 = float(self.m11_value.get())
-      except ValueError:
-          messagebox.showerror("Erro", "Valores inválidos para a matriz.")
-          return
+    try:
+      m00 = float(self.m00_value.get())
+      m01 = float(self.m01_value.get())
+      m10 = float(self.m10_value.get())
+      m11 = float(self.m11_value.get())
+    except ValueError:
+      messagebox.showerror("Erro", "Valores inválidos para a matriz.")
+      return
 
-      item_id = self.formsTable.item(selected_item[0], "tags")[0]
-      target = next((o for o in self.objects if str(o.id) == item_id), None)
-      if target is None:
-          messagebox.showwarning("Aviso", "Objeto não encontrado.")
-          return
+    item_id = self.formsTable.item(selected_item[0], "tags")[0]
+    target = next((o for o in self.objects if str(o.id) == item_id), None)
+    if target is None:
+      messagebox.showwarning("Aviso", "Objeto não encontrado.")
+      return
 
-      A = np.array([[m00, m01, 0.0],
-                    [m10, m11, 0.0],
-                    [0.0, 0.0, 1.0]], dtype=float)
-      
-      if pivot is None:
-          cx, cz = float(target.center[0]), float(target.center[2])
-      else:
-          cx, cz = pivot
+    A = np.array([[m00, m01, 0.0],
+                  [m10, m11, 0.0],
+                  [0.0, 0.0, 1.0]], dtype=float)
+    
+    if pivot is None:
+      cx, cz = float(target.center[0]), floatransform_t(target.center[2])
+    else:
+      cx, cz = pivot
 
-      T = np.array([[1,0,cx],[0,1,cz],[0,0,1]])
-      Ti = np.array([[1,0,-cx],[0,1,-cz],[0,0,1]])
-      M = T @ A @ Ti
+    T = np.array([[1,0,cx],[0,1,cz],[0,0,1]])
+    Ti = np.array([[1,0,-cx],[0,1,-cz],[0,0,1]])
+    M = T @ A @ Ti
 
-      target.transform_matrix = M @ target.transform_matrix
-      target.apply_matrix()
+    target.transform_matrix = M @ target.transform_matrix
+    target.apply_matrix()
 
-      target.transform2d_xz(M)
-      self.update()
+    target.transform2d_xz(M)
+    self.update()
 
   def rotate(self, direction: str):
     # only rotates if an object is selected
@@ -376,9 +407,9 @@ class Viewport:
     rotate_degrees = self.rotate_degrees.get() if self.rotate_degrees.get() else "15"
   
     if direction == "left":
-        self.rotation_angle -= float(rotate_degrees)
+      self.rotation_angle -= float(rotate_degrees)
     elif direction == "right":
-        self.rotation_angle += float(rotate_degrees)
+      self.rotation_angle += float(rotate_degrees)
     else:
       return
 
@@ -463,15 +494,15 @@ class Viewport:
 
     selected_item = self.formsTable.selection()
     if not selected_item:
-        messagebox.showwarning("Aviso", "Nenhum objeto selecionado.")
-        return
+      messagebox.showwarning("Aviso", "Nenhum objeto selecionado.")
+      return
 
     item_id = self.formsTable.item(selected_item[0], "tags")[0]
     target = next((o for o in self.objects if str(o.id) == item_id), None)
 
     if target is None:
-        messagebox.showwarning("Aviso", "Objeto não encontrado.")
-        return
+      messagebox.showwarning("Aviso", "Objeto não encontrado.")
+      return
     target.transform2d_xz(translation_matrix)
     # else:
     #     for target in self.objects:
@@ -533,6 +564,9 @@ class Viewport:
     self.change_point_color_button.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
     self.change_point_radius_button.grid(row=1, column=2, sticky="ew", padx=5, pady=5)
 
+    # self.lb_btn.grid(row=0, column=0)
+    # self.co_btn.grid(row=1, column=0)
+
   def show_help(self):
     # opens window with readme content
     help_window = tk.Toplevel(self.root)
@@ -548,8 +582,6 @@ class Viewport:
       help_text.insert(tk.END, content)
       
     help_text.config(state=tk.DISABLED)  # make the text read-only
-    
-    
 
   def build_forms_table(self):
     style = ttk.Style()
@@ -578,7 +610,7 @@ class Viewport:
               foreground=[('selected', selected_fg)])
 
     self.forms_table_frame = tk.Frame(self.root, width=400, height=200, background=bg_color)
-    self.forms_table_frame.grid(row=6, column=4, columnspan=7, rowspan=6, sticky="nsew")
+    self.forms_table_frame.grid(row=9, column=4, columnspan=7, rowspan=3, sticky="nsew")
     self.forms_table_frame.grid_rowconfigure(0, weight=1)
     self.forms_table_frame.grid_columnconfigure(0, weight=1)
 
@@ -666,10 +698,18 @@ class Viewport:
       all_objects += self.debug_objects
       self.build_debug_grid()
       self.canva.create_line(0, self.height*0.4, self.width, self.height*0.4, fill="blue")
-      self.canva.create_line(self.width*0.4, 0, self.width*0.4, self.height, fill="blue")
-      
+      self.canva.create_line(self.width*0.4, 0, self.width*0.4, self.height, fill="blue")  
+          
+    x0 = self.camera.h_viewport_margin
+    y0 = self.camera.v_viewport_margin
+    x1 = self.camera.viewport_width - self.camera.h_viewport_margin
+    y1 = self.camera.viewport_height - self.camera.v_viewport_margin
+    window = [x0, y0, x1, y1]
+    clipping = Clipping(window)
+    #clipped_objects = clipping.clip(all_objects, self.clipping_algorithm)
+    clipped_objects = all_objects
     
-    for obj in all_objects:
+    for obj in clipped_objects:
       figures = obj.figures()
       if isinstance(obj, PolygonObject):
         for edge in figures:
@@ -718,6 +758,9 @@ class Viewport:
     self.canva.create_window(10, self.height - 90, anchor="nw", window=self.rotate_canvas_left_button)
     self.canva.create_window(60, self.height - 90, anchor="nw", window=self.rotate_canvas_right_button)
     self.canva.create_window(110, self.height - 90, anchor="nw", window=self.rotate_canvas_entry)
+    
+    # draws clipping area border
+    self.draw_viewport_border()
 
   def run(self) -> list[Wireframe]:
     self.root.mainloop()
@@ -754,6 +797,17 @@ class Viewport:
       self.objects = [obj for obj in self.objects if str(obj.id) != item_id]
       self.update()
       
+  def draw_viewport_border(self):
+    x0 = self.camera.h_viewport_margin
+    y0 = self.camera.v_viewport_margin
+    x1 = self.camera.viewport_width - self.camera.h_viewport_margin
+    y1 = self.camera.viewport_height - self.camera.v_viewport_margin
+
+    print('VViewport area:', x0, y0, x1, y1)
+    print('Canvas area:', 0, 0, self.width, self.height)
+    print('Camera area:', self.camera.viewport_width, self.camera.viewport_height)
+    self.canva.create_rectangle(x0, y0, x1, y1, outline="red", width=2)
+
   def change_point_color(self):
     selected_item = self.formsTable.selection()
     
