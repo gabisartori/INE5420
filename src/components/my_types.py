@@ -5,6 +5,6 @@ from enum import Enum
 Point: TypeAlias = np.ndarray
 
 class CursorTypes(Enum):
-    NORMAL = 1
-    DRAG = 2
-    ROTATE_WINDOW = 3
+  NORMAL = 1
+  DRAG = 2
+  ROTATE_WINDOW = 3

@@ -1,14 +1,12 @@
 import numpy as np
-import math
 
-import tkinter as tk
 from dataclasses import dataclass
 from components.my_types import Point
 
 def normalize(v: Point) -> Point:
-    """Normalize a vector."""
-    norm = np.linalg.norm(v)
-    return v / norm if norm != 0 else v
+  """Normalize a vector."""
+  norm = np.linalg.norm(v)
+  return v / norm if norm != 0 else v
 
 class Camera:
   def __init__(self, normal: Point, position: Point, viewport_width: int, viewport_height: int, zoom: float=1.0):
@@ -111,7 +109,7 @@ class Camera:
     t = sum(self.normal[i] * (self.position[i] - point[i]) for i in range(len(point)))
     t /= sum(self.normal[i] * self.normal[i] for i in range(len(point)))
     c = np.array([point[i] + t * self.normal[i] for i in range(len(point))])
-    
+
     v = c - self.position
     return np.dot(v, self.right), np.dot(v, self.up)
 
@@ -142,8 +140,7 @@ class Camera:
     half_width = (self.viewport_width / self.zoom) / 2
     half_height = (self.viewport_height / self.zoom) / 2
     center_x, center_y = self.camera_focus
-    return (center_x - half_width <= x <= center_x + half_width and
-            center_y - half_height <= y <= center_y + half_height)
+    return center_x - half_width <= x <= center_x + half_width and center_y - half_height <= y <= center_y + half_height
 
 @dataclass
 class ScreenWireframe:

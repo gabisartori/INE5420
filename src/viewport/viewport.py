@@ -7,6 +7,7 @@ from components.color_scheme import ColorScheme
 from data.usr_preferences import *
 from components.my_types import Point, CursorTypes
 from .clipping import Clipping, ClippingAlgorithm
+import math
 
 #from .ui_builder import build_ui
 
@@ -187,8 +188,8 @@ class Viewport:
       start_v = self.camera.world_to_viewport(np.array([i, 0, -max_range]))
       end_v = self.camera.world_to_viewport(np.array([i, 0, max_range]))
       self.canva.create_line(
-          start_v[0], start_v[1], end_v[0], end_v[1],
-          fill=ColorScheme.LIGHT_DEBUG_GRID.value if self.theme == "light" else ColorScheme.DARK_DEBUG_GRID.value
+        start_v[0], start_v[1], end_v[0], end_v[1],
+        fill=ColorScheme.LIGHT_DEBUG_GRID.value if self.theme == "light" else ColorScheme.DARK_DEBUG_GRID.value
       )
 
     origin = self.camera.world_to_viewport(np.array([0, 0, 0]))
@@ -236,8 +237,7 @@ class Viewport:
 
       self.clipping_frame.config(bg=ColorScheme.DARK_BG.value)
       self.co_btn.config(bg=ColorScheme.DARK_BG.value, fg=ColorScheme.DARK_TEXT.value, selectcolor=ColorScheme.DARK_BG.value)
-      self.lb_btn.config(bg=ColorScheme.DARK_BG.value, fg=ColorScheme.DARK_TEXT.value, selectcolor=ColorScheme.DARK_BG.value)
-      
+      self.lb_btn.config(bg=ColorScheme.DARK_BG.value, fg=ColorScheme.DARK_TEXT.value, selectcolor=ColorScheme.DARK_BG.value) 
     else:
       self.root.config(bg=ColorScheme.LIGHT_BG.value)
       self.canva.config(bg=ColorScheme.LIGHT_CANVAS.value)
@@ -380,14 +380,14 @@ class Viewport:
       messagebox.showwarning("Aviso", "Objeto não encontrado.")
       return
 
-    A = np.array([[m00, m01, 0.0],
-                  [m10, m11, 0.0],
-                  [0.0, 0.0, 1.0]], dtype=float)
+    A = np.array([
+      [m00, m01, 0.0],
+      [m10, m11, 0.0],
+      [0.0, 0.0, 1.0]
+    ])
     
-    if pivot is None:
-      cx, cz = float(target.center[0]), floatransform_t(target.center[2])
-    else:
-      cx, cz = pivot
+    if pivot is None: cx, cz = float(target.center[0]), floatransform_t(target.center[2])
+    else: cx, cz = pivot
 
     T = np.array([[1,0,cx],[0,1,cz],[0,0,1]])
     Ti = np.array([[1,0,-cx],[0,1,-cz],[0,0,1]])

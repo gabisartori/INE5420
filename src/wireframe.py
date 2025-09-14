@@ -35,11 +35,11 @@ class Wireframe:
   def apply_matrix(self):
     new_pts = []
     for p in self.points:
-        x, z = float(p[0]), float(p[2])
-        x2, z2, _ = self.transform_matrix @ np.array([x, z, 1.0])
-        q = p.astype(float).copy()
-        q[0], q[2] = x2, z2
-        new_pts.append(q)
+      x, z = float(p[0]), float(p[2])
+      x2, z2, _ = self.transform_matrix @ np.array([x, z, 1.0])
+      q = p.astype(float).copy()
+      q[0], q[2] = x2, z2
+      new_pts.append(q)
     self.points = new_pts
     self.center = np.mean(np.stack(self.points), axis=0)
     self.transform_matrix = np.identity(3)  # Reset após aplicar
@@ -58,11 +58,11 @@ class Wireframe:
       """Aplica M (3x3 homogênea) aos pontos no plano XZ, mantendo Y."""
       new_pts = []
       for p in self.points:
-          x, z = float(p[0]), float(p[2])
-          x2, z2, _ = M @ np.array([x, z, 1.0])
-          q = p.astype(float).copy()
-          q[0], q[2] = x2, z2
-          new_pts.append(q)
+        x, z = float(p[0]), float(p[2])
+        x2, z2, _ = M @ np.array([x, z, 1.0])
+        q = p.astype(float).copy()
+        q[0], q[2] = x2, z2
+        new_pts.append(q)
       self.points = new_pts
       self.center = np.mean(np.stack(self.points), axis=0)
 

@@ -11,6 +11,7 @@ Ambos argumentos são opcionais. Caso não haja arquivo de entrada, o SGI inciar
 ```
 python3 src/main.py -h
 ```
+
 Retorna a lista de funcionalidades do programa
 
 ## Controles
