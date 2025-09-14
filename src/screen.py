@@ -32,28 +32,20 @@ class Camera:
     else:
       self.right = normalize(np.cross(self.normal, UP))
       self.up = normalize(np.cross(self.right, self.normal))
-      
-  def move_up(self):
-      direction = self.up
-      self.position += direction * max(self.speed / self.zoom, 1)
 
-  def move_right(self):
-      direction = self.right
-      self.position += direction * max(self.speed / self.zoom, 1)
+  def move_up(self): self.position[1] += max(self.speed/self.zoom, 1)
 
-  # def move_up(self): self.position[2] += max(self.speed/self.zoom, 1)
-
-  # def move_down(self): self.position[2] -= max(self.speed/self.zoom, 1)
+  def move_down(self): self.position[1] -= max(self.speed/self.zoom, 1)
 
   def move_left(self): self.position[0] -= max(self.speed/self.zoom, 1)
 
   def move_right(self): self.position[0] += max(self.speed/self.zoom, 1)
 
-  def move_below(self): self.position[1] -= max(self.speed/self.zoom, 1)
+  def move_below(self): self.position[2] -= max(self.speed/self.zoom, 1)
 
-  def move_above(self): self.position[1] += max(self.speed/self.zoom, 1)
+  def move_above(self): self.position[2] += max(self.speed/self.zoom, 1)
   
-  def rotate(self, degrees=5):
+  def rotate(self, degrees: int=5):
     degrees = int(degrees)
     angle_rad = np.radians(degrees)
 
@@ -83,6 +75,7 @@ class Camera:
   def zoom_out(self, x, y):
     if self.zoom >= self.min_zoom: self.zoom /= 1.1
 
+  # TODO: Add a way for the user to call this function
   def recenter(self):
     self.position = np.array([0, 100, 0])
     self.normal = np.array([0, -1, 0])

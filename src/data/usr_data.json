@@ -1,6 +1,6 @@
 {
-    "user_preferences": {
-        "theme": "dark",
-        "show_onboarding": true
-    }
+  "user_preferences": {
+    "theme": "light",
+    "show_onboarding": true
+  }
 }

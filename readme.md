@@ -16,11 +16,20 @@ Retorna a lista de funcionalidades do programa
 
 ## Controles
 As utilidades do SGI são acessíveis por meio das seguintes entradas de instruções
-- **Navegação:** `a,w,s,d` para se mover pare esquerda, cima, baixo e direita respectivamente. Além disso, clicar com o botão direito do mouse na tela irá centralizar a posição da janela no ponto clicado.
+- **Display file:** O SGI recebe como argumentos caminhos para arquivos que podem ser usados para carregar objetos já existentes ou para armazenar os objetos criados durante a execução. Detalhes em [#Execução]
+- **Navegação:** `a,w,s,d` para se mover para esquerda, cima, baixo e direita respectivamente. Além disso, clicar com o botão direito do mouse na tela irá centralizar a posição da janela no ponto clicado.
 - **Zoom:** Scroll do mouse para cima para aumentar e baixo para diminuir
-- **Inserir objetos:** Por padrão, cada clique na tela insere um ponto na posição clicada. O usuário pode apertar o botão "Build" para entrar em modo construção. Durante esse modo, os pontos inseridos serão armazenados para construir um objeto. Quando satisfeito, o usuário pode usar os botões "Lines" e "Polygon" para encerrar a construção. Lines consolidará o conjunto de linhas já pre-visualizado durante o modo de construção enquanto Polygon irá construir uma nova linha que liga o primeiro e último ponto construídos de forma a fechar um polígono.
-- **Alterar propriedades dos objetos:** No canto direito inferior da interface, se encontra uma lista de todos os objetos armazenados no SGI, basta clicar no objeto desejado e usar os outros botões da interface para escolher qual atributo será alterado e qual será o novo valor.
-- **Objetos de auxílio:** Ao apertar o botão do meio do mouse, pode-se ativar a visualização de linhas que facilitam a identificação do centro da tela e, também, um ponto que indica a origem do mundo.
-- **Transformadas 2D:** Todas as transformadas exigem que um objeto esteja selecionado. 
-- **Rotação de objetos:** Por padrão, um objeto será rotacionado em torno do seu próprio eixo. Para rotacionar ao longo de outro ponto ou em torno da origem do mundo(0,0), basta fornecê-lo no input "Around Point". Se nenhum valor for fornecido, o objeto será rotacionado em 15 graus.
-- **Rotação da Window:** Quando ângulo específico não for inserido, rotaciona a janela em 5 graus.
+- **Inserir objetos:**
+  - **Ponto:** Cada clique no canva por padrão irá inserir um ponto
+  - **Linhas:** O botão *Build* faz com que os pontos inseridos por cliques formem linhas interconectadas
+  - **Polígonos:** No modo *Build*, após inserir os pontos desejados, clicar no botão *Polígono* vai unir o primeiro e último ponto inseridos para fechar o polígono.  
+- **Manipulação de objetos:** Na lista de objetos, clique no objeto cuja propriedade deseja alterar e siga as instruções condizentes.
+  - **Translação:** Preencha os valores de deslocamento no eixo X e Y e aperte o botão *Deslocar*
+  - **Rotações em torno:**
+    - **do próprio eixo:** Com os campos X e Y vazios, e o campo de *ângulo* preenchido, aperte o botão *Girar*. Caso *ângulo* não seja um número válido, o objeto será girado em 15º.
+    - **de um ponto específico:** Preencha os campos *X* e *Y* e proceda como na rotação em torno do próprio eixo.
+    - **da origem:** Apenas aplicar a rotação em ponto específico no ponto (0, 0)
+  - **Escalonamento natural:** Preencha o campo *Fator* e aperte o botão *Escalar*
+  - **Outras propriedades:** Detalhes como cor, grossura da linha, etc são acessíveis pelo botão de *propriedades*
+- **Rotacionar Window:** Preencha o campo *ângulo* e aperte o botão *Rotacionar Window*
+- **Selecionar método de clipagem:** Na sessão *Métodos* do menu acima, selecione a opção desejada.
