@@ -3,7 +3,6 @@ sys.path.append("..")
 
 from enum import Enum
 import numpy as np
-from screen import Camera
 from wireframe import PolygonObject, Wireframe
 from components.my_types import Point
 
@@ -33,10 +32,8 @@ class Clipping:
         clipped = self.sutherland_hodgman_clip(obj)
         if clipped is not None:
           obj.points = clipped
-          obj.center = np.mean(np.stack(obj.points), axis=0)
         else:
           obj.points = []
-          obj.center = np.array([0,0,0])
       elif len(obj.points) == 2:
         p1, p2 = obj.points
         if algorithm == ClippingAlgorithm.COHEN_SUTHERLAND:
@@ -48,17 +45,12 @@ class Clipping:
         if clipped is not None:
           x0, y0, x1, y1 = clipped
           obj.points = [np.array([x0, p1[1], y0]), np.array([x1, p2[1], y1])]
-          obj.center = np.mean(np.stack(obj.points), axis=0)
         else:
           obj.points = []
-          obj.center = np.array([0,0,0])
       elif len(obj.points) == 1:
         p = obj.points[0]
         if not self.point_in_window(p[0], p[2]):
           obj.points = []
-          obj.center = np.array([0,0,0])
-        else:
-          obj.center = p
 
       clipped_objects.append(obj)
     return clipped_objects

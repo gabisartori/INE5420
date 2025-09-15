@@ -21,7 +21,7 @@ Alternativamente você pode implementar a interação com os objetos através do
 
 ## Requisitos
 - [-] Translações
-- [ ] Escalonamento "natural" em torno do centro do objeto
+- [-] Escalonamento "natural" em torno do centro do objeto
 - [-] Rotações:
   - [-]Em torno do centro do mundo
   - [-]Em torno do centro do objeto

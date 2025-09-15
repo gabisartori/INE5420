@@ -47,7 +47,7 @@ class Viewport:
     # Control buttons and input fields
     self.ui_build_button = tk.Button(self.root, text="Build", command=self.set_building)
     self.ui_close_polygon_button = tk.Button(self.root, text="Polígono", command=self.finish_polygon)
-    self.ui_object_properties_button = tk.Button(self.root, text="Propriedades", command=lambda: self.log("Função não implementada"))
+    self.ui_object_properties_button = tk.Button(self.root, text="Propriedades", command=self.properties_window)
     self.ui_rotate_object_button = tk.Button(self.root, text="Girar", command=self.rotate)
     self.ui_translate_object_button = tk.Button(self.root, text="Deslocar", command=self.translate)
     self.ui_scale_button = tk.Button(self.root, text="Escalar", command=self.scale_selected_object)
@@ -140,7 +140,6 @@ class Viewport:
     self.ui_scale_factor_label.grid(row=16, column=0, rowspan=1, columnspan=2, sticky="nsew")
     self.ui_scale_factor_input.grid(row=16, column=2, rowspan=1, columnspan=2, sticky="nsew")
 
-  # TODO: Don't touch
   def build_debug_grid(self):
     step = 75
     min_zoom = self.camera.min_zoom 
@@ -173,8 +172,6 @@ class Viewport:
     origin = self.camera.world_to_viewport(np.array([0, 0, 0]))
     self.canva.create_text(origin[0] + 15, origin[1] - 10, text="(0,0)", fill=ColorScheme.LIGHT_TEXT.value if self.theme == "light" else ColorScheme.DARK_TEXT.value, font=("Arial", 10, "bold"))
 
-  # TODO: Don't touch
-  # I touched it lmao fuck this shit
   def toggle_light_dark_mode(self, state: bool):
     self.theme = "light" if not state else "dark"
 
@@ -511,6 +508,39 @@ class Viewport:
           obj.fill_color = color[1]
           self.update()
         break
+
+  def properties_window(self):
+    target = self.get_selected_object()
+    tmp_window = tk.Toplevel(self.root)
+    tmp_window.title("Propriedades do Objeto")
+    tmp_window.resizable(False, False)
+    fill_color_label = tk.Label(tmp_window, text="Cor de preenchimento:")
+    line_color_label = tk.Label(tmp_window, text="Cor da linha:")
+    thickness_label = tk.Label(tmp_window, text="Espessura da linha:")
+    fill_color_button = tk.Button(tmp_window, text="Alterar", command=self.change_fill_color)
+    line_color_button = tk.Button(tmp_window, text="Alterar", command=self.change_line_color)
+    thickness_input = tk.Entry(tmp_window)
+    thickness_button = tk.Button(tmp_window, text="Alterar", command=lambda: self.change_point_radius() if isinstance(target, PointObject) else None)
+    
+    fill_color_label.grid(row=0, column=0)
+    fill_color_button.grid(row=0, column=1)
+    line_color_label.grid(row=1, column=0)
+    line_color_button.grid(row=1, column=1)
+    thickness_label.grid(row=2, column=0)
+    thickness_input.grid(row=2, column=1)
+    thickness_button.grid(row=3, column=0, columnspan=2)
+
+    match target:
+      case PointObject(_):
+        pass
+      case LineObject(_):
+        pass
+      case PolygonObject(_):
+        pass
+      case _:
+        self.log("Aviso: Nenhum objeto selecionado.")
+        tmp_window.destroy()
+        return
 
   def load_objects(self, objects: str) -> list[Wireframe]:
     if not objects: return []
