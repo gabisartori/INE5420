@@ -15,14 +15,13 @@ class Viewport:
 
     self.width: int = width
     self.height: int = height
-    self.objects: list[Wireframe] = self.load_objects(input) if input else []
     self.build: list[Point] = []
     self._building: bool = False
-    self.scale: float = 1.0
+    self.placed_objects_counter = 0
 
     self.debug: bool = debug
     self.debug_objects: list[Wireframe] = [PointObject("World Origin", np.array([0, 0, 0]), id=0)]
-    self.camera = Camera(np.array([0, 0, -1]), np.array([0, 0, 100]), width*2/3, height*2/3)
+    self.camera = Camera(np.array([0, 0, -1]), np.array([0, 0, 1]), width*2/3, height*2/3)
 
     # TODO: Move all of the functions in that file to here
     # TODO: Remove the unnecessary usage of self.theme instead of self.preferences["theme"], possibly turning self.preferences into a class of its own instead of it being a dict
@@ -51,7 +50,7 @@ class Viewport:
     self.ui_object_properties_button = tk.Button(self.root, text="Propriedades", command=lambda: self.log("Função não implementada"))
     self.ui_rotate_object_button = tk.Button(self.root, text="Girar", command=self.rotate)
     self.ui_translate_object_button = tk.Button(self.root, text="Deslocar", command=self.translate)
-    self.ui_scale_button = tk.Button(self.root, text="Escalar", command=lambda: self.log("Função não implementada"))
+    self.ui_scale_button = tk.Button(self.root, text="Escalar", command=self.scale_selected_object)
 
     self.ui_point_label = tk.Label(self.root, text="Ponto (x,y):")
     self.ui_point_x_input = tk.Entry(self.root)
@@ -111,9 +110,11 @@ class Viewport:
 
     self.build_ui()
     self.controls()
+    self.objects: list[Wireframe] = self.load_objects(input) if input else []
     self.update()
 
-  # TODO: your job for today lmao
+  # TODO: For some goddamn reason rowspan and columnspan are being ignored by most components
+  # Must make it so that the components respect the grid layout
   def build_ui(self):
     for i in range(12): self.root.columnconfigure(i, weight=1)
     for i in range(24): self.root.rowconfigure(i, weight=1)
@@ -188,9 +189,6 @@ class Viewport:
     
     self.update()
 
-  # TODO: Learn this topic
-  # TODO: When rebuilding the UI, use this function
-  # TODO: Remake this function, splitting object rotation from window rotation
   def rotate(self):
     '''Rotates something according to the inputs passed'''
     '''If no object is selected, it'll rotate the camera'''
@@ -209,58 +207,51 @@ class Viewport:
       try:
         rx = float(rx)
         ry = float(ry)
+        target.rotate(angle, np.array([rx, ry, 1]))
       # No valid point, rotate around the object's center
       except ValueError:
-        rx = target.get_center()[0]
-        ry = target.get_center()[1]
-        self.log(rx, ry)
-        self.log(target.points)
-      target.rotate(angle, np.array([rx, ry, target.center[2]]))
+        target.rotate(angle)
 
     # No object selected, rotate camera
     else:
-      self.log("Rotating camera")
       self.camera.rotate(angle)
 
     self.update()
 
-  def rotate_object(self, target: Wireframe, angle: float):
-    pass
-
   def translate(self):
-    tx = float(self.ui_point_x_input.get())
-    ty = float(self.ui_point_y_input.get())
-
-    translation_matrix = np.array([
-      [1, 0, tx],
-      [0, 1, ty],
-      [0, 0, 1]
-    ], dtype=float)
-
-    selected_item = self.ui_object_list.selection()
-    if not selected_item:
+    target = self.get_selected_object()
+    if target is None:
       self.log("Aviso: Nenhum objeto selecionado.")
       return
-
-    target = self.get_selected_object()
-
-    if target is None:
-      self.log("Aviso: Objeto não encontrado.")
+    try:
+      dx = float(self.ui_point_x_input.get())
+      dy = float(self.ui_point_y_input.get())
+    except ValueError:
+      self.log("Erro: Coordenadas inválidas.")
       return
-    
-    target.transform2d(translation_matrix)
+    target.translate(dx, dy)
+    self.update()
 
+  def scale_selected_object(self):
+    target = self.get_selected_object()
+    if target is None:
+      self.log("Aviso: Nenhum objeto selecionado.")
+      return
+    try: factor = float(self.ui_scale_factor_input.get())
+    except ValueError: factor = 1.5
+    if factor <= 0:
+      self.log("Erro: Fator de escala deve ser maior que zero.")
+      return
+    target.scale(factor)
     self.update()
 
   def set_building(self): 
     self.building = not self.building
     self.ui_build_button.config(relief=tk.SUNKEN if self.building else tk.RAISED)
-    # Exiting building mode, must finalize the current shape
+    # Exiting building mode, must finalize the built shape
     if not self.building:
       self.finish_lines()
 
-
-  # TODO: Update this so the button color will indicate the current mode
   def cancel_building(self):
     self.build.clear()
     self.building = False
@@ -330,24 +321,28 @@ class Viewport:
 
   def canva_click(self, event):
     if self.building: self.build.append(self.camera.viewport_to_world(event.x, event.y))
-    else:  self.objects.append(PointObject("Clicked Point", self.camera.viewport_to_world(event.x, event.y), id=10*len(self.objects)+1))
+    else:
+      self.objects.append(PointObject(f"Clicked Point", self.camera.viewport_to_world(event.x, event.y), id=self.placed_objects_counter))
+      self.placed_objects_counter += 1
     self.update()
 
   def finish_polygon(self):
     if len(self.build) < 3: 
       self.log("Erro: Pelo menos três pontos são necessários para formar um polígono.")
       return
-    
-    self.objects.append(PolygonObject("Polygon", self.build.copy(), id=10*len(self.objects)+1))
+
+    self.objects.append(PolygonObject("Polygon", self.build.copy(), id=self.placed_objects_counter))
+    self.placed_objects_counter += 1
     self.cancel_building()
 
   def finish_lines(self):
     if len(self.build) == 1:
-      self.objects.append(PointObject("Point", self.build[0], id=10*len(self.objects)+1))
+      self.objects.append(PointObject("Point", self.build[0], id=self.placed_objects_counter))
 
     for i in range(len(self.build) - 1):
       start, end = self.build[i:i+2]
-      self.objects.append(LineObject(f"Line {i+1}", start, end, id=10*len(self.objects)+1))
+      self.objects.append(LineObject(f"Line", start, end, id=self.placed_objects_counter))
+      self.placed_objects_counter += 1
 
     self.build.clear()
     self.building = False
@@ -390,18 +385,16 @@ class Viewport:
           
           # fecha o poligono se necessario
           if not np.array_equal(projected_points[0], projected_points[-1]):
-              projected_points.append(projected_points[0])
+            projected_points.append(projected_points[0])
 
           points = [coord for point in projected_points for coord in point]
           if len(points) >= 6:  
             self.canva.create_polygon(points, fill=obj.fill_color, outline=obj.color)
-
       else:
         for edge in figures:       
           if edge.end is not None:
             start, end = self.camera.world_to_viewport(edge.start), self.camera.world_to_viewport(edge.end)
             self.canva.create_line(start[0], start[1], end[0], end[1], fill=obj.color)
-          
           else:
             point = self.camera.world_to_viewport(edge.start)
             radius = obj.radius
@@ -513,7 +506,10 @@ class Viewport:
     if not objects: return []
     try:
       with open(objects, "r") as file:
-        return [Wireframe.from_string(line.strip()) for line in file if line.strip() and not line.startswith("#")]
+        lines = [line for line in file if line.strip() and not line.startswith("#")]
+        self.placed_objects_counter = len(lines)
+        return [Wireframe.from_string_id(line.strip(), i) for i, line in enumerate(lines)]
+
     except FileNotFoundError:
       self.log(f"Arquivo {objects} não encontrado.")
       return []
@@ -550,11 +546,10 @@ class Viewport:
   def get_selected_object(self) -> Wireframe | None:
     selected = self.ui_object_list.selection()
     selected_id = self.ui_object_list.item(selected[0], "tags")[0] if selected else None
-    print(selected_id)
-    return self.get_object_by_id(selected_id) if selected_id else None
+    return self.get_object_by_id(int(selected_id)) if selected_id else None
 
-  def get_object_by_id(self, id: str) -> Wireframe | None:
-    return next((o for o in self.objects if str(o.id) == id), None)
+  def get_object_by_id(self, id: int) -> Wireframe | None:
+    return next((o for o in self.objects if o.id == id), None)
 
   @property
   def building(self) -> bool: return self._building
