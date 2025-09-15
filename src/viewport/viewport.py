@@ -42,7 +42,7 @@ class Viewport:
     self.canva = tk.Canvas(self.root, background="white", height=height*5/6, width=width*2/3)
     
     # Log session
-    self.ui_log = scrolledtext.ScrolledText(self.root, bg="white", fg="black", state="disabled", font=("Arial", 10))
+    self.ui_log = scrolledtext.ScrolledText(self.root, bg="white", fg="black", state="disabled", font=("Arial", 10), height=20)
 
     # Control buttons and input fields
     self.ui_build_button = tk.Button(self.root, text="Build", command=self.set_building)
@@ -319,7 +319,17 @@ class Viewport:
     self.root.bind("<KeyPress-Escape>", lambda e: self.cancel_building())
     self.root.bind("<Control-z>", lambda e: self.undo())
 
+  def is_click_inside_viewport(self, x, y) -> bool:
+    x0 = self.camera.h_viewport_margin
+    y0 = self.camera.v_viewport_margin
+    x1 = self.camera.viewport_width - self.camera.h_viewport_margin
+    y1 = self.camera.viewport_height - self.camera.v_viewport_margin
+    return x0 <= x <= x1 and y0 <= y <= y1
+
   def canva_click(self, event):
+    # Ignore click if it's outside the viewport area
+    if not self.is_click_inside_viewport(event.x, event.y): return
+    
     if self.building: self.build.append(self.camera.viewport_to_world(event.x, event.y))
     else:
       self.objects.append(PointObject(f"Clicked Point", self.camera.viewport_to_world(event.x, event.y), id=self.placed_objects_counter))
