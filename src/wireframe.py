@@ -6,13 +6,16 @@ import numpy as np
 @dataclass
 class Wireframe:
   name: str
-  center: Point
   points: list[Point]
+  center: Point = field(init=False, repr=False)
   color: str = "black"
   fill_color: str = "white"
   id: int = 0
   radius: float = field(default=0.0, repr=False)
-  transform_matrix: np.ndarray = field(default_factory=lambda: np.identity(3), repr=False)
+  
+  def __post_init__(self): self.center = self.get_center()
+
+  def get_center(self) -> Point: return np.mean(self.points, axis=0).astype(int)
 
   def figures(self) -> list[ScreenWireframe]: raise NotImplementedError("Subclasses should implement this method")
 
@@ -31,59 +34,54 @@ class Wireframe:
       return LineObject(name, points[0], points[1])
     else:
       return PolygonObject(name, points)
-    
-  def apply_matrix(self):
-    new_pts = []
-    for p in self.points:
-      x, z = float(p[0]), float(p[2])
-      x2, z2, _ = self.transform_matrix @ np.array([x, z, 1.0])
-      q = p.astype(float).copy()
-      q[0], q[2] = x2, z2
-      new_pts.append(q)
-    self.points = new_pts
-    self.center = np.mean(np.stack(self.points), axis=0)
-    self.transform_matrix = np.identity(3)  # Reset após aplicar
 
-  def apply_transform(self, M: np.ndarray):
-    self.transform_matrix = M @ self.transform_matrix
-  
-  def apply_point(M, p):
-    x, z = float(p[0]), float(p[2])
-    x2, z2, _ = M @ np.array([x, z, 1])
-    q = p.astype(float).copy()
-    q[0], q[2] = x2, z2
-    return q
+  def rotate(self, degrees: int=5, point: Point | None=None) -> None:
+    """Rotate the object around a given point in the XY plane."""
+    M = np.array([
+      [np.cos(np.radians(degrees)), -np.sin(np.radians(degrees)), 0],
+      [np.sin(np.radians(degrees)),  np.cos(np.radians(degrees)), 0],
+      [0, 0, 1]
+    ])
+    if point is not None:
+      px = point[0]
+      py = point[1]
+    else:
+      px = self.center[0]
+      py = self.center[1]
+    T1 = np.array([
+      [1, 0, -px],
+      [0, 1, -py],
+      [0, 0, 1]
+    ])
+    T2 = np.array([
+      [1, 0, px],
+      [0, 1, py],
+      [0, 0, 1]
+    ])
+    M = T2 @ M @ T1
+    self.transform2d(M)
 
-  def transform2d_xz(self, M: np.ndarray) -> None:
-      """Aplica M (3x3 homogênea) aos pontos no plano XZ, mantendo Y."""
-      new_pts = []
-      for p in self.points:
-        x, z = float(p[0]), float(p[2])
-        x2, z2, _ = M @ np.array([x, z, 1.0])
-        q = p.astype(float).copy()
-        q[0], q[2] = x2, z2
-        new_pts.append(q)
-      self.points = new_pts
-      self.center = np.mean(np.stack(self.points), axis=0)
+  def transform2d(self, M: np.ndarray) -> None:
+    """Aplica M (3x3 homogênea) aos pontos no plano XZ, mantendo Y."""
+    self.points = [np.dot(M, p) for p in self.points]
 
 class PointObject(Wireframe):
   def __init__(self, name: str, center: Point, id: int = 0, radius: float = 2):
-    super().__init__(name, center, [center], id=id, radius=radius)
+    super().__init__(name, [center], id=id, radius=radius)
 
   def figures(self) -> list[ScreenWireframe]:
     return [ScreenWireframe(self.center)]
   
 class LineObject(Wireframe):
   def __init__(self, name: str, start: Point, end: Point, id: int = 0):
-    super().__init__(name, np.array([(start[0] + end[0]) // 2, (start[2] + end[2]) // 2]), [start, end], id=id)
+    super().__init__(name, [start, end], id=id)
 
   def figures(self) -> list[ScreenWireframe]:
     return [ScreenWireframe(self.points[0], self.points[1])]
 
 class PolygonObject(Wireframe):
   def __init__(self, name: str, points: list[Point], id: int = 0):
-    center = np.array([sum(p[n] for p in points) // len(points) for n in range(len(points[0]))])
-    super().__init__(name, center, points, id=id)
+    super().__init__(name, points, id=id)
 
   def figures(self) -> list[ScreenWireframe]:
     edges = []

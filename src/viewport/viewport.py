@@ -7,7 +7,6 @@ from components.color_scheme import ColorScheme
 from data.usr_preferences import *
 from components.my_types import Point, CursorTypes
 from .clipping import Clipping, ClippingAlgorithm
-import math
 
 class Viewport:
   def __init__(self, width, height, title="INE5420", input: str | None=None, output: str | None=None, debug: bool=False):
@@ -19,12 +18,11 @@ class Viewport:
     self.objects: list[Wireframe] = self.load_objects(input) if input else []
     self.build: list[Point] = []
     self._building: bool = False
-    self.rotation_angle: float = 0.0
     self.scale: float = 1.0
 
     self.debug: bool = debug
     self.debug_objects: list[Wireframe] = [PointObject("World Origin", np.array([0, 0, 0]), id=0)]
-    self.camera = Camera(np.array([0, 0, -1]), np.array([0, 0, 100]), width*0.8, height*0.8)
+    self.camera = Camera(np.array([0, 0, -1]), np.array([0, 0, 100]), width*2/3, height*2/3)
 
     # TODO: Move all of the functions in that file to here
     # TODO: Remove the unnecessary usage of self.theme instead of self.preferences["theme"], possibly turning self.preferences into a class of its own instead of it being a dict
@@ -42,16 +40,16 @@ class Viewport:
 
     # Ui components
     # Canva
-    self.canva = tk.Canvas(self.root, background="white")
+    self.canva = tk.Canvas(self.root, background="white", height=height*5/6, width=width*2/3)
     
     # Log session
-    self.ui_log = scrolledtext.ScrolledText(self.root, wrap=tk.WORD, bg="white", fg="black", state="disabled", height=5)
+    self.ui_log = scrolledtext.ScrolledText(self.root, bg="white", fg="black", state="disabled", font=("Arial", 10))
 
     # Control buttons and input fields
     self.ui_build_button = tk.Button(self.root, text="Build", command=self.set_building)
     self.ui_close_polygon_button = tk.Button(self.root, text="Polígono", command=self.finish_polygon)
     self.ui_object_properties_button = tk.Button(self.root, text="Propriedades", command=lambda: self.log("Função não implementada"))
-    self.ui_rotate_object_button = tk.Button(self.root, text="Girar", command=lambda: self.rotate("left"))
+    self.ui_rotate_object_button = tk.Button(self.root, text="Girar", command=self.rotate)
     self.ui_translate_object_button = tk.Button(self.root, text="Deslocar", command=self.translate)
     self.ui_scale_button = tk.Button(self.root, text="Escalar", command=lambda: self.log("Função não implementada"))
 
@@ -93,6 +91,23 @@ class Viewport:
     scrollbar_y.grid(row=0, column=1, rowspan=2, sticky="ns")
     scrollbar_x.grid(row=1, column=0, sticky="ew")
 
+    # Navbar menu
+    self.menubar = tk.Menu(self.root)
+
+    # Arquivo menu items
+    file_menu = tk.Menu(self.menubar, tearoff=0)
+    file_menu.add_command(label="Limpar tela", command=self.clear)
+    file_menu.add_command(label="Sair", command=self.exit)
+    self.menubar.add_cascade(label="Arquivo", menu=file_menu)
+    # Inserir menu items
+    # Configurações menu items
+    settings_menu = tk.Menu(self.menubar, tearoff=0)
+    self.clipping_algorithm = tk.StringVar(value="COHEN_SUTHERLAND")
+    settings_menu.add_radiobutton(label="Cohen-Sutherland", variable=self.clipping_algorithm, value="COHEN_SUTHERLAND", command=lambda: self.log("Algoritmo de clipagem alterado para Cohen-Sutherland"))
+    settings_menu.add_radiobutton(label="Liang-Barsky", variable=self.clipping_algorithm, value="LIANG_BARSKY", command=lambda: self.log("Algoritmo de clipagem alterado para Liang-Barsky"))
+
+    self.menubar.add_cascade(label="Configurações", menu=settings_menu)
+    self.root.config(menu=self.menubar)
 
     self.build_ui()
     self.controls()
@@ -101,29 +116,28 @@ class Viewport:
   # TODO: your job for today lmao
   def build_ui(self):
     for i in range(12): self.root.columnconfigure(i, weight=1)
-    for i in range(120): self.root.rowconfigure(i, weight=1)
-    
-    self.canva.grid(row=0, column=4, columnspan=8, rowspan=100, sticky="nsew")
-    self.ui_log.grid(row=100, column=4, columnspan=12, rowspan=20, sticky="nsew")
+    for i in range(24): self.root.rowconfigure(i, weight=1)
 
-    self.ui_build_button.grid(row=60, column=0, rowspan=1, columnspan=2, sticky="nsew")
-    self.ui_close_polygon_button.grid(row=60, column=2, rowspan=1, columnspan=2, sticky="nsew")
-    self.ui_rotate_object_button.grid(row=62, column=0, rowspan=1, columnspan=1, sticky="nsew")
-    self.ui_translate_object_button.grid(row=62, column=1, rowspan=1, columnspan=1, sticky="nsew")
-    self.ui_scale_button.grid(row=62, column=2, rowspan=1, columnspan=1, sticky="nsew")
-    self.ui_object_properties_button.grid(row=62, column=3, rowspan=1, columnspan=1, sticky="nsew")
+    self.canva.grid(row=0, column=4, columnspan=8, rowspan=20, sticky="nsew")
+    self.ui_log.grid(row=20, column=4, columnspan=12, rowspan=4, sticky="nsew")
 
-    self.ui_object_list_frame.grid(row=0, column=0, rowspan=60, columnspan=4, sticky="nsew")
+    self.ui_object_list_frame.grid(row=0, column=0, rowspan=12, columnspan=4, sticky="nsew")
 
-    self.ui_point_label.grid(row=63, column=0, rowspan=1, columnspan=2, sticky="nsew")
-    self.ui_point_x_input.grid(row=63, column=2, rowspan=1, columnspan=1, sticky="nsew")
-    self.ui_point_y_input.grid(row=63, column=3, rowspan=1, columnspan=1, sticky="nsew")
-    self.ui_degree_label.grid(row=64, column=0, rowspan=1, columnspan=2, sticky="nsew")
-    self.ui_degree_input.grid(row=64, column=2, rowspan=1, columnspan=2, sticky="nsew")
-    self.ui_scale_factor_label.grid(row=65, column=0, rowspan=1, columnspan=2, sticky="nsew")
-    self.ui_scale_factor_input.grid(row=65, column=2, rowspan=1, columnspan=2, sticky="nsew")
+    self.ui_build_button.grid(row=12, column=0, rowspan=1, columnspan=2, sticky="nsew")
+    self.ui_close_polygon_button.grid(row=12, column=2, rowspan=1, columnspan=2, sticky="nsew")
+    self.ui_rotate_object_button.grid(row=13, column=0, rowspan=1, columnspan=1, sticky="nsew")
+    self.ui_translate_object_button.grid(row=13, column=1, rowspan=1, columnspan=1, sticky="nsew")
+    self.ui_scale_button.grid(row=13, column=2, rowspan=1, columnspan=1, sticky="nsew")
+    self.ui_object_properties_button.grid(row=13, column=3, rowspan=1, columnspan=1, sticky="nsew")
 
 
+    self.ui_point_label.grid(row=14, column=0, rowspan=1, columnspan=2, sticky="nsew")
+    self.ui_point_x_input.grid(row=14, column=2, rowspan=1, columnspan=1, sticky="nsew")
+    self.ui_point_y_input.grid(row=14, column=3, rowspan=1, columnspan=1, sticky="nsew")
+    self.ui_degree_label.grid(row=15, column=0, rowspan=1, columnspan=2, sticky="nsew")
+    self.ui_degree_input.grid(row=15, column=2, rowspan=1, columnspan=2, sticky="nsew")
+    self.ui_scale_factor_label.grid(row=16, column=0, rowspan=1, columnspan=2, sticky="nsew")
+    self.ui_scale_factor_input.grid(row=16, column=2, rowspan=1, columnspan=2, sticky="nsew")
 
   # TODO: Don't touch
   def build_debug_grid(self):
@@ -174,88 +188,48 @@ class Viewport:
     
     self.update()
 
-  # TODO: Learn this topic]
+  # TODO: Learn this topic
   # TODO: When rebuilding the UI, use this function
-  def rotate(self, direction: str):
-    # only rotates if an object is selected
-    # if a pivot point is specified, rotates around that point
-    # if an angle is specified, rotates by that angle
-    # if angle is not specified, uses the default value (15)
-    rotate_degrees = "15"
-  
-    if direction == "left":
-      self.rotation_angle -= float(rotate_degrees)
-    elif direction == "right":
-      self.rotation_angle += float(rotate_degrees)
-    else:
-      return
+  # TODO: Remake this function, splitting object rotation from window rotation
+  def rotate(self):
+    '''Rotates something according to the inputs passed'''
+    '''If no object is selected, it'll rotate the camera'''
+    '''If there's a selected object, it'll rotate it around the specified point'''
+    '''If there are no specified points, it'll rotate the object around its center'''
+    try: angle = int(self.ui_degree_input.get())
+    except ValueError: angle = 15
 
-    angle = -float(rotate_degrees) if direction == "left" else float(rotate_degrees)
-
-    radians = math.radians(angle)
-    cos = math.cos(radians)
-    sin = math.sin(radians)
-    
-    R = np.array([
-        [cos, sin, 0.0],
-        [-sin, cos, 0.0],
-        [0.0,  0.0, 1.0]
-    ], dtype=float)
-
-    # px_str = self.around_point_x.get()
-    # pz_str = self.around_point_y.get()
-    px_str, pz_str = None, None
-    
-    if px_str and pz_str:
+    # Check if there's a selected item
+    target = self.get_selected_object()
+    # Object selected, check if it'll be rotated around its center or a specified point
+    if target:
+      rx = self.ui_point_x_input.get()
+      ry = self.ui_point_y_input.get()
+      # Valid point, rotate around it
       try:
-        px = float(px_str)
-        pz = float(pz_str)
-        
-        selected_item = self.ui_object_list.selection()
-        if not selected_item:
-          self.log("Aviso: Nenhum objeto selecionado.")
-          return
-        
-        item_id = self.ui_object_list.item(selected_item[0], "tags")[0]
-        target = next((o for o in self.objects if str(o.id) == item_id), None)
-
-        T  = np.array([[1, 0, px], [0, 1, pz], [0, 0, 1]], dtype=float)
-        Ti = np.array([[1, 0, -px], [0, 1, -pz], [0, 0, 1]], dtype=float)
-        M  = T @ R @ Ti
-
-        if target: target.transform2d_xz(M)
-
+        rx = float(rx)
+        ry = float(ry)
+      # No valid point, rotate around the object's center
       except ValueError:
-        self.log("Erro: Coordenadas do ponto inválidas.")
-        return
+        rx = target.get_center()[0]
+        ry = target.get_center()[1]
+        self.log(rx, ry)
+        self.log(target.points)
+      target.rotate(angle, np.array([rx, ry, target.center[2]]))
+
+    # No object selected, rotate camera
     else:
-      selected_item = self.ui_object_list.selection()
-      if not selected_item:
-        self.log("Aviso: Nenhum objeto selecionado.")
-        return
-
-      item_id = self.ui_object_list.item(selected_item[0], "tags")[0]
-      target = next((o for o in self.objects if str(o.id) == item_id), None)
-
-      if target is None:
-        self.log("Aviso: Objeto não encontrado.")
-        return
-
-      cx, cz = float(target.center[0]), float(target.center[2])
-
-      T  = np.array([[1, 0, cx], [0, 1, cz], [0, 0, 1]], dtype=float)
-      Ti = np.array([[1, 0, -cx], [0, 1, -cz], [0, 0, 1]], dtype=float)
-      M  = T @ R @ Ti
-
-      target.transform2d_xz(M)
+      self.log("Rotating camera")
+      self.camera.rotate(angle)
 
     self.update()
 
-  # TODO: Resist the urge to change all of this to just x += tx and z += ty
+  def rotate_object(self, target: Wireframe, angle: float):
+    pass
+
   def translate(self):
-    # tx = float(self.translate_x.get()) if self.translate_x.get() else 0
-    # ty = float(self.translate_y.get()) if self.translate_y.get() else 0
-    tx, ty = 100, 100
+    tx = float(self.ui_point_x_input.get())
+    ty = float(self.ui_point_y_input.get())
 
     translation_matrix = np.array([
       [1, 0, tx],
@@ -268,27 +242,30 @@ class Viewport:
       self.log("Aviso: Nenhum objeto selecionado.")
       return
 
-    item_id = self.ui_object_list.item(selected_item[0], "tags")[0]
-    target = next((o for o in self.objects if str(o.id) == item_id), None)
+    target = self.get_selected_object()
 
     if target is None:
       self.log("Aviso: Objeto não encontrado.")
       return
-    target.transform2d_xz(translation_matrix)
-
+    
+    target.transform2d(translation_matrix)
 
     self.update()
 
-  # TODO: Update this so the button color will indicate the current mode
   def set_building(self): 
+    self.building = not self.building
+    self.ui_build_button.config(relief=tk.SUNKEN if self.building else tk.RAISED)
+    # Exiting building mode, must finalize the current shape
     if not self.building:
-      self.building = True
+      self.finish_lines()
+
 
   # TODO: Update this so the button color will indicate the current mode
   def cancel_building(self):
     self.build.clear()
     self.building = False
     self.update()
+    self.ui_build_button.config(relief=tk.RAISED)
 
   def set_debug(self):
     self.debug = not self.debug
@@ -364,6 +341,18 @@ class Viewport:
     self.objects.append(PolygonObject("Polygon", self.build.copy(), id=10*len(self.objects)+1))
     self.cancel_building()
 
+  def finish_lines(self):
+    if len(self.build) == 1:
+      self.objects.append(PointObject("Point", self.build[0], id=10*len(self.objects)+1))
+
+    for i in range(len(self.build) - 1):
+      start, end = self.build[i:i+2]
+      self.objects.append(LineObject(f"Line {i+1}", start, end, id=10*len(self.objects)+1))
+
+    self.build.clear()
+    self.building = False
+    self.update()
+
   def update(self):
     self.canva.delete("all")
     all_objects = self.objects.copy()
@@ -372,8 +361,8 @@ class Viewport:
     if self.debug:
       all_objects += self.debug_objects
       self.build_debug_grid()
-      self.canva.create_line(0, self.height*0.4, self.width, self.height*0.4, fill="blue")
-      self.canva.create_line(self.width*0.4, 0, self.width*0.4, self.height, fill="blue")  
+      self.canva.create_line(0, self.height*2/6, self.width, self.height*2/6, fill="blue")
+      self.canva.create_line(self.width*2/6, 0, self.width*2/6, self.height, fill="blue")  
 
     # TODO: Clipping
     # Clip the objects if a clipping algorithm is selected, I don't think this is supposed to be here tho
@@ -532,9 +521,13 @@ class Viewport:
       self.log(f"Erro: Erro ao carregar objetos: {e}")
       return []
 
-  # TODO: Send log message to log widget
-  def log(self, message: str):
-    print(message)
+  def log(self, *message):
+    '''Writes *message* to the log widget'''
+    '''In the future, there could be different log levels'''
+    self.ui_log.config(state="normal")
+    self.ui_log.insert(tk.END, f"{''.join([str(m) for m in message])}\n")
+    self.ui_log.see(tk.END)
+    self.ui_log.config(state="disabled")
 
   def undo(self):
     if self.building:
@@ -553,6 +546,15 @@ class Viewport:
       }
       save_user_preferences(usr_pref)
       self.root.quit()
+
+  def get_selected_object(self) -> Wireframe | None:
+    selected = self.ui_object_list.selection()
+    selected_id = self.ui_object_list.item(selected[0], "tags")[0] if selected else None
+    print(selected_id)
+    return self.get_object_by_id(selected_id) if selected_id else None
+
+  def get_object_by_id(self, id: str) -> Wireframe | None:
+    return next((o for o in self.objects if str(o.id) == id), None)
 
   @property
   def building(self) -> bool: return self._building

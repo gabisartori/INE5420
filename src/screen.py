@@ -18,8 +18,6 @@ class Camera:
     self.viewport_height: int = viewport_height
     self.viewport_focus: tuple[float, float] = (self.viewport_width // 2, self.viewport_height // 2)
     self.camera_focus: tuple[float, float] = (0, 0)
-    self.viewport_angle = 0
-    self.transform_matrix: np.ndarray = np.eye(2)
     self.max_zoom = 100.0
     self.min_zoom = 0.1
     self.h_viewport_margin = int(0.1 * self.viewport_height)
@@ -45,29 +43,16 @@ class Camera:
 
   def move_above(self): self.position[2] += max(self.speed/self.zoom, 1)
   
-  def rotate(self, degrees: int=5):
-    degrees = int(degrees)
-    angle_rad = np.radians(degrees)
-
-    cos_a = np.cos(angle_rad)  
-    sin_a = np.sin(angle_rad)
-    rotation_matrix = np.array([
-        [cos_a, -sin_a],
-        [sin_a,  cos_a]
+  def rotate(self, angle: int=5):
+    """Rotate the camera around the normal vector."""
+    M = np.array([
+      [np.cos(np.radians(angle)), -np.sin(np.radians(angle)), 0],
+      [np.sin(np.radians(angle)),  np.cos(np.radians(angle)), 0],
+      [0, 0, 1]
     ])
-
-    right_2d = self.right[[0, 2]]
-    up_2d = self.up[[0, 2]]
-
-    new_right_2d = rotation_matrix @ right_2d
-    new_up_2d = rotation_matrix @ up_2d
-
-    self.right = normalize(np.array([new_right_2d[0], 0, new_right_2d[1]]))
-    self.up = normalize(np.array([new_up_2d[0], 0, new_up_2d[1]]))
-
-    self.transform_matrix = rotation_matrix @ self.transform_matrix
-    self.viewport_angle += degrees
-    self.viewport_angle %= 360
+    self.right = normalize(M @ self.right)
+    self.up = normalize(M @ self.up)
+    self.normal = normalize(np.cross(self.right, self.up))
 
   def zoom_in(self, x, y):
     if self.zoom <= self.max_zoom: self.zoom *= 1.1
@@ -77,8 +62,8 @@ class Camera:
 
   # TODO: Add a way for the user to call this function
   def recenter(self):
-    self.position = np.array([0, 100, 0])
-    self.normal = np.array([0, -1, 0])
+    self.position = np.array([0, 0, 100])
+    self.normal = np.array([0, 0, -1])
     self.zoom = 1.0
     self.camera_focus = (0, 0)
     self.viewport_focus = (self.viewport_width // 2, self.viewport_height // 2)
