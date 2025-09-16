@@ -316,6 +316,9 @@ class Viewport:
     self.root.bind("<KeyPress-Escape>", lambda e: self.cancel_building())
     self.root.bind("<Control-z>", lambda e: self.undo())
 
+    # This one is not a control. It's used to remove focus from a text input when clicking outside of it
+    self.root.bind_all("<Button-1>", lambda e: e.widget.focus_set())
+
   def is_click_inside_viewport(self, x, y) -> bool:
     x0 = self.camera.h_viewport_margin
     y0 = self.camera.v_viewport_margin
