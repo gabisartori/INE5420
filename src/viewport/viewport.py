@@ -540,16 +540,39 @@ class Viewport:
         tmp_window.destroy()
         return
 
-  def load_objects(self, objects: str) -> list[Wireframe]:
-    if not objects: return []
+  def load_objects(self, filepath: str) -> list[Wireframe]:
+    if not filepath: return []
     try:
-      with open(objects, "r") as file:
+      with open(filepath, "r") as file:
         lines = [line for line in file if line.strip() and not line.startswith("#")]
         self.placed_objects_counter = len(lines)
-        return [Wireframe.from_string_id(line.strip(), i) for i, line in enumerate(lines)]
+        objects: list[Wireframe] = []
+        current_name = ""
+        current_points: list[Point] = []
+        for line in lines:
+          header, *args = line.split()
+          match header:
+            case "o":
+              current_name = args[0]
+              current_points = []
+            case "v":
+              current_points.append(np.array([float(coord) for coord in args]))
+            case "p":
+              if len(current_points) == 1:
+                objects.append(PointObject(current_name, current_points[0], id=len(objects), radius=int(args[0]) if args[0].isnumeric() else 2))
+              current_points = []
+            case "l":
+              if len(current_points) == 2:
+                objects.append(LineObject(current_name, current_points[0], current_points[1], id=len(objects)))
+              else:
+                objects.append(PolygonObject(current_name, current_points.copy(), id=len(objects)))
+              current_points = []
+            case _:
+              self.log(f"Aviso: Cabeçalho desconhecido '{header}' ignorado.")
 
+      return objects
     except FileNotFoundError:
-      self.log(f"Arquivo {objects} não encontrado.")
+      self.log(f"Arquivo {filepath} não encontrado.")
       return []
     except Exception as e:
       self.log(f"Erro: Erro ao carregar objetos: {e}")

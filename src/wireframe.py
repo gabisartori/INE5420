@@ -16,27 +16,7 @@ class Wireframe:
 
   def copy(self) -> 'Wireframe': raise NotImplementedError("Subclasses should implement this method")
 
-  def __str__(self) -> str:
-    points_str = ','.join(f"({','.join(map(str, point))})" for point in self.points)
-    return f"{self.name};{points_str}"
-
-  @staticmethod
-  def from_string(data: str) -> 'Wireframe':
-    name, points = data.split(';')
-    points = points[1:-1].split('),(')
-    points = [np.array(list(map(int, point.split(',')))) for point in points]
-    if len(points) == 1:
-      return PointObject(name, points[0])
-    elif len(points) == 2:
-      return LineObject(name, points[0], points[1])
-    else:
-      return PolygonObject(name, points)
-  
-  @staticmethod
-  def from_string_id(data: str, id: int) -> 'Wireframe':
-    obj = Wireframe.from_string(data)
-    obj.id = id
-    return obj
+  def __str__(self) -> str: raise NotImplementedError("Subclasses should implement this method")
 
   def rotate(self, degrees: int=5, point: Point | None=None) -> None:
     """Rotate the object around a given point in the XY plane."""
@@ -92,7 +72,10 @@ class PointObject(Wireframe):
   
   def copy(self) -> 'PointObject':
     return PointObject(self.name, self.points[0].copy(), id=self.id, radius=self.radius)
-  
+
+  def __str__(self) -> str:
+    return f"o {self.name}\nv {' '.join(map(str, self.points[0]))}\np 1"
+
 class LineObject(Wireframe):
   def __init__(self, name: str, start: Point, end: Point, id: int = 0):
     super().__init__(name, [start, end], id=id)
@@ -102,6 +85,9 @@ class LineObject(Wireframe):
   
   def copy(self) -> 'LineObject':
     return LineObject(self.name, self.points[0].copy(), self.points[1].copy(), id=self.id)
+
+  def __str__(self) -> str:
+    return f"o {self.name}\nv {' '.join(map(str, self.points[0]))}\nv {' '.join(map(str, self.points[1]))}\nl 1 2"
 
 class PolygonObject(Wireframe):
   def __init__(self, name: str, points: list[Point], id: int = 0):
@@ -117,3 +103,8 @@ class PolygonObject(Wireframe):
   
   def copy(self) -> 'PolygonObject':
     return PolygonObject(self.name, [p.copy() for p in self.points], id=self.id)
+
+  def __str__(self) -> str:
+    vertices_str = '\n'.join(f"v {' '.join(map(str, p))}" for p in self.points)
+    indices_str = ' '.join(str(i + 1) for i in range(len(self.points)))
+    return f"o {self.name}\n{vertices_str}\nl {indices_str}"
