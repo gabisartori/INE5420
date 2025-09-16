@@ -44,7 +44,7 @@ line1 = LineObject(
 )
 
 clipping = Clipping(*window)
-clipped = clipping.clip([line1], ClippingAlgorithm.COHEN_SUTHERLAND)
+clipped = clipping.clip([line1], ClippingAlgorithm(2))
 
 
 print("All tests passed!")

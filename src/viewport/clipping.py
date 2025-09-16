@@ -40,7 +40,7 @@ class Clipping:
       obj = x.copy()
       match obj:
         case PolygonObject():
-          clipped = self.sutherland_hodgman_clip(obj)
+          obj.points = self.sutherland_hodgman_clip(obj) or []
         case LineObject():
           p1, p2 = obj.points
           if algorithm == ClippingAlgorithm.COHEN_SUTHERLAND:
@@ -61,7 +61,7 @@ class Clipping:
         case _:
           continue
 
-      clipped_objects.append(obj)
+      clipped_objects.append(obj) if obj.points else None
     return clipped_objects
 
   def compute_out_code(self, x: float, y: float) -> int:
@@ -85,7 +85,6 @@ class Clipping:
     out_code1 = self.compute_out_code(x1, y1)
     
     accept = False
-    # print('clipping cohen_sutherland', x0, y0, x1, y1, out_code0, out_code1)
     while not accept:
       if not (out_code0 | out_code1):
         accept = True
@@ -151,38 +150,113 @@ class Clipping:
 
     return x0_clip, y0_clip, x1_clip, y1_clip
 
-  def sutherland_hodgman_clip(self, polygon: PolygonObject) -> PolygonObject | None:
+  def sutherland_hodgman_clip(self, polygon: PolygonObject) -> list[np.ndarray] | None:
     """Sutherland-Hodgman polygon clipping algorithm for polygons"""
-    # Para cada lado da janela:
-    # Para cada aresta (v1, v2) do polígono:
-    #     Se v1 e v2 estão dentro:
-    #         adicionar v2 ao novo polígono
-    #     Se v1 está fora e v2 está dentro:
-    #         adicionar interseção e v2
-    #     Se v1 está dentro e v2 está fora:
-    #         adicionar interseção
-    #     Se ambos estão fora:
-    #         não faz nada
-    pass
+    new_points = []
+    current_points = polygon.points.copy()
+    # Left clipping
+    for i in range(0, len(current_points)+1):
+      prev = current_points[i - 1]
+      curr = current_points[i % len(current_points)]
+
+      # Edge completely to the left, ignore it
+      if prev[0] < self.xmin and curr[0] < self.xmin:
+        pass
+      # Edge completely to the right, add it to the output
+      elif prev[0] >= self.xmin and curr[0] >= self.xmin:
+        new_points.append(prev)
+      # Edge going out to the left, clip it
+      elif prev[0] >= self.xmin and curr[0] < self.xmin:
+        x = self.xmin
+        y = prev[1] + (curr[1] - prev[1]) * (self.xmin - prev[0]) / (curr[0] - prev[0])
+        new_points.append(prev)
+        new_points.append(np.array([x, y]))
+      # Edge coming in from the left, clip it and add the current point
+      elif prev[0] < self.xmin and curr[0] >= self.xmin:
+        x = self.xmin
+        y = prev[1] + (curr[1] - prev[1]) * (self.xmin - prev[0]) / (curr[0] - prev[0])
+        new_points.append(np.array([x, y]))
+        new_points.append(curr)
+
+    current_points = new_points.copy()
+    new_points = []
+
+    # Top clipping
+    for i in range(0, len(current_points)+1):
+      prev = current_points[i - 1]
+      curr = current_points[i % len(current_points)]
+
+      # Edge completely above, ignore it
+      if prev[1] > self.ymax and curr[1] > self.ymax:
+        pass
+      # Edge completely below, add it to the output
+      elif prev[1] <= self.ymax and curr[1] <= self.ymax:
+        new_points.append(prev)
+      # Edge going out above, clip it
+      elif prev[1] <= self.ymax and curr[1] > self.ymax:
+        y = self.ymax
+        x = prev[0] + (curr[0] - prev[0]) * (self.ymax - prev[1]) / (curr[1] - prev[1])
+        new_points.append(prev)
+        new_points.append(np.array([x, y]))
+      # Edge coming in from above, clip it and add the current point
+      elif prev[1] > self.ymax and curr[1] <= self.ymax:
+        y = self.ymax
+        x = prev[0] + (curr[0] - prev[0]) * (self.ymax - prev[1]) / (curr[1] - prev[1])
+        new_points.append(np.array([x, y]))
+        new_points.append(curr)
     
-    # def is_inside(p: Point, edge: str) -> bool:
-    #   x, y = p[0], p[1]
-    #   if edge == 'LEFT':
-    #     return x >= self.xmin
-    #   elif edge == 'RIGHT':
-    #     return x <= self.xmax
-    #   elif edge == 'BOTTOM':
-    #     return y >= self.ymin
-    #   elif edge == 'TOP':
-    #     return y <= self.ymax
-    #   return False
+    current_points = new_points.copy()
+    new_points = []
+
+    # Right clipping
+    for i in range(0, len(current_points)+1):
+      prev = current_points[i - 1]
+      curr = current_points[i % len(current_points)]
+
+      # Edge completely to the right, ignore it
+      if prev[0] > self.xmax and curr[0] > self.xmax:
+        pass
+      # Edge completely to the left, add it to the output
+      elif prev[0] <= self.xmax and curr[0] <= self.xmax:
+        new_points.append(prev)
+      # Edge going out to the right, clip it
+      elif prev[0] <= self.xmax and curr[0] > self.xmax:
+        x = self.xmax
+        y = prev[1] + (curr[1] - prev[1]) * (self.xmax - prev[0]) / (curr[0] - prev[0])
+        new_points.append(prev)
+        new_points.append(np.array([x, y]))
+      # Edge coming in from the right, clip it and add the current point
+      elif prev[0] > self.xmax and curr[0] <= self.xmax:
+        x = self.xmax
+        y = prev[1] + (curr[1] - prev[1]) * (self.xmax - prev[0]) / (curr[0] - prev[0])
+        new_points.append(np.array([x, y]))
+        new_points.append(curr)
     
-    
-    # for window_edge in ['LEFT', 'RIGHT', 'BOTTOM', 'TOP']:
-    #   input_list = polygon.points
-    #   if not input_list:
-    #     return None
-    #   output_list = []
-      
-    #   for polygon_edge in range(len(input_list)):
-        
+    current_points = new_points.copy()
+    new_points = []
+
+    # Bottom clipping
+    for i in range(0, len(current_points)+1):
+      prev = current_points[i - 1]
+      curr = current_points[i % len(current_points)]
+
+      # Edge completely below, ignore it
+      if prev[1] < self.ymin and curr[1] < self.ymin:
+        pass
+      # Edge completely above, add it to the output
+      elif prev[1] >= self.ymin and curr[1] >= self.ymin:
+        new_points.append(prev)
+      # Edge going out below, clip it
+      elif prev[1] >= self.ymin and curr[1] < self.ymin:
+        y = self.ymin
+        x = prev[0] + (curr[0] - prev[0]) * (self.ymin - prev[1]) / (curr[1] - prev[1])
+        new_points.append(prev)
+        new_points.append(np.array([x, y]))
+      # Edge coming in from below, clip it and add the current point
+      elif prev[1] < self.ymin and curr[1] >= self.ymin:
+        y = self.ymin
+        x = prev[0] + (curr[0] - prev[0]) * (self.ymin - prev[1]) / (curr[1] - prev[1])
+        new_points.append(np.array([x, y]))
+        new_points.append(curr)
+
+    return new_points

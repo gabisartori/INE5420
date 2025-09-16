@@ -385,11 +385,11 @@ class Viewport:
         for edge in figures:
           # Draw polygon edges
           if edge.end is None: raise ValueError("Polygon edge has no endpoint")
-          start, end = edge.start, edge.end       
+          start, end = edge.start, edge.end
           self.canva.create_line(start[0], start[1], end[0], end[1], fill=obj.color)
         # Fill polygon
         if obj.fill_color:
-          projected_points = [self.camera.world_to_viewport(edge.start) for edge in figures]
+          projected_points = [edge.start for edge in figures]
           
           # fecha o poligono se necessario
           if not np.array_equal(projected_points[0], projected_points[-1]):
