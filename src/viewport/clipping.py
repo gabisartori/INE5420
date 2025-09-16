@@ -178,6 +178,10 @@ class Clipping:
         new_points.append(np.array([x, y]))
         new_points.append(curr)
 
+    if len(new_points) == 0: return None
+    elif len(new_points) < 3:
+      print("How tf'd u get here")
+      return None
     current_points = new_points.copy()
     new_points = []
 
@@ -204,7 +208,10 @@ class Clipping:
         x = prev[0] + (curr[0] - prev[0]) * (self.ymax - prev[1]) / (curr[1] - prev[1])
         new_points.append(np.array([x, y]))
         new_points.append(curr)
-    
+    if len(new_points) == 0: return None
+    elif len(new_points) < 3:
+      print("How tf'd u get here")
+      return None    
     current_points = new_points.copy()
     new_points = []
 
@@ -231,7 +238,10 @@ class Clipping:
         y = prev[1] + (curr[1] - prev[1]) * (self.xmax - prev[0]) / (curr[0] - prev[0])
         new_points.append(np.array([x, y]))
         new_points.append(curr)
-    
+    if len(new_points) == 0: return None
+    elif len(new_points) < 3:
+      print("How tf'd u get here")
+      return None
     current_points = new_points.copy()
     new_points = []
 
@@ -258,5 +268,8 @@ class Clipping:
         x = prev[0] + (curr[0] - prev[0]) * (self.ymin - prev[1]) / (curr[1] - prev[1])
         new_points.append(np.array([x, y]))
         new_points.append(curr)
-
+    if len(new_points) == 0: return None
+    elif len(new_points) < 3:
+      print("How tf'd u get here")
+      return None
     return new_points
