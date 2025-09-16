@@ -10,5 +10,5 @@ if args.output_file == "output.obj":
   print("Warning: Name 'output.obj' reserved")
   args.output_file = "output_1.obj"
 
-screen = viewport.Viewport(1400, 900, input=args.input_file, output=args.output_file)
+screen = viewport.Viewport(1400, 900, input=args.input_file, output=args.output_file, debug=True)
 objects = screen.run()

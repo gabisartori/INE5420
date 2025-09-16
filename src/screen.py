@@ -124,3 +124,7 @@ class Camera:
 class ScreenWireframe:
   start: Point
   end: Point | None = None
+
+
+  def copy(self) -> 'ScreenWireframe':
+    return ScreenWireframe(self.start, self.end)

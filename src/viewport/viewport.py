@@ -368,26 +368,28 @@ class Viewport:
 
   def update(self):
     self.canva.delete("all")
-    all_objects = self.objects.copy()
-    
+    all_objects = [obj.copy() for obj in self.objects.copy()]
+
     # Add debug objects to the list of objects to be drawn if debug mode is on
     if self.debug:
-      all_objects += self.debug_objects
+      all_objects += [obj.copy() for obj in self.debug_objects]
       self.build_debug_grid()
       self.canva.create_line(0, self.height*2/6, self.width, self.height*2/6, fill="blue")
       self.canva.create_line(self.width*2/6, 0, self.width*2/6, self.height, fill="blue")  
 
-    clipped_objects = self.clipping.clip(all_objects, ClippingAlgorithm[self.clipping_algorithm.get()])
+    for obj in all_objects:
+      obj.points = [np.array(self.camera.world_to_viewport(point)) for point in obj.points]
+    all_objects = self.clipping.clip(all_objects, ClippingAlgorithm(1))
     # Draw all objects
-    for obj in clipped_objects:
+    for obj in all_objects:
       figures = obj.figures()
       if isinstance(obj, PolygonObject):
         for edge in figures:
           # Draw polygon edges
           if edge.end is None: raise ValueError("Polygon edge has no endpoint")
-          start, end = self.camera.world_to_viewport(edge.start), self.camera.world_to_viewport(edge.end)
+          start, end = edge.start, edge.end       
           self.canva.create_line(start[0], start[1], end[0], end[1], fill=obj.color)
-        
+          print('Polygon edge:', start, end)
         # Fill polygon
         if obj.fill_color:
           projected_points = [self.camera.world_to_viewport(edge.start) for edge in figures]
@@ -402,12 +404,13 @@ class Viewport:
       else:
         for edge in figures:       
           if edge.end is not None:
-            start, end = self.camera.world_to_viewport(edge.start), self.camera.world_to_viewport(edge.end)
+            start, end = edge.start, edge.end
             self.canva.create_line(start[0], start[1], end[0], end[1], fill=obj.color)
           else:
-            point = self.camera.world_to_viewport(edge.start)
+            point = edge.start
             radius = obj.radius
-            self.canva.create_oval(point[0] - radius, point[1] - radius, point[0] + radius, point[1] + radius, fill=obj.color)
+            if self.is_click_inside_viewport(point[0], point[1]):
+              self.canva.create_oval(point[0] - radius, point[1] - radius, point[0] + radius, point[1] + radius, fill=obj.color)
 
     # Refresh the object list
     self.ui_object_list.delete(*self.ui_object_list.get_children())
