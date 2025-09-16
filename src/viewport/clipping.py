@@ -31,13 +31,13 @@ class Clipping:
   #def __init__(self, camera: Camera):
   def __init__(self, window: tuple[float, float, float, float]):
     self.window = window
-    self.xmin, self.ymin, self.xmax, self.ymax = window
+    self.xmin, self.xmax, self.ymin, self.ymax = window
 
   def clip(self, all_objects: list[Wireframe], algorithm: ClippingAlgorithm) -> list[Wireframe]:
     """Clip all wireframe objects using the specified algorithm."""
     clipped_objects = []
     for x in all_objects:
-      obj = x
+      obj = x.copy()
       # Clip polygon
       if isinstance(obj, PolygonObject):
         clipped = self.sutherland_hodgman_clip(obj)
@@ -52,10 +52,10 @@ class Clipping:
           clipped = self.liang_barsky_clip(p1[0], p1[1], p2[0], p2[1])
         else:
           continue
-        
+
         if clipped is not None:
           x0, y0, x1, y1 = clipped
-          obj.points = [np.array([x0, p1[1], y0]), np.array([x1, p2[1], y1])]
+          obj.points = [np.array([x0, y0]), np.array([x1, y1])]
         else:
           obj.points = []
                     
@@ -85,6 +85,8 @@ class Clipping:
 
   def cohen_sutherland_clip(self, x0: float, y0: float, x1: float, y1: float) -> tuple[float, float, float, float] | None:
     """Cohen-Sutherland clipping algorithm for a line"""
+    print(x0, y0, x1, y1)
+    print(self.window)
     out_code0 = self.compute_out_code(x0, y0)
     out_code1 = self.compute_out_code(x1, y1)
     
@@ -92,7 +94,7 @@ class Clipping:
     # print('clipping cohen_sutherland', x0, y0, x1, y1, out_code0, out_code1)
     while not accept:
       if not (out_code0 | out_code1):
-        # print('Points: ', (x0, y0), (x1, y1))
+        print('Points: ', (x0, y0), (x1, y1))
         accept = True
         return x0, y0, x1, y1  # Both points inside
       elif out_code0 & out_code1:
@@ -124,6 +126,7 @@ class Clipping:
           out_code1 = self.compute_out_code(x1, y1)
           
   def liang_barsky_clip(self, x0: float, y0: float, x1: float, y1: float) -> tuple[float, float, float, float] | None:
+    pass
     """Liang-Barsky clipping algorithm for a line"""
     dx = x1 - x0
     dy = y1 - y0
