@@ -88,7 +88,7 @@ class PointObject(Wireframe):
     super().__init__(name, [center], id=id, radius=radius)
 
   def figures(self) -> list[ScreenWireframe]:
-    return [ScreenWireframe(self.points[0])]
+    return [ScreenWireframe(self.points[0])] if self.points else []
   
   def copy(self) -> 'PointObject':
     return PointObject(self.name, self.points[0].copy(), id=self.id, radius=self.radius)
@@ -98,7 +98,7 @@ class LineObject(Wireframe):
     super().__init__(name, [start, end], id=id)
 
   def figures(self) -> list[ScreenWireframe]:
-    return [ScreenWireframe(self.points[0], self.points[1])]
+    return [ScreenWireframe(self.points[0], self.points[1])] if self.points else []
   
   def copy(self) -> 'LineObject':
     return LineObject(self.name, self.points[0].copy(), self.points[1].copy(), id=self.id)
