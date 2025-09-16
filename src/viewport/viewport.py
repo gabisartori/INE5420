@@ -28,7 +28,6 @@ class Viewport:
     self.preferences = load_user_preferences()
     self.show_onboarding = self.preferences.get("show_onboarding", True)
     self.theme = self.preferences.get("theme", "light")
-    self.clipping_algorithm = ClippingAlgorithm[self.preferences.get("clipping_algorithm", "COHEN_SUTHERLAND")]
 
     # Tkinter setup
     self.root: tk.Tk = tk.Tk()
@@ -101,9 +100,10 @@ class Viewport:
     # Inserir menu items
     # Configurações menu items
     settings_menu = tk.Menu(self.menubar, tearoff=0)
+    self.clipping = Clipping((-width*2/6, -height*5/12, width*2/6, height*5/12))
     self.clipping_algorithm = tk.StringVar(value="COHEN_SUTHERLAND")
-    settings_menu.add_radiobutton(label="Cohen-Sutherland", variable=self.clipping_algorithm, value="COHEN_SUTHERLAND", command=lambda: self.log("Algoritmo de clipagem alterado para Cohen-Sutherland"))
-    settings_menu.add_radiobutton(label="Liang-Barsky", variable=self.clipping_algorithm, value="LIANG_BARSKY", command=lambda: self.log("Algoritmo de clipagem alterado para Liang-Barsky"))
+    settings_menu.add_radiobutton(label="Cohen-Sutherland", variable=self.clipping_algorithm, value="COHEN_SUTHERLAND", command=lambda: self.set_clipping_algorithm("cohen_sutherland"))
+    settings_menu.add_radiobutton(label="Liang-Barsky", variable=self.clipping_algorithm, value="LIANG_BARSKY", command=lambda: self.set_clipping_algorithm("liang_barsky"))
 
     self.menubar.add_cascade(label="Configurações", menu=settings_menu)
     self.root.config(menu=self.menubar)
@@ -270,6 +270,10 @@ class Viewport:
     self.building = False
     self.update()
 
+  def set_clipping_algorithm(self, algorithm: str):
+    self.log(f"Algoritmo de clipagem alterado para {algorithm.title()}")
+    self.update()
+
   # TODO: Put this in the proper place ffs
   # def set_theme(self):
   #   style = ttk.Style()
@@ -317,7 +321,11 @@ class Viewport:
     self.root.bind("<Control-z>", lambda e: self.undo())
 
     # This one is not a control. It's used to remove focus from a text input when clicking outside of it
-    self.root.bind_all("<Button-1>", lambda e: e.widget.focus_set())
+    def focus_clicked_widget(event):
+      # TODO: There has to be a better way to avoid errors when clicking on certain widgets
+      try: event.widget.focus_set()
+      except: pass
+    self.root.bind_all("<Button-1>", focus_clicked_widget)
 
   def is_click_inside_viewport(self, x, y) -> bool:
     x0 = self.camera.h_viewport_margin
@@ -369,16 +377,7 @@ class Viewport:
       self.canva.create_line(0, self.height*2/6, self.width, self.height*2/6, fill="blue")
       self.canva.create_line(self.width*2/6, 0, self.width*2/6, self.height, fill="blue")  
 
-    # TODO: Clipping
-    # Clip the objects if a clipping algorithm is selected, I don't think this is supposed to be here tho
-    # x0 = self.camera.h_viewport_margin
-    # y0 = self.camera.v_viewport_margin
-    # x1 = self.camera.viewport_width - self.camera.h_viewport_margin
-    # y1 = self.camera.viewport_height - self.camera.v_viewport_margin
-    # window = [x0, y0, x1, y1]
-    # clipping = Clipping(window)
-    clipped_objects = all_objects
-
+    clipped_objects = self.clipping.clip(all_objects, ClippingAlgorithm[self.clipping_algorithm.get()])
     # Draw all objects
     for obj in clipped_objects:
       figures = obj.figures()

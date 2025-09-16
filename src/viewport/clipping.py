@@ -18,6 +18,15 @@ class ClippingAlgorithm(Enum):
   LIANG_BARSKY = 2
   SUTHERLAND_HODGMAN = 3
 
+  def __str__(self) -> str:
+    if self == ClippingAlgorithm.COHEN_SUTHERLAND:
+      return "Cohen-Sutherland"
+    elif self == ClippingAlgorithm.LIANG_BARSKY:
+      return "Liang-Barsky"
+    elif self == ClippingAlgorithm.SUTHERLAND_HODGMAN:
+      return "Sutherland-Hodgman"
+    return "Unknown"
+
 class Clipping:
   #def __init__(self, camera: Camera):
   def __init__(self, window: tuple[float, float, float, float]):
@@ -27,13 +36,12 @@ class Clipping:
   def clip(self, all_objects: list[Wireframe], algorithm: ClippingAlgorithm) -> list[Wireframe]:
     """Clip all wireframe objects using the specified algorithm."""
     clipped_objects = []
-    for obj in all_objects:
+    for x in all_objects:
+      obj = x.copy()
+      # Clip polygon
       if isinstance(obj, PolygonObject) and algorithm == ClippingAlgorithm.SUTHERLAND_HODGMAN:
         clipped = self.sutherland_hodgman_clip(obj)
-        if clipped is not None:
-          obj.points = clipped
-        else:
-          obj.points = []
+      # Clip line
       elif len(obj.points) == 2:
         p1, p2 = obj.points
         if algorithm == ClippingAlgorithm.COHEN_SUTHERLAND:
@@ -47,6 +55,7 @@ class Clipping:
           obj.points = [np.array([x0, p1[1], y0]), np.array([x1, p2[1], y1])]
         else:
           obj.points = []
+      # Clip point
       elif len(obj.points) == 1:
         p = obj.points[0]
         if not self.point_in_window(p[0], p[2]):
@@ -96,6 +105,9 @@ class Clipping:
         elif out_code_out & Code.LEFT.value:
           y = y0 + (y1 - y0) * (self.xmin - x0) / (x1 - x0)
           x = self.xmin
+        else:
+          # TODO: Fix these non exhaustive checks throughout the code
+          raise RuntimeError("Shouldn't reach here")
 
         if out_code_out == out_code0:
           x0, y0 = x, y
@@ -115,18 +127,16 @@ class Clipping:
 
     t0, t1 = 0.0, 1.0
 
+    u1, u2 = t0, t1
     for i in range(4):
-      if p[i] == 0:
-        if q[i] < 0:
-          return None 
+      if p[i] == 0 or q[i] < 0:
+        return None
       else:
         t = q[i] / p[i]
-        if p[i] < 0:
-          u1 = max(t0, t)
-        else:
-          u2 = min(t1, t)
-    if u1 > u2:
-      return None
+        if p[i] < 0: u1 = max(t0, t)
+        else: u2 = min(t1, t)
+    # if u1 > u2:
+    #   return None
 
     return x0 + u1 * dx, y0 + u1 * dy, x0 + u2 * dx, y0 + u2 * dy
 
@@ -138,6 +148,7 @@ class Clipping:
       if edge == "right": return x <= self.xmax
       if edge == "bottom": return y >= self.ymin
       if edge == "top": return y <= self.ymax
+      raise ValueError("Invalid edge")
 
     def compute_intersection(p1: np.ndarray, p2: np.ndarray, edge: str) -> np.ndarray:
       x1, y1 = p1[0], p1[1]
@@ -146,6 +157,7 @@ class Clipping:
       dx, dy = x2 - x1, y2 - y1
       if dx == 0: dx = 1e-10  # Prevent division by zero
       if dy == 0: dy = 1e-10
+      x, y = 0, 0
       if edge == "left":
         x = self.xmin
         y = y1 + dy * (self.xmin - x1) / dx
@@ -160,14 +172,11 @@ class Clipping:
         x = x1 + dx * (self.ymax - y1) / dy
       return np.array([x, y])
     # Clip the polygon against the current edge
-    clipped = polygon
-
+    clipped = []
     for edge in ["left", "right", "bottom", "top"]:
-      input_list = clipped
-      clipped = []
+      input_list = polygon.points
 
-      if not input_list:
-        break
+      if not input_list: break
 
       S = input_list[-1]
       for E in input_list:
@@ -181,6 +190,5 @@ class Clipping:
           clipped.append(intersection)
         S = E
       clipped = [np.array(pt) for pt in clipped]
-    if len(clipped) < 3:
-      return None
-    return clipped
+    if len(clipped) < 3: return None
+    return PolygonObject(polygon.name, clipped, id=polygon.id)

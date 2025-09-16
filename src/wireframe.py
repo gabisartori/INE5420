@@ -14,6 +14,8 @@ class Wireframe:
 
   def figures(self) -> list[ScreenWireframe]: raise NotImplementedError("Subclasses should implement this method")
 
+  def copy(self) -> 'Wireframe': raise NotImplementedError("Subclasses should implement this method")
+
   def __str__(self) -> str:
     points_str = ','.join(f"({','.join(map(str, point))})" for point in self.points)
     return f"{self.name};{points_str}"
@@ -88,12 +90,18 @@ class PointObject(Wireframe):
   def figures(self) -> list[ScreenWireframe]:
     return [ScreenWireframe(self.points[0])]
   
+  def copy(self) -> 'PointObject':
+    return PointObject(self.name, self.points[0].copy(), id=self.id, radius=self.radius)
+  
 class LineObject(Wireframe):
   def __init__(self, name: str, start: Point, end: Point, id: int = 0):
     super().__init__(name, [start, end], id=id)
 
   def figures(self) -> list[ScreenWireframe]:
     return [ScreenWireframe(self.points[0], self.points[1])]
+  
+  def copy(self) -> 'LineObject':
+    return LineObject(self.name, self.points[0].copy(), self.points[1].copy(), id=self.id)
 
 class PolygonObject(Wireframe):
   def __init__(self, name: str, points: list[Point], id: int = 0):
@@ -106,3 +114,6 @@ class PolygonObject(Wireframe):
       end = self.points[(i + 1) % len(self.points)]
       edges.append(ScreenWireframe(start, end))
     return edges
+  
+  def copy(self) -> 'PolygonObject':
+    return PolygonObject(self.name, [p.copy() for p in self.points], id=self.id)
