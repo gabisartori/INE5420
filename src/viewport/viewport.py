@@ -21,7 +21,7 @@ class Viewport:
 
     self.debug: bool = debug
     self.debug_objects: list[Wireframe] = [PointObject("World Origin", np.array([0, 0, 0]), id=0)]
-    self.camera = Camera(np.array([0, 0, -1]), np.array([0, 0, 1]), width*2/3, height*2/3)
+    self.camera = Camera(np.array([0, 0, -1]), np.array([0, 0, 1]), width*2/3, height*5/6)
 
     # TODO: Move all of the functions in that file to here
     # TODO: Remove the unnecessary usage of self.theme instead of self.preferences["theme"], possibly turning self.preferences into a class of its own instead of it being a dict
@@ -100,7 +100,7 @@ class Viewport:
     # Inserir menu items
     # Configurações menu items
     settings_menu = tk.Menu(self.menubar, tearoff=0)
-    self.clipping = Clipping((-width*2/6, -height*5/12, width*2/6, height*5/12))
+    self.clipping = Clipping((self.camera.v_viewport_margin, self.camera.h_viewport_margin, width*2/3-self.camera.v_viewport_margin, height*5/6-self.camera.h_viewport_margin))
     self.clipping_algorithm = tk.StringVar(value="COHEN_SUTHERLAND")
     settings_menu.add_radiobutton(label="Cohen-Sutherland", variable=self.clipping_algorithm, value="COHEN_SUTHERLAND", command=lambda: self.set_clipping_algorithm("cohen_sutherland"))
     settings_menu.add_radiobutton(label="Liang-Barsky", variable=self.clipping_algorithm, value="LIANG_BARSKY", command=lambda: self.set_clipping_algorithm("liang_barsky"))
@@ -426,7 +426,7 @@ class Viewport:
       prev = point
 
     # Viewport border to visualize the clipping area
-    self.draw_viewport_border()
+    # self.draw_viewport_border()
 
   def run(self) -> list[Wireframe]:
     self.root.mainloop()

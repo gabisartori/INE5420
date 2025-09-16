@@ -87,10 +87,13 @@ class Clipping:
     """Cohen-Sutherland clipping algorithm for a line"""
     out_code0 = self.compute_out_code(x0, y0)
     out_code1 = self.compute_out_code(x1, y1)
+    
+    accept = False
     # print('clipping cohen_sutherland', x0, y0, x1, y1, out_code0, out_code1)
-    while True:
+    while not accept:
       if not (out_code0 | out_code1):
         # print('Points: ', (x0, y0), (x1, y1))
+        accept = True
         return x0, y0, x1, y1  # Both points inside
       elif out_code0 & out_code1:
         return None  # Both points outside
