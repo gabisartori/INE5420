@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from screen import ScreenWireframe
 from components.my_types import Point
 import numpy as np
 
@@ -7,12 +6,10 @@ import numpy as np
 class Wireframe:
   name: str
   points: list[Point]
-  color: str = "black"
   fill_color: str = "white"
+  line_color: str = "black"
+  thickness: float = 1
   id: int = 0
-  radius: float = field(default=0.0, repr=False)
-
-  def figures(self) -> list[ScreenWireframe]: raise NotImplementedError("Subclasses should implement this method")
 
   def copy(self) -> 'Wireframe': raise NotImplementedError("Subclasses should implement this method")
 
@@ -64,45 +61,52 @@ class Wireframe:
     return np.mean(self.points, axis=0).astype(int)
 
 class PointObject(Wireframe):
-  def __init__(self, name: str, center: Point, id: int = 0, radius: float = 2):
-    super().__init__(name, [center], id=id, radius=radius)
+  def __init__(self, name: str, center: Point, **kwargs):
+    super().__init__(name, [center], **kwargs)
 
-  def figures(self) -> list[ScreenWireframe]:
-    return [ScreenWireframe(self.points[0])] if self.points else []
-  
   def copy(self) -> 'PointObject':
-    return PointObject(self.name, self.points[0].copy(), id=self.id, radius=self.radius)
+    return PointObject(
+      self.name,
+      self.points[0].copy(),
+      id=self.id,
+      thickness=self.thickness,
+      line_color=self.line_color,
+      fill_color=self.fill_color
+    )
 
   def __str__(self) -> str:
     return f"o {self.name}\nv {' '.join(map(str, self.points[0]))}\np 1"
 
 class LineObject(Wireframe):
-  def __init__(self, name: str, start: Point, end: Point, id: int = 0):
-    super().__init__(name, [start, end], id=id)
+  def __init__(self, name: str, start: Point, end: Point, **kwargs):
+    super().__init__(name, [start, end], **kwargs)
 
-  def figures(self) -> list[ScreenWireframe]:
-    return [ScreenWireframe(self.points[0], self.points[1])] if self.points else []
-  
   def copy(self) -> 'LineObject':
-    return LineObject(self.name, self.points[0].copy(), self.points[1].copy(), id=self.id)
+    return LineObject(
+      self.name, self.points[0].copy(),
+      self.points[1].copy(),
+      id=self.id,
+      thickness=self.thickness,
+      line_color=self.line_color,
+      fill_color=self.fill_color
+    )
 
   def __str__(self) -> str:
     return f"o {self.name}\nv {' '.join(map(str, self.points[0]))}\nv {' '.join(map(str, self.points[1]))}\nl 1 2"
 
 class PolygonObject(Wireframe):
-  def __init__(self, name: str, points: list[Point], id: int = 0):
-    super().__init__(name, points, id=id)
+  def __init__(self, name: str, points: list[Point], **kwargs):
+    super().__init__(name, points, **kwargs)
 
-  def figures(self) -> list[ScreenWireframe]:
-    edges = []
-    for i in range(len(self.points)):
-      start = self.points[i]
-      end = self.points[(i + 1) % len(self.points)]
-      edges.append(ScreenWireframe(start, end))
-    return edges
-  
   def copy(self) -> 'PolygonObject':
-    return PolygonObject(self.name, [p.copy() for p in self.points], id=self.id)
+    return PolygonObject(
+      self.name,
+      [p.copy() for p in self.points],
+      id=self.id,
+      thickness=self.thickness,
+      line_color=self.line_color,
+      fill_color=self.fill_color
+    )
 
   def __str__(self) -> str:
     vertices_str = '\n'.join(f"v {' '.join(map(str, p))}" for p in self.points)

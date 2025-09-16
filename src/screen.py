@@ -121,12 +121,3 @@ class Camera:
 
   def get_corners(self) -> tuple[float, float, float, float]:
     return self.padding, self.padding, self.viewport_width - self.padding, self.viewport_height - self.padding
-
-@dataclass
-class ScreenWireframe:
-  start: Point
-  end: Point | None = None
-
-
-  def copy(self) -> 'ScreenWireframe':
-    return ScreenWireframe(self.start, self.end)

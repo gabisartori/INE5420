@@ -366,7 +366,7 @@ class Viewport:
 
   def update(self):
     self.canva.delete("all")
-    all_objects = [obj.copy() for obj in self.objects.copy()]
+    all_objects = [obj.copy() for obj in self.objects]
 
     # Add debug objects to the list of objects to be drawn if debug mode is on
     if self.debug:
@@ -380,34 +380,24 @@ class Viewport:
     all_objects = self.clipping.clip(all_objects, ClippingAlgorithm(self.clipping_algorithm.get()))
     # Draw all objects
     for obj in all_objects:
-      figures = obj.figures()
-      if isinstance(obj, PolygonObject):
-        for edge in figures:
-          # Draw polygon edges
-          if edge.end is None: raise ValueError("Polygon edge has no endpoint")
-          start, end = edge.start, edge.end
-          self.canva.create_line(start[0], start[1], end[0], end[1], fill=obj.color)
-        # Fill polygon
-        if obj.fill_color:
-          projected_points = [edge.start for edge in figures]
-          
-          # fecha o poligono se necessario
-          if not np.array_equal(projected_points[0], projected_points[-1]):
-            projected_points.append(projected_points[0])
-
-          points = [coord for point in projected_points for coord in point]
-          if len(points) >= 6:  
-            self.canva.create_polygon(points, fill=obj.fill_color, outline=obj.color)
-      else:
-        for edge in figures:       
-          if edge.end is not None:
-            start, end = edge.start, edge.end
-            self.canva.create_line(start[0], start[1], end[0], end[1], fill=obj.color)
-          else:
-            point = edge.start
-            radius = obj.radius
-            if self.is_click_inside_viewport(point[0], point[1]):
-              self.canva.create_oval(point[0] - radius, point[1] - radius, point[0] + radius, point[1] + radius, fill=obj.color)
+      match obj:
+        case PolygonObject():
+          if len(obj.points) < 3: continue
+          for i in range(len(obj.points)):
+            start = obj.points[i]
+            end = obj.points[(i + 1) % len(obj.points)]
+            self.canva.create_line(start[0], start[1], end[0], end[1], fill=obj.line_color, width=obj.thickness)
+          if obj.fill_color:
+            self.canva.create_polygon(*((p[0], p[1]) for p in obj.points), fill=obj.fill_color, outline=obj.line_color, width=obj.thickness)
+        case LineObject():
+          if len(obj.points) != 2: continue
+          self.canva.create_line(obj.points[0][0], obj.points[0][1], obj.points[1][0], obj.points[1][1], fill=obj.line_color, width=obj.thickness)
+        case PointObject():
+          p = obj.points[0] if obj.points else None
+          if p is None: continue
+          if not self.is_click_inside_viewport(p[0], p[1]): continue
+          self.canva.create_oval(p[0]-obj.thickness, p[1]-obj.thickness, p[0]+obj.thickness, p[1]+obj.thickness, fill=obj.fill_color, outline=obj.line_color)
+        case _: continue  # Unsupported object type
 
     # Refresh the object list
     self.ui_object_list.delete(*self.ui_object_list.get_children())
@@ -447,98 +437,74 @@ class Viewport:
     x0, y0, x1, y1 = self.camera.get_corners()
     self.canva.create_rectangle(x0, y0, x1, y1, outline="red", width=1)
 
-  def change_point_color(self):
-    selected_item = self.ui_object_list.selection()
-    
-    if not selected_item:
-      self.log("Aviso: Nenhum objeto selecionado.")
-      return
-    
-    item_id = self.ui_object_list.item(selected_item[0], "tags")[0]
-    for obj in self.objects:
-      if str(obj.id) == item_id:
-        color = colorchooser.askcolor(title="Escolha a cor do ponto")
-        if color[1]:
-          obj.color = color[1]
-          self.update()
-        break
+  def change_thickness(self, target: Wireframe, thickness: str, window: tk.Toplevel):
+    try:
+      target.thickness = int(thickness)
+      self.update()
+    except ValueError:
+      self.log("Erro: Espessura inválida. Deve ser um número inteiro.")
+    window.destroy()
 
-  def change_point_radius(self):
-    selected_item = self.ui_object_list.selection()
-    if not selected_item:
-      self.log("Aviso: Nenhum objeto selecionado.")
-      return
+  def change_line_color(self, target: Wireframe, window: tk.Toplevel):
+    color = colorchooser.askcolor(title="Escolha a cor da linha")
+    if color[1]:
+      target.line_color = color[1]
+      self.update()
+    window.destroy()
 
-    item_id = self.ui_object_list.item(selected_item[0], "tags")[0]
-    for obj in self.objects:
-      if str(obj.id) == item_id:
-        obj.radius = simpledialog.askfloat("Raio do Ponto", "Digite o novo raio do ponto:", minvalue=1, maxvalue=100, initialvalue=obj.radius) or 0.0
-        if obj.radius is not None:
-          self.update()
-          break
-
-  def change_line_color(self):
-    selected_item = self.ui_object_list.selection()
-    if not selected_item:
-      self.log("Aviso: Nenhum objeto selecionado.")
-      return
-
-    item_id = self.ui_object_list.item(selected_item[0], "tags")[0]
-    for obj in self.objects:
-      if str(obj.id) == item_id:
-        color = colorchooser.askcolor(title="Escolha a cor da linha")
-        if color[1]:
-          obj.color = color[1]
-          self.update()
-        break
-
-  def change_fill_color(self):    
-    selected_item = self.ui_object_list.selection()
-    if not selected_item:
-      self.log("Aviso: Nenhum objeto selecionado.")
-      return
-    item_id = self.ui_object_list.item(selected_item[0], "tags")[0]
-
-    for obj in self.objects:
-      if str(obj.id) == item_id:
-        color = colorchooser.askcolor(title="Escolha a cor de preenchimento")
-        if color[1]:
-          obj.fill_color = color[1]
-          self.update()
-        break
+  def change_fill_color(self, target: Wireframe, window: tk.Toplevel):    
+    color = colorchooser.askcolor(title="Escolha a cor de preenchimento")
+    if color[1]:
+      target.fill_color = color[1]
+      self.update()
+    window.destroy()
 
   def properties_window(self):
     target = self.get_selected_object()
-    tmp_window = tk.Toplevel(self.root)
-    tmp_window.title("Propriedades do Objeto")
-    tmp_window.resizable(False, False)
-    fill_color_label = tk.Label(tmp_window, text="Cor de preenchimento:")
-    line_color_label = tk.Label(tmp_window, text="Cor da linha:")
-    thickness_label = tk.Label(tmp_window, text="Espessura da linha:")
-    fill_color_button = tk.Button(tmp_window, text="Alterar", command=self.change_fill_color)
-    line_color_button = tk.Button(tmp_window, text="Alterar", command=self.change_line_color)
-    thickness_input = tk.Entry(tmp_window)
-    thickness_button = tk.Button(tmp_window, text="Alterar", command=lambda: self.change_point_radius() if isinstance(target, PointObject) else None)
+    if not target:
+      self.log("Aviso: Nenhum objeto selecionado.")
+      return
+    match target:
+      case PointObject():
+        thickness_prompt = "Raio do ponto"
+        line_prompt = "Cor do contorno"
+        fill_prompt = "Cor do ponto"
+      case LineObject():
+        thickness_prompt = "Espessura da linha"
+        line_prompt = "Cor da linha"
+        fill_prompt = ""
+      case PolygonObject():
+        thickness_prompt = "Espessura da linha"
+        line_prompt = "Cor do contorno"
+        fill_prompt = "Cor de preenchimento"
+      case _:
+        return
+    prompt_window = tk.Toplevel(self.root)
+    prompt_window.title("Propriedades do Objeto")
+    prompt_window.resizable(False, False)
+    name_label = tk.Label(prompt_window, text="Nome do objeto:")
+    name_input = tk.Entry(prompt_window)
+    name_input.insert(0, target.name)
+    name_button = tk.Button(prompt_window, text="Alterar", command=lambda: (setattr(target, 'name', name_input.get()), prompt_window.destroy(), self.update()))
     
-    fill_color_label.grid(row=0, column=0)
-    fill_color_button.grid(row=0, column=1)
-    line_color_label.grid(row=1, column=0)
-    line_color_button.grid(row=1, column=1)
+    fill_color_label = tk.Label(prompt_window, text=fill_prompt)
+    line_color_label = tk.Label(prompt_window, text=line_prompt)
+    thickness_label = tk.Label(prompt_window, text=thickness_prompt)
+    fill_color_button = tk.Button(prompt_window, text="Alterar", command=lambda: self.change_fill_color(target, prompt_window))
+    line_color_button = tk.Button(prompt_window, text="Alterar", command=lambda: self.change_line_color(target, prompt_window))
+    thickness_input = tk.Entry(prompt_window)
+    thickness_button = tk.Button(prompt_window, text="Alterar", command=lambda: self.change_thickness(target, thickness_input.get(), prompt_window))
+    name_label.grid(row=0, column=0)
+    name_input.grid(row=0, column=1)
+    name_button.grid(row=0, column=2)
+    line_color_label.grid(row=1, column=0, columnspan=2)
+    line_color_button.grid(row=1, column=2)
     thickness_label.grid(row=2, column=0)
     thickness_input.grid(row=2, column=1)
-    thickness_button.grid(row=3, column=0, columnspan=2)
-
-    match target:
-      case PointObject(_):
-        pass
-      case LineObject(_):
-        pass
-      case PolygonObject(_):
-        pass
-      case _:
-        self.log("Aviso: Nenhum objeto selecionado.")
-        tmp_window.destroy()
-        return
+    thickness_button.grid(row=2, column=2)
+    if fill_prompt:
+      fill_color_label.grid(row=3, column=0, columnspan=2)
+      fill_color_button.grid(row=3, column=2)
 
   def load_objects(self, filepath: str) -> list[Wireframe]:
     if not filepath: return []
@@ -559,7 +525,7 @@ class Viewport:
               current_points.append(np.array([float(coord) for coord in args]))
             case "p":
               if len(current_points) == 1:
-                objects.append(PointObject(current_name, current_points[0], id=len(objects), radius=int(args[0]) if args[0].isnumeric() else 2))
+                objects.append(PointObject(current_name, current_points[0], id=len(objects), thickness=int(args[0]) if args[0].isnumeric() else 2))
               current_points = []
             case "l":
               if len(current_points) == 2:
