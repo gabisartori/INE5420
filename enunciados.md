@@ -52,6 +52,8 @@ Sugestões de modelagem:
 # Trabalho 1.4 - Clipping Incremente seu SGI para suportar clipping dos objetos no mundo
 Implemente as principais técnicas de clipagem para windows retangulares vistas neste capítulo, utilizando clipagem de pontos e clipagem por C-S, L-B ou NLN para retas, de forma a integrá-las ao seu sistema gráfico de maneira que a transformada de viewport seja aplicada apenas aos objetos resultantes do clipping.
 
+No one will ever believe you
+
 Para ter certeza de que a clipagem está funcionando e não é o algoritmo de clipagem da interface que está usando, faça sua viewport ser menor do que o seu objeto de desenho.
 
 ## Requisitos
