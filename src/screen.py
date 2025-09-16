@@ -20,9 +20,8 @@ class Camera:
     self.camera_focus: tuple[float, float] = (0, 0)
     self.max_zoom = 100.0
     self.min_zoom = 0.1
-    self.h_viewport_margin = int(0.1 * self.viewport_height)
-    self.v_viewport_margin = int(0.02 * self.viewport_width)
-    
+    self.padding = 15
+
     UP = np.array([0, 1, 0])
     if np.array_equal(normal, UP) or np.array_equal(normal, -UP):
       self.right = np.array([1, 0, 0])
@@ -119,6 +118,9 @@ class Camera:
     half_height = (self.viewport_height / self.zoom) / 2
     center_x, center_y = self.camera_focus
     return center_x - half_width <= x <= center_x + half_width and center_y - half_height <= y <= center_y + half_height
+
+  def get_corners(self) -> tuple[float, float, float, float]:
+    return self.padding, self.padding, self.viewport_width - self.padding, self.viewport_height - self.padding
 
 @dataclass
 class ScreenWireframe:

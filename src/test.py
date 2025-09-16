@@ -43,10 +43,8 @@ line1 = LineObject(
   end=np.array([1516, 375])
 )
 
-clipping = Clipping(window)
+clipping = Clipping(*window)
 clipped = clipping.clip([line1], ClippingAlgorithm.COHEN_SUTHERLAND)
-# print(clipped)
-# print(line1)
 
 
 print("All tests passed!")

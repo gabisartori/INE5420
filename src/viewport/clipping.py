@@ -28,10 +28,11 @@ class ClippingAlgorithm(Enum):
     return "Unknown"
 
 class Clipping:
-  #def __init__(self, camera: Camera):
-  def __init__(self, window: tuple[float, float, float, float]):
-    self.window = window
-    self.xmin, self.xmax, self.ymin, self.ymax = window
+  def __init__(self, xmin, ymin, xmax, ymax):
+    self.xmin = xmin
+    self.ymin = ymin
+    self.xmax = xmax
+    self.ymax = ymax
 
   def clip(self, all_objects: list[Wireframe], algorithm: ClippingAlgorithm) -> list[Wireframe]:
     """Clip all wireframe objects using the specified algorithm."""
@@ -41,7 +42,6 @@ class Clipping:
       # Clip polygon
       if isinstance(obj, PolygonObject):
         clipped = self.sutherland_hodgman_clip(obj)
-        print('clipping sutherland_hodgman', obj.points, '->', clipped.points if clipped else None)
         
       # Clip line
       elif len(obj.points) == 2:
@@ -85,8 +85,6 @@ class Clipping:
 
   def cohen_sutherland_clip(self, x0: float, y0: float, x1: float, y1: float) -> tuple[float, float, float, float] | None:
     """Cohen-Sutherland clipping algorithm for a line"""
-    print(x0, y0, x1, y1)
-    print(self.window)
     out_code0 = self.compute_out_code(x0, y0)
     out_code1 = self.compute_out_code(x1, y1)
     
@@ -94,7 +92,6 @@ class Clipping:
     # print('clipping cohen_sutherland', x0, y0, x1, y1, out_code0, out_code1)
     while not accept:
       if not (out_code0 | out_code1):
-        print('Points: ', (x0, y0), (x1, y1))
         accept = True
         return x0, y0, x1, y1  # Both points inside
       elif out_code0 & out_code1:
@@ -115,7 +112,6 @@ class Clipping:
           x = self.xmin
         else:
           # TODO: Fix these non exhaustive checks throughout the code
-          print("Error: Shouldn't reach here")
           raise RuntimeError("Shouldn't reach here")
 
         if out_code_out == out_code0:
