@@ -3,8 +3,7 @@ sys.path.append("..")
 
 from enum import Enum
 import numpy as np
-from wireframe import PolygonObject, Wireframe
-from components.my_types import Point
+from wireframe import *
 
 class Code(Enum):
   INSIDE = 0  # 0000
@@ -39,31 +38,28 @@ class Clipping:
     clipped_objects = []
     for x in all_objects:
       obj = x.copy()
-      # Clip polygon
-      if isinstance(obj, PolygonObject):
-        clipped = self.sutherland_hodgman_clip(obj)
-        
-      # Clip line
-      elif len(obj.points) == 2:
-        p1, p2 = obj.points
-        if algorithm == ClippingAlgorithm.COHEN_SUTHERLAND:
-          clipped = self.cohen_sutherland_clip(p1[0], p1[1], p2[0], p2[1])
-        elif algorithm == ClippingAlgorithm.LIANG_BARSKY:
-          clipped = self.liang_barsky_clip(p1[0], p1[1], p2[0], p2[1])
-        else:
+      match obj:
+        case PolygonObject():
+          clipped = self.sutherland_hodgman_clip(obj)
+        case LineObject():
+          p1, p2 = obj.points
+          if algorithm == ClippingAlgorithm.COHEN_SUTHERLAND:
+            clipped = self.cohen_sutherland_clip(p1[0], p1[1], p2[0], p2[1])
+          elif algorithm == ClippingAlgorithm.LIANG_BARSKY:
+            clipped = self.liang_barsky_clip(p1[0], p1[1], p2[0], p2[1])
+          else:
+            continue
+          if clipped is not None:
+            x0, y0, x1, y1 = clipped
+            obj.points = [np.array([x0, y0]), np.array([x1, y1])]
+          else:
+            obj.points = []
+        case PointObject():
+          p = obj.points[0]
+          if not self.point_in_window(p[0], p[1]):
+            obj.points = []
+        case _:
           continue
-
-        if clipped is not None:
-          x0, y0, x1, y1 = clipped
-          obj.points = [np.array([x0, y0]), np.array([x1, y1])]
-        else:
-          obj.points = []
-                    
-      # Clip point
-      elif len(obj.points) == 1:
-        p = obj.points[0]
-        if not self.point_in_window(p[0], p[1]):
-          obj.points = []
 
       clipped_objects.append(obj)
     return clipped_objects
@@ -134,28 +130,27 @@ class Clipping:
     t_exit = 1.0
 
     for i in range(4):
-        if p[i] == 0:  
-            if q[i] < 0:
-                return None  
+      if p[i] == 0:  
+        if q[i] < 0:
+          return None  
+      else:
+        t = q[i] / p[i]
+        if p[i] < 0:
+          if t > t_enter:
+            t_enter = t
         else:
-            t = q[i] / p[i]
-            if p[i] < 0:
-                if t > t_enter:
-                    t_enter = t
-            else:
-                if t < t_exit:
-                    t_exit = t
+          if t < t_exit:
+            t_exit = t
 
-    if t_enter > t_exit:
-        return None 
+    if t_enter > t_exit: return None 
 
-    x1_clip = x1 + t_enter * dx
-    y1_clip = y1 + t_enter * dy
-    x2_clip = x1 + t_exit * dx
-    y2_clip = y1 + t_exit * dy
+    x0_clip = x0 + t_enter * dx
+    y0_clip = y0 + t_enter * dy
+    x1_clip = x0 + t_exit * dx
+    y1_clip = y0 + t_exit * dy
 
-    return x1_clip, y1_clip, x2_clip, y2_clip
-  
+    return x0_clip, y0_clip, x1_clip, y1_clip
+
   def sutherland_hodgman_clip(self, polygon: PolygonObject) -> PolygonObject | None:
     """Sutherland-Hodgman polygon clipping algorithm for polygons"""
     # Para cada lado da janela:
