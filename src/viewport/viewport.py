@@ -46,6 +46,7 @@ class Viewport:
     # Control buttons and input fields
     self.ui_build_button = tk.Button(self.root, text="Build", command=self.set_building)
     self.ui_close_polygon_button = tk.Button(self.root, text="Polígono", command=self.finish_polygon)
+    self.ui_create_curve_button = tk.Button(self.root, text="Curva", command=self.finish_curve)
     self.ui_object_properties_button = tk.Button(self.root, text="Propriedades", command=self.properties_window)
     self.ui_rotate_object_button = tk.Button(self.root, text="Girar", command=self.rotate)
     self.ui_translate_object_button = tk.Button(self.root, text="Deslocar", command=self.translate)
@@ -104,7 +105,7 @@ class Viewport:
     self.clipping_algorithm = tk.IntVar(value=1)
     settings_menu.add_radiobutton(label="Cohen-Sutherland", variable=self.clipping_algorithm, value=1, command=lambda: self.set_clipping_algorithm("cohen_sutherland"))
     settings_menu.add_radiobutton(label="Liang-Barsky", variable=self.clipping_algorithm, value=2, command=lambda: self.set_clipping_algorithm("liang_barsky"))
-
+    settings_menu.add_command(label="Curvas", command=lambda: self.set_curve_config())
     self.menubar.add_cascade(label="Configurações", menu=settings_menu)
     self.root.config(menu=self.menubar)
 
@@ -125,7 +126,8 @@ class Viewport:
     self.ui_object_list_frame.grid(row=0, column=0, rowspan=12, columnspan=4, sticky="nsew")
 
     self.ui_build_button.grid(row=12, column=0, rowspan=1, columnspan=2, sticky="nsew")
-    self.ui_close_polygon_button.grid(row=12, column=2, rowspan=1, columnspan=2, sticky="nsew")
+    self.ui_close_polygon_button.grid(row=12, column=2, rowspan=1, columnspan=1, sticky="nsew")
+    self.ui_create_curve_button.grid(row=12, column=3, rowspan=1, columnspan=1, sticky="nsew")
     self.ui_rotate_object_button.grid(row=13, column=0, rowspan=1, columnspan=1, sticky="nsew")
     self.ui_translate_object_button.grid(row=13, column=1, rowspan=1, columnspan=1, sticky="nsew")
     self.ui_scale_button.grid(row=13, column=2, rowspan=1, columnspan=1, sticky="nsew")
@@ -269,6 +271,14 @@ class Viewport:
     self.build.clear()
     self.building = False
     self.update()
+    
+  def set_curve_config(self):
+    steps = simpledialog.askinteger("Configuração de Curvas", "Número de passos para desenhar curvas de Bézier (padrão 100):", initialvalue=self.camera.bezier_steps, minvalue=10, maxvalue=1000)
+    if steps:
+      self.camera.bezier_steps = steps
+      self.log(f"Número de passos para desenhar curvas de Bézier alterado para {steps}.")
+      self.update()
+    
 
   def set_clipping_algorithm(self, algorithm: str):
     self.log(f"Algoritmo de clipagem alterado para {algorithm.title()}")
@@ -319,6 +329,7 @@ class Viewport:
     self.root.bind("<KeyPress-e>", lambda e: self.camera.move_above() or self.update())
     self.root.bind("<KeyPress-Escape>", lambda e: self.cancel_building())
     self.root.bind("<Control-z>", lambda e: self.undo())
+    self.root.bind("<B1-Motion>", self.move_curve_point)
 
     # This one is not a control. It's used to remove focus from a text input when clicking outside of it
     def focus_clicked_widget(event):
@@ -341,6 +352,29 @@ class Viewport:
       self.objects.append(PointObject(f"Clicked Point", self.camera.viewport_to_world(event.x, event.y), id=self.placed_objects_counter))
       self.placed_objects_counter += 1
     self.update()
+    
+  def move_curve_point(self, event):
+    # checks if a curve exists and if there's a point close enough to the cursor
+    limit = 10
+    
+    
+  def finish_curve(self):
+    if self.building:
+      if len(self.build) < 4: 
+        self.log("Erro: Pelo menos quatro pontos são necessários para formar uma curva de Bézier cúbica.")
+        return
+      
+    else:
+      # opens popup to ask for 4 control points
+      self.build = []
+      
+      
+      
+      
+    new_curve = CurveObject_2D("Curve", self.build.copy(), self.camera.bezier_steps, id=self.placed_objects_counter)
+    self.objects.append(new_curve)
+    self.placed_objects_counter += 1
+    self.cancel_building()
 
   def finish_polygon(self):
     if len(self.build) < 3: 
@@ -378,9 +412,15 @@ class Viewport:
     for obj in all_objects:
       obj.points = [np.array(self.camera.world_to_viewport(point)) for point in obj.points]
     all_objects = self.clipping.clip(all_objects, ClippingAlgorithm(self.clipping_algorithm.get()))
+
     # Draw all objects
     for obj in all_objects:
       match obj:
+        case CurveObject_2D():
+          if len(obj.points) < 4: continue
+          for i in range(1, len(obj.points)):
+            self.canva.create_line(obj.points[i-1][0], obj.points[i-1][1], obj.points[i][0], obj.points[i][1], fill=obj.line_color, width=obj.thickness)
+
         case PolygonObject():
           if len(obj.points) < 3: continue
           for i in range(len(obj.points)):
@@ -389,15 +429,20 @@ class Viewport:
             self.canva.create_line(start[0], start[1], end[0], end[1], fill=obj.line_color, width=obj.thickness)
           if obj.fill_color:
             self.canva.create_polygon(*((p[0], p[1]) for p in obj.points), fill=obj.fill_color, outline=obj.line_color, width=obj.thickness)
+        
         case LineObject():
           if len(obj.points) != 2: continue
           self.canva.create_line(obj.points[0][0], obj.points[0][1], obj.points[1][0], obj.points[1][1], fill=obj.line_color, width=obj.thickness)
+        
         case PointObject():
           p = obj.points[0] if obj.points else None
           if p is None: continue
           if not self.is_click_inside_viewport(p[0], p[1]): continue
           self.canva.create_oval(p[0]-obj.thickness, p[1]-obj.thickness, p[0]+obj.thickness, p[1]+obj.thickness, fill=obj.fill_color, outline=obj.line_color)
-        case _: continue  # Unsupported object type
+        
+        case _: 
+          self.log(f"Erro: Tipo de objeto desconhecido: {type(obj)}")
+          continue  # Unsupported object type
 
     # Refresh the object list
     self.ui_object_list.delete(*self.ui_object_list.get_children())
@@ -477,6 +522,13 @@ class Viewport:
         thickness_prompt = "Espessura da linha"
         line_prompt = "Cor do contorno"
         fill_prompt = "Cor de preenchimento"
+      case CurveObject_2D():
+        thickness_prompt = "Espessura da linha"
+        line_prompt = "Cor da linha"
+        fill_prompt = ""
+        begin_end_points_prompt = "Pontos inicial e final"
+        control_points_prompt = "Pontos de controle"
+        
       case _:
         return
     prompt_window = tk.Toplevel(self.root)
@@ -505,6 +557,16 @@ class Viewport:
     if fill_prompt:
       fill_color_label.grid(row=3, column=0, columnspan=2)
       fill_color_button.grid(row=3, column=2)
+      
+    if isinstance(target, CurveObject_2D):
+      begin_end_points_label = tk.Label(prompt_window, text=begin_end_points_prompt + f": ({target.begin_end_points[0][0]:.2f}, {target.begin_end_points[0][1]:.2f}), ({target.begin_end_points[1][0]:.2f}, {target.begin_end_points[1][1]:.2f})")
+      control_points_label = tk.Label(prompt_window, text=control_points_prompt + ": " + ", ".join(f"({p[0]:.2f}, {p[1]:.2f})" for p in target.control_points))
+      # begin_end_points_value = tk.Label(prompt_window, text=", ".join(f"({p[0]:.2f}, {p[1]:.2f})" for p in target.begin_end_points), font=("Arial", 8))
+      # control_points_value = tk.Label(prompt_window, text=", ".join(f"({p[0]:.2f}, {p[1]:.2f})" for p in target.control_points), font=("Arial", 8))
+      begin_end_points_label.grid(row=4, column=0, columnspan=2)
+      # begin_end_points_value.grid(row=4, column=2)
+      control_points_label.grid(row=5, column=0, columnspan=2)
+      # control_points_value.grid(row=5, column=2)
 
   def load_objects(self, filepath: str) -> list[Wireframe]:
     if not filepath: return []
@@ -533,6 +595,7 @@ class Viewport:
               else:
                 objects.append(PolygonObject(current_name, current_points.copy(), id=len(objects)))
               current_points = []
+            # TODO: Implementar curvas
             case _:
               self.log(f"Aviso: Cabeçalho desconhecido '{header}' ignorado.")
 

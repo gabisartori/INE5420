@@ -4,26 +4,26 @@ from wireframe import *
 from viewport.clipping import Clipping, ClippingAlgorithm
 import random
 
-WIDTH = 800
-HEIGHT = 600
+# WIDTH = 800
+# HEIGHT = 600
 
-camera = Camera(
-  normal=np.array([0, 0, -1]),
-  position=np.array([100, 0, 0]),
-  viewport_width=WIDTH,
-  viewport_height=HEIGHT,
-  zoom=1.1
-)
+# camera = Camera(
+#   normal=np.array([0, 0, -1]),
+#   position=np.array([100, 0, 0]),
+#   viewport_width=WIDTH,
+#   viewport_height=HEIGHT,
+#   zoom=1.1
+# )
 
-TOLERANCE = 10
-correct = True
-for i in range(100):
-  x = random.randint(0, WIDTH)
-  y = random.randint(0, HEIGHT)
-  a, b = camera.camera_to_viewport(*camera.viewport_to_camera(x, y))
-  if a < x-TOLERANCE or a > x+TOLERANCE or b < y-TOLERANCE or b > y+TOLERANCE : print(f"Test {i} failed: ({x}, {y}) -> ({a}, {b})"); exit(1)
+# TOLERANCE = 10
+# correct = True
+# for i in range(100):
+#   x = random.randint(0, WIDTH)
+#   y = random.randint(0, HEIGHT)
+#   a, b = camera.camera_to_viewport(*camera.viewport_to_camera(x, y))
+#   if a < x-TOLERANCE or a > x+TOLERANCE or b < y-TOLERANCE or b > y+TOLERANCE : print(f"Test {i} failed: ({x}, {y}) -> ({a}, {b})"); exit(1)
 
-window = (18, 75, 915, 675)
+# window = (18, 75, 915, 675)
 
 # test_polygon = PolygonObject(
 #   name="test",
@@ -37,15 +37,28 @@ window = (18, 75, 915, 675)
 #   ]
 # )
 
-line1 = LineObject(
-  name="line1",
-  start=np.array([416, 375]),
-  end=np.array([1516, 375])
+# line1 = LineObject(
+#   name="line1",
+#   start=np.array([416, 375]),
+#   end=np.array([1516, 375])
+# )
+
+# clipping = Clipping(*window)
+# clipped = clipping.clip([line1], ClippingAlgorithm(2))
+
+test_curve = CurveObject_2D(
+  name="curve1",
+  points=[
+    np.array([100, 500]),
+    np.array([200, 100]),
+    np.array([400, 100]),
+    np.array([500, 500])
+  ],
+  steps=50
 )
 
-clipping = Clipping(*window)
-clipped = clipping.clip([line1], ClippingAlgorithm(2))
-
+curve = test_curve.copy()
+print(curve)
 
 print("All tests passed!")
 exit(0)

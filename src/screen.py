@@ -21,6 +21,7 @@ class Camera:
     self.max_zoom = 100.0
     self.min_zoom = 0.1
     self.padding = 15
+    self.bezier_steps = 100
 
     UP = np.array([0, 1, 0])
     if np.array_equal(normal, UP) or np.array_equal(normal, -UP):

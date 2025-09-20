@@ -80,7 +80,6 @@ class PointObject(Wireframe):
 class LineObject(Wireframe):
   def __init__(self, name: str, start: Point, end: Point, **kwargs):
     super().__init__(name, [start, end], **kwargs)
-
   def copy(self) -> 'LineObject':
     return LineObject(
       self.name, self.points[0].copy(),
@@ -112,3 +111,56 @@ class PolygonObject(Wireframe):
     vertices_str = '\n'.join(f"v {' '.join(map(str, p))}" for p in self.points)
     indices_str = ' '.join(str(i + 1) for i in range(len(self.points)))
     return f"o {self.name}\n{vertices_str}\nl {indices_str}"
+
+class CurveObject_2D(Wireframe):
+  def __init__(self, name: str, points: list[Point], steps: int, **kwargs):
+    super().__init__(name, points, **kwargs)
+    self.steps = steps
+    self.control_points = points[1:-1]
+    self.begin_end_points = [points[0], points[-1]]
+
+  def copy(self) -> 'CurveObject_2D':
+    if len(self.points) == 4: 
+      self.points = self.generate_bezier_points()
+    return CurveObject_2D(
+      name=self.name,
+      points=[self.points[i].copy() for i in range(len(self.points))],
+      steps=self.steps,
+      id=self.id,
+      thickness=self.thickness,
+      line_color=self.line_color,
+      fill_color=self.fill_color
+    )
+        
+  def bezier_cubic(self, t, P0, P1, P2, P3) -> Point:
+    """Calculate points on a cubic Bezier curve defined by four control points."""
+    x = (1 - t)**3 * P0[0] + 3 * (1 - t)**2 * t * P1[0] + 3 * (1 - t) * t**2 * P2[0] + t**3 * P3[0]
+    y = (1 - t)**3 * P0[1] + 3 * (1 - t)**2 * t * P1[1] + 3 * (1 - t) * t**2 * P2[1] + t**3 * P3[1]
+    new_point = np.array([x, y, 1])
+    return new_point
+
+  def generate_bezier_points(self) -> list[Point]:
+    """Generate points on the Bezier curve defined by the control points."""
+    if len(self.points) != 4:
+      raise ValueError("Cubic Bezier curve requires exactly 4 control points.")
+    P0, P1, P2, P3 = self.points
+    curve_points = [self.bezier_cubic(step / self.steps, P0, P1, P2, P3) for step in range(self.steps + 1)]
+    return curve_points
+    
+    
+    
+    # P0, P1, P2, P3 = self.points
+    # curve_points = []
+    # for step in range(self.steps + 1):
+    #   t = step / self.steps
+    #   x = (1 - t)**3 * P0[0] + 3 * (1 - t)**2 * t * P1[0] + 3 * (1 - t) * t**2 * P2[0] + t**3 * P3[0]
+    #   y = (1 - t)**3 * P0[1] + 3 * (1 - t)**2 * t * P1[1] + 3 * (1 - t) * t**2 * P2[1] + t**3 * P3[1]
+    #   curve_points.append(np.array([x, y]))
+    # return curve_points
+        
+
+  def __str__(self) -> str:
+    vertices_str = '\n'.join(f"v {' '.join(map(str, p))}" for p in self.points)
+    indices_str = ' '.join(str(i + 1) for i in range(len(self.points)))
+    return f"o {self.name}\n{vertices_str}\nc {indices_str}"
+

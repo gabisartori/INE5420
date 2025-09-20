@@ -39,6 +39,8 @@ class Clipping:
     for x in all_objects:
       obj = x.copy()
       match obj:
+        case CurveObject_2D():
+          obj.points = self.clip_curve(obj) or []
         case PolygonObject():
           obj.points = self.sutherland_hodgman_clip(obj) or []
         case LineObject():
@@ -47,6 +49,7 @@ class Clipping:
             clipped = self.cohen_sutherland_clip(p1[0], p1[1], p2[0], p2[1])
           elif algorithm == ClippingAlgorithm.LIANG_BARSKY:
             clipped = self.liang_barsky_clip(p1[0], p1[1], p2[0], p2[1])
+            print('clipped:', clipped)
           else:
             continue
           if clipped is not None:
@@ -117,7 +120,6 @@ class Clipping:
           out_code1 = self.compute_out_code(x1, y1)
           
   def liang_barsky_clip(self, x0: float, y0: float, x1: float, y1: float) -> tuple[float, float, float, float] | None:
-    pass
     """Liang-Barsky clipping algorithm for a line"""
     dx = x1 - x0
     dy = y1 - y0
@@ -147,7 +149,6 @@ class Clipping:
     y0_clip = y0 + t_enter * dy
     x1_clip = x0 + t_exit * dx
     y1_clip = y0 + t_exit * dy
-
     return x0_clip, y0_clip, x1_clip, y1_clip
 
   def sutherland_hodgman_clip(self, polygon: PolygonObject) -> list[np.ndarray] | None:
@@ -273,3 +274,23 @@ class Clipping:
       print("How tf'd u get here")
       return None
     return new_points
+  
+  def clip_curve(self, curve: CurveObject_2D) -> list[np.ndarray] | None:
+    """Clip a cubic Bezier curve by approximating it with line segments and clipping each segment."""
+    if len(curve.points) < 2:
+      return None
+
+    clipped_points = []
+    for i in range(1, len(curve.points)):
+      p1 = curve.points[i - 1]
+      p2 = curve.points[i]
+      clipped_segment = self.cohen_sutherland_clip(p1[0], p1[1], p2[0], p2[1])
+      if clipped_segment is not None:
+        x0, y0, x1, y1 = clipped_segment
+        if not clipped_points or (clipped_points[-1][0] != x0 or clipped_points[-1][1] != y0):
+          clipped_points.append(np.array([x0, y0]))
+        clipped_points.append(np.array([x1, y1]))
+
+    return clipped_points if clipped_points else None
+
+
