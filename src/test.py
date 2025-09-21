@@ -46,19 +46,21 @@ import random
 # clipping = Clipping(*window)
 # clipped = clipping.clip([line1], ClippingAlgorithm(2))
 
-test_curve = CurveObject_2D(
-  name="curve1",
-  points=[
-    np.array([100, 500]),
-    np.array([200, 100]),
-    np.array([400, 100]),
-    np.array([500, 500])
-  ],
-  steps=50
-)
+# test_curve = CurveObject_2D(
+#   name="curve1",
+#   points=[
+#     np.array([100, 500]),
+#     np.array([200, 100]),
+#     np.array([400, 100]),
+#     np.array([500, 500])
+#   ],
+#   steps=50
+# )
 
-curve = test_curve.copy()
-print(curve)
+# curve = test_curve.copy()
+# print(curve)
+
+
 
 print("All tests passed!")
 exit(0)

@@ -277,8 +277,7 @@ class Viewport:
     if steps:
       self.camera.bezier_steps = steps
       self.log(f"Número de passos para desenhar curvas de Bézier alterado para {steps}.")
-      self.update()
-    
+      self.update() 
 
   def set_clipping_algorithm(self, algorithm: str):
     self.log(f"Algoritmo de clipagem alterado para {algorithm.title()}")
@@ -329,7 +328,6 @@ class Viewport:
     self.root.bind("<KeyPress-e>", lambda e: self.camera.move_above() or self.update())
     self.root.bind("<KeyPress-Escape>", lambda e: self.cancel_building())
     self.root.bind("<Control-z>", lambda e: self.undo())
-    self.root.bind("<B1-Motion>", self.move_curve_point)
 
     # This one is not a control. It's used to remove focus from a text input when clicking outside of it
     def focus_clicked_widget(event):
@@ -351,30 +349,74 @@ class Viewport:
     else:
       self.objects.append(PointObject(f"Clicked Point", self.camera.viewport_to_world(event.x, event.y), id=self.placed_objects_counter))
       self.placed_objects_counter += 1
-    self.update()
-    
-  def move_curve_point(self, event):
-    # checks if a curve exists and if there's a point close enough to the cursor
-    limit = 10
-    
+    self.update()    
     
   def finish_curve(self):
     if self.building:
       if len(self.build) < 4: 
         self.log("Erro: Pelo menos quatro pontos são necessários para formar uma curva de Bézier cúbica.")
         return
-      
+
+      new_curve = CurveObject_2D("Curve", self.build.copy(), self.camera.bezier_steps, id=self.placed_objects_counter)
+      self.objects.append(new_curve)
+      self.placed_objects_counter += 1
+      self.cancel_building()
+   
     else:
-      # opens popup to ask for 4 control points
-      self.build = []
+      self.add_bezier_curve()
       
+  def add_bezier_curve(self, target: CurveObject_2D | None=None):
+      if target:
+        control_original = target.control_points.copy()
+        begin_end_original = target.begin_end_points.copy()
       
-      
-      
-    new_curve = CurveObject_2D("Curve", self.build.copy(), self.camera.bezier_steps, id=self.placed_objects_counter)
-    self.objects.append(new_curve)
-    self.placed_objects_counter += 1
-    self.cancel_building()
+      popup = tk.Toplevel(self.root)
+      popup.title("Adicionar Curva de Bézier Cúbica")
+      popup.geometry("300x200")
+      popup.grab_set()
+
+      instructions_control_points = tk.Label(popup, text="Pontos de controle (x0,y0,x1,y1)")
+      instructions_control_points.pack(pady=10)
+      control_points = tk.Entry(popup, textvariable=tk.StringVar(value=", ".join(f"{p[0]},{p[1]}" for p in control_original) if target else ""))
+      control_points.pack(pady=5)
+
+      instructions_begin_end = tk.Label(popup, text="Pontos inicial e final (x2,y2,x3,y3)")
+      instructions_begin_end.pack(pady=10)
+      begin_end_points = tk.Entry(popup, textvariable=tk.StringVar(value=", ".join(f"{p[0]},{p[1]}" for p in begin_end_original) if target else ""))
+      begin_end_points.pack(pady=5)
+
+      def finish_curve_callback(target=target):
+          try:
+              control_values = list(map(int, control_points.get().split(',')))
+              begin_end_values = list(map(int, begin_end_points.get().split(',')))
+
+              if len(control_values) != 4 or len(begin_end_values) != 4:
+                  self.log("Erro: valores de entrada mal-formatados.")
+                  return
+
+              self.build = []
+              for i in range(0, 4, 2):
+                  self.build.append((control_values[i], control_values[i+1], 1))
+              for i in range(0, 4, 2):
+                  self.build.append((begin_end_values[i], begin_end_values[i+1], 1))
+
+              popup.destroy()
+              
+              if not target:
+                  target = CurveObject_2D("Curve", self.build.copy(), self.camera.bezier_steps, id=self.placed_objects_counter)
+                  self.objects.append(target)
+                  self.placed_objects_counter += 1
+              else:
+                  target.points = self.build.copy()
+              self.cancel_building()
+
+          except Exception as e:
+              raise e
+              self.log(f"Erro: {e}")
+              raise e
+
+      create_button = tk.Button(popup, text="Criar/Alterar Curva", command=finish_curve_callback)
+      create_button.pack(pady=10)          
 
   def finish_polygon(self):
     if len(self.build) < 3: 
@@ -412,12 +454,13 @@ class Viewport:
     for obj in all_objects:
       obj.points = [np.array(self.camera.world_to_viewport(point)) for point in obj.points]
     all_objects = self.clipping.clip(all_objects, ClippingAlgorithm(self.clipping_algorithm.get()))
-
+    
     # Draw all objects
     for obj in all_objects:
       match obj:
         case CurveObject_2D():
           if len(obj.points) < 4: continue
+          print("drawing curve with points:", obj.points)
           for i in range(1, len(obj.points)):
             self.canva.create_line(obj.points[i-1][0], obj.points[i-1][1], obj.points[i][0], obj.points[i][1], fill=obj.line_color, width=obj.thickness)
 
@@ -426,6 +469,7 @@ class Viewport:
           for i in range(len(obj.points)):
             start = obj.points[i]
             end = obj.points[(i + 1) % len(obj.points)]
+            print("drawing polygon edge from", start, "to", end)
             self.canva.create_line(start[0], start[1], end[0], end[1], fill=obj.line_color, width=obj.thickness)
           if obj.fill_color:
             self.canva.create_polygon(*((p[0], p[1]) for p in obj.points), fill=obj.fill_color, outline=obj.line_color, width=obj.thickness)
@@ -435,6 +479,7 @@ class Viewport:
           self.canva.create_line(obj.points[0][0], obj.points[0][1], obj.points[1][0], obj.points[1][1], fill=obj.line_color, width=obj.thickness)
         
         case PointObject():
+          print("drawing point at", obj.points)
           p = obj.points[0] if obj.points else None
           if p is None: continue
           if not self.is_click_inside_viewport(p[0], p[1]): continue
@@ -561,12 +606,12 @@ class Viewport:
     if isinstance(target, CurveObject_2D):
       begin_end_points_label = tk.Label(prompt_window, text=begin_end_points_prompt + f": ({target.begin_end_points[0][0]:.2f}, {target.begin_end_points[0][1]:.2f}), ({target.begin_end_points[1][0]:.2f}, {target.begin_end_points[1][1]:.2f})")
       control_points_label = tk.Label(prompt_window, text=control_points_prompt + ": " + ", ".join(f"({p[0]:.2f}, {p[1]:.2f})" for p in target.control_points))
-      # begin_end_points_value = tk.Label(prompt_window, text=", ".join(f"({p[0]:.2f}, {p[1]:.2f})" for p in target.begin_end_points), font=("Arial", 8))
-      # control_points_value = tk.Label(prompt_window, text=", ".join(f"({p[0]:.2f}, {p[1]:.2f})" for p in target.control_points), font=("Arial", 8))
       begin_end_points_label.grid(row=4, column=0, columnspan=2)
-      # begin_end_points_value.grid(row=4, column=2)
+      alter_begin_end_button = tk.Button(prompt_window, text="Alterar", command=lambda: self.add_bezier_curve(target))
+      alter_begin_end_button.grid(row=4, column=2)
       control_points_label.grid(row=5, column=0, columnspan=2)
-      # control_points_value.grid(row=5, column=2)
+      alter_control_points_button = tk.Button(prompt_window, text="Alterar", command=lambda: self.add_bezier_curve(target))
+      alter_control_points_button.grid(row=5, column=2)
 
   def load_objects(self, filepath: str) -> list[Wireframe]:
     if not filepath: return []
