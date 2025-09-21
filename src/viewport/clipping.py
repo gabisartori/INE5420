@@ -303,12 +303,11 @@ class Clipping:
         x0, y0, x1, y1 = clipped_segment
         point0 = np.array([int(x0), int(y0)])
         point1 = np.array([int(x1), int(y1)])
-        
-        if len(clipped_points) == 0 or not np.array_equal(clipped_points[-1], point0):
+
+        if not clipped_points or (clipped_points[-1][0] != x0 or clipped_points[-1][1] != y0):
           clipped_points.append(point0)
         clipped_points.append(point1)
-      # else:
-      #   print(f"Segment from {p1} to {p2} is not visible.")
+
     return clipped_points if clipped_points else None
 
 

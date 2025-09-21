@@ -356,12 +356,13 @@ class Viewport:
       if len(self.build) < 4: 
         self.log("Erro: Pelo menos quatro pontos são necessários para formar uma curva de Bézier cúbica.")
         return
-
+      
+      # TODO: remove this log
+      self.log("Chosen points for curve:", self.build)
       new_curve = CurveObject_2D("Curve", self.build.copy(), self.camera.bezier_steps, id=self.placed_objects_counter)
       self.objects.append(new_curve)
       self.placed_objects_counter += 1
       self.cancel_building()
-   
     else:
       self.add_bezier_curve()
       
@@ -375,12 +376,12 @@ class Viewport:
       popup.geometry("300x200")
       popup.grab_set()
 
-      instructions_control_points = tk.Label(popup, text="Pontos de controle (x0,y0,x1,y1)")
+      instructions_control_points = tk.Label(popup, text="Pontos de controle (x0,y0,x3,y3)")
       instructions_control_points.pack(pady=10)
       control_points = tk.Entry(popup, textvariable=tk.StringVar(value=", ".join(f"{p[0]},{p[1]}" for p in control_original) if target else ""))
       control_points.pack(pady=5)
 
-      instructions_begin_end = tk.Label(popup, text="Pontos inicial e final (x2,y2,x3,y3)")
+      instructions_begin_end = tk.Label(popup, text="Pontos inicial e final (x1,y1,x2,y2)")
       instructions_begin_end.pack(pady=10)
       begin_end_points = tk.Entry(popup, textvariable=tk.StringVar(value=", ".join(f"{p[0]},{p[1]}" for p in begin_end_original) if target else ""))
       begin_end_points.pack(pady=5)
@@ -460,7 +461,7 @@ class Viewport:
       match obj:
         case CurveObject_2D():
           if len(obj.points) < 4: continue
-          print("drawing curve with points:", obj.points)
+          print("Drawing curve with points:", obj.points)
           for i in range(1, len(obj.points)):
             self.canva.create_line(obj.points[i-1][0], obj.points[i-1][1], obj.points[i][0], obj.points[i][1], fill=obj.line_color, width=obj.thickness)
 
@@ -469,7 +470,6 @@ class Viewport:
           for i in range(len(obj.points)):
             start = obj.points[i]
             end = obj.points[(i + 1) % len(obj.points)]
-            print("drawing polygon edge from", start, "to", end)
             self.canva.create_line(start[0], start[1], end[0], end[1], fill=obj.line_color, width=obj.thickness)
           if obj.fill_color:
             self.canva.create_polygon(*((p[0], p[1]) for p in obj.points), fill=obj.fill_color, outline=obj.line_color, width=obj.thickness)
@@ -479,7 +479,6 @@ class Viewport:
           self.canva.create_line(obj.points[0][0], obj.points[0][1], obj.points[1][0], obj.points[1][1], fill=obj.line_color, width=obj.thickness)
         
         case PointObject():
-          print("drawing point at", obj.points)
           p = obj.points[0] if obj.points else None
           if p is None: continue
           if not self.is_click_inside_viewport(p[0], p[1]): continue
