@@ -41,8 +41,7 @@ class Clipping:
       obj = x.copy()
       match obj:
         case CurveObject_2D():
-          pass
-          obj.points = self.clip_curve(obj, algorithm) or []
+          obj.points = self.pre_clip_curve(obj, algorithm) or []
 
         case PolygonObject():
           obj.points = self.sutherland_hodgman_clip(obj) or []
@@ -280,7 +279,7 @@ class Clipping:
       return None
     return new_points
 
-  def clip_curve(self, curve: CurveObject_2D, algorithm: str) -> list[np.ndarray] | None:
+  def pre_clip_curve(self, curve: CurveObject_2D, algorithm: str) -> list[np.ndarray] | None:
     """Clip a cubic Bezier curve by approximating it with line segments and clipping each segment."""
     clipped_points = []
     
@@ -303,8 +302,8 @@ class Clipping:
         x0, y0, x1, y1 = clipped_segment
         point0 = np.array([int(x0), int(y0)])
         point1 = np.array([int(x1), int(y1)])
-
-        if not clipped_points or (clipped_points[-1][0] != x0 or clipped_points[-1][1] != y0):
+        
+        if len(clipped_points) == 0 or not np.array_equal(clipped_points[-1], point0):
           clipped_points.append(point0)
         clipped_points.append(point1)
 

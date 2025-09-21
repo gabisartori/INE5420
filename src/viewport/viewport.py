@@ -480,9 +480,21 @@ class Viewport:
     for obj in all_objects:
       match obj:
         case CurveObject_2D():
-          if len(obj.points) < 4: continue
-          for i in range(1, len(obj.points)):
-            self.canva.create_line(obj.points[i-1][0], obj.points[i-1][1], obj.points[i][0], obj.points[i][1], fill=obj.line_color, width=obj.thickness)
+            if len(obj.points) < 2: 
+                continue
+
+            for i in range(1, len(obj.points)):
+                p0 = obj.points[i - 1]
+                p1 = obj.points[i]
+
+                if p0 is None or p1 is None:
+                    continue
+
+                dist = np.linalg.norm(p1 - p0)
+                if dist > 50:
+                    continue  # Não conectar segmentos distantes
+
+                self.canva.create_line(p0[0], p0[1], p1[0], p1[1], fill=obj.line_color, width=obj.thickness)
 
         case PolygonObject():
           if len(obj.points) < 3: continue
