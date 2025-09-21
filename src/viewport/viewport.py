@@ -47,7 +47,7 @@ class Viewport:
     self.ui_build_button = tk.Button(self.root, text="Build", command=self.set_building)
     self.ui_close_polygon_button = tk.Button(self.root, text="Polígono", command=self.finish_polygon)
     self.ui_create_curve_button = tk.Button(self.root, text="Curva", command=self.finish_curve)
-    self.ui_object_properties_button = tk.Button(self.root, text="Propriedades", command=self.properties_window)
+    self.ui_object_properties_button = tk.Button(self.root, text="Propriedades", command=self.properties_window) # also on mouse right click on object at table
     self.ui_rotate_object_button = tk.Button(self.root, text="Girar", command=self.rotate)
     self.ui_translate_object_button = tk.Button(self.root, text="Deslocar", command=self.translate)
     self.ui_scale_button = tk.Button(self.root, text="Escalar", command=self.scale_selected_object)
@@ -128,19 +128,20 @@ class Viewport:
     self.ui_build_button.grid(row=12, column=0, rowspan=1, columnspan=2, sticky="nsew")
     self.ui_close_polygon_button.grid(row=12, column=2, rowspan=1, columnspan=1, sticky="nsew")
     self.ui_create_curve_button.grid(row=12, column=3, rowspan=1, columnspan=1, sticky="nsew")
-    self.ui_rotate_object_button.grid(row=13, column=0, rowspan=1, columnspan=1, sticky="nsew")
-    self.ui_translate_object_button.grid(row=13, column=1, rowspan=1, columnspan=1, sticky="nsew")
-    self.ui_scale_button.grid(row=13, column=2, rowspan=1, columnspan=1, sticky="nsew")
-    self.ui_object_properties_button.grid(row=13, column=3, rowspan=1, columnspan=1, sticky="nsew")
+    
+    self.ui_rotate_object_button.grid(row=13, column=0, rowspan=1, columnspan=2, sticky="nsew")
+    self.ui_translate_object_button.grid(row=13, column=2, rowspan=1, columnspan=1, sticky="nsew")
+    self.ui_scale_button.grid(row=13, column=3, rowspan=1, columnspan=1, sticky="nsew")
+    
+    self.ui_object_properties_button.grid(row=14, column=0, rowspan=1, columnspan=4, sticky="nsew")
 
-
-    self.ui_point_label.grid(row=14, column=0, rowspan=1, columnspan=2, sticky="nsew")
-    self.ui_point_x_input.grid(row=14, column=2, rowspan=1, columnspan=1, sticky="nsew")
-    self.ui_point_y_input.grid(row=14, column=3, rowspan=1, columnspan=1, sticky="nsew")
-    self.ui_degree_label.grid(row=15, column=0, rowspan=1, columnspan=2, sticky="nsew")
-    self.ui_degree_input.grid(row=15, column=2, rowspan=1, columnspan=2, sticky="nsew")
-    self.ui_scale_factor_label.grid(row=16, column=0, rowspan=1, columnspan=2, sticky="nsew")
-    self.ui_scale_factor_input.grid(row=16, column=2, rowspan=1, columnspan=2, sticky="nsew")
+    self.ui_point_label.grid(row=15, column=0, rowspan=1, columnspan=2, sticky="nsew")
+    self.ui_point_x_input.grid(row=15, column=2, rowspan=1, columnspan=1, sticky="nsew")
+    self.ui_point_y_input.grid(row=15, column=3, rowspan=1, columnspan=1, sticky="nsew")
+    self.ui_degree_label.grid(row=16, column=0, rowspan=1, columnspan=2, sticky="nsew")
+    self.ui_degree_input.grid(row=16, column=2, rowspan=1, columnspan=2, sticky="nsew")
+    self.ui_scale_factor_label.grid(row=17, column=0, rowspan=1, columnspan=2, sticky="nsew")
+    self.ui_scale_factor_input.grid(row=17, column=2, rowspan=1, columnspan=2, sticky="nsew")
 
   def build_debug_grid(self):
     step = 75
@@ -243,6 +244,29 @@ class Viewport:
       return
     target.scale(factor)
     self.update()
+    
+  def object_list_menu(self, event):
+    selected_item = self.ui_object_list.identify_row(event.y)
+    if selected_item:
+      self.ui_object_list.selection_set(selected_item)
+      menu = tk.Menu(self.root, tearoff=0)
+      menu.add_command(label="Propriedades", command=self.properties_window)
+      menu.add_command(label="Remover", command=self.remove_selected_object)
+      
+      # Show the menu and close it if a click outside happens
+      def close_menu_on_click(event2):
+        menu.unpost()
+        self.root.unbind("<Button-1>", close_menu_binding)
+      close_menu_binding = self.root.bind("<Button-1>", close_menu_on_click, add="+")
+      menu.post(event.x_root, event.y_root)      
+
+  def remove_selected_object(self):
+    target = self.get_selected_object()
+    if target:
+      self.objects.remove(target)
+      self.update()
+    else:
+      self.log("Aviso: Nenhum objeto selecionado.")
 
   def set_building(self): 
     self.building = not self.building
@@ -329,6 +353,8 @@ class Viewport:
     self.root.bind("<KeyPress-Escape>", lambda e: self.cancel_building())
     self.root.bind("<Control-z>", lambda e: self.undo())
 
+    self.ui_object_list.bind("<Button-3>", lambda e: self.object_list_menu(e))
+
     # This one is not a control. It's used to remove focus from a text input when clicking outside of it
     def focus_clicked_widget(event):
       # TODO: There has to be a better way to avoid errors when clicking on certain widgets
@@ -367,22 +393,16 @@ class Viewport:
   def add_bezier_curve(self, target: CurveObject_2D | None=None, prompt_window: tk.Toplevel | None=None):
       if target:
         control_original = target.control_points.copy()
-        begin_end_original = target.begin_end_points.copy()
       
       popup = tk.Toplevel(self.root)
       popup.title("Adicionar Curva de Bézier Cúbica")
       popup.geometry("300x200")
       popup.grab_set()
 
-      instructions_control_points = tk.Label(popup, text="Pontos de controle (x0,y0,x3,y3)")
+      instructions_control_points = tk.Label(popup, text="Pontos de controle (x0,y0,x1,y1,...,xN,yN)")
       instructions_control_points.pack(pady=10)
-      control_points = tk.Entry(popup, textvariable=tk.StringVar(value=", ".join(f"{p[0]},{p[1]}" for p in control_original) if target else ""))
-      control_points.pack(pady=5)
-
-      instructions_begin_end = tk.Label(popup, text="Pontos inicial e final (x1,y1,x2,y2)")
-      instructions_begin_end.pack(pady=10)
-      begin_end_points = tk.Entry(popup, textvariable=tk.StringVar(value=", ".join(f"{p[0]},{p[1]}" for p in begin_end_original) if target else ""))
-      begin_end_points.pack(pady=5)
+      control_points = tk.Entry(popup, textvariable=tk.StringVar(value=", ".join(f"{p[0]},{p[1]}" for p in control_original) if target else ""), justify="center")
+      control_points.pack(pady=5, padx=10, fill=tk.X, expand=True)
 
       def finish_curve_callback(target=target):
           try:
@@ -393,19 +413,13 @@ class Viewport:
                   # self.placed_objects_counter -= 1
 
               control_values = list(map(float, control_points.get().split(',')))
-              begin_end_values = list(map(float, begin_end_points.get().split(',')))
-
-              if len(control_values) != 4 or len(begin_end_values) != 4:
-                  self.log("Erro: valores de entrada mal-formatados.")
+              input_points = [np.array([control_values[i], control_values[i+1], 1]) for i in range(0, len(control_values), 2)]
+              if len(input_points) < 4:
+                  self.log("Erro: insira ao menos 4 pontos de controle.")
                   return
 
-              self.build = []
-              for i in range(0, 4, 2):
-                  self.build.append(np.array([control_values[i], control_values[i+1], 1]))
-              for i in range(0, 4, 2):
-                  self.build.append(np.array([begin_end_values[i], begin_end_values[i+1], 1]))
-
-              popup.destroy()  
+              self.build = input_points           
+              popup.destroy()            
               target = CurveObject_2D("Curve", self.build.copy(), self.camera.bezier_steps, id=self.placed_objects_counter)
               if target_copy:
                   target.line_color = target_copy.line_color
@@ -575,7 +589,6 @@ class Viewport:
         thickness_prompt = "Espessura da linha"
         line_prompt = "Cor da linha"
         fill_prompt = ""
-        begin_end_points_prompt = "Pontos inicial e final"
         control_points_prompt = "Pontos de controle"
         
       case _:
@@ -608,11 +621,7 @@ class Viewport:
       fill_color_button.grid(row=3, column=2)
       
     if isinstance(target, CurveObject_2D):
-      begin_end_points_label = tk.Label(prompt_window, text=begin_end_points_prompt + f": ({target.begin_end_points[0][0]:.2f}, {target.begin_end_points[0][1]:.2f}), ({target.begin_end_points[1][0]:.2f}, {target.begin_end_points[1][1]:.2f})")
-      control_points_label = tk.Label(prompt_window, text=control_points_prompt + ": " + ", ".join(f"({p[0]:.2f}, {p[1]:.2f})" for p in target.control_points))
-      begin_end_points_label.grid(row=4, column=0, columnspan=2)
-      alter_begin_end_button = tk.Button(prompt_window, text="Alterar", command=lambda: self.add_bezier_curve(target, prompt_window))
-      alter_begin_end_button.grid(row=4, column=2)
+      control_points_label = tk.Label(prompt_window, text=control_points_prompt + ": " + ", ".join(f"({p[0]:.2f}, {p[1]:.2f})" for p in target.control_points), wraplength=300, justify="left")
       control_points_label.grid(row=5, column=0, columnspan=2)
       alter_control_points_button = tk.Button(prompt_window, text="Alterar", command=lambda: self.add_bezier_curve(target, prompt_window))
       alter_control_points_button.grid(row=5, column=2)
