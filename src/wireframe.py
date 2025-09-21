@@ -114,6 +114,7 @@ class PolygonObject(Wireframe):
 
 class CurveObject_2D(Wireframe):
   def __init__(self, name: str, points: list[Point], steps: int, **kwargs):
+    print(points)
     self.steps = steps
     self.control_points = points
     super().__init__(name, [], **kwargs)
@@ -121,7 +122,6 @@ class CurveObject_2D(Wireframe):
     self.generate_bezier_points()
 
   def copy(self) -> 'CurveObject_2D':
-
     new_obj = CurveObject_2D(
       name=self.name,
       points=[p.copy() for p in self.control_points], 
@@ -143,9 +143,6 @@ class CurveObject_2D(Wireframe):
 
   def generate_bezier_points(self) -> list[Point]:
     """Generate points on the Bezier curve defined by the control points."""
-    
-    # TODO: remove this print
-    print("Generating Bezier curve points... Control points:", self.control_points, "length:", len(self.control_points))
     if len(self.control_points) < 4:
       raise ValueError("Cubic Bezier curve requires at least 4 control points.")
     

@@ -357,8 +357,6 @@ class Viewport:
         self.log("Erro: Pelo menos quatro pontos são necessários para formar uma curva de Bézier cúbica.")
         return
       
-      # TODO: remove this log
-      self.log("Chosen points for curve:", self.build)
       new_curve = CurveObject_2D("Curve", self.build.copy(), self.camera.bezier_steps, id=self.placed_objects_counter)
       self.objects.append(new_curve)
       self.placed_objects_counter += 1
@@ -403,11 +401,11 @@ class Viewport:
 
               self.build = []
               for i in range(0, 4, 2):
-                  self.build.append((control_values[i], control_values[i+1], 1))
+                  self.build.append(np.array([control_values[i], control_values[i+1], 1]))
               for i in range(0, 4, 2):
-                  self.build.append((begin_end_values[i], begin_end_values[i+1], 1))
+                  self.build.append(np.array([begin_end_values[i], begin_end_values[i+1], 1]))
 
-              popup.destroy()            
+              popup.destroy()  
               target = CurveObject_2D("Curve", self.build.copy(), self.camera.bezier_steps, id=self.placed_objects_counter)
               if target_copy:
                   target.line_color = target_copy.line_color
