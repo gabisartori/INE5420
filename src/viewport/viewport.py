@@ -366,7 +366,7 @@ class Viewport:
     else:
       self.add_bezier_curve()
       
-  def add_bezier_curve(self, target: CurveObject_2D | None=None):
+  def add_bezier_curve(self, target: CurveObject_2D | None=None, prompt_window: tk.Toplevel | None=None):
       if target:
         control_original = target.control_points.copy()
         begin_end_original = target.begin_end_points.copy()
@@ -388,8 +388,14 @@ class Viewport:
 
       def finish_curve_callback(target=target):
           try:
-              control_values = list(map(int, control_points.get().split(',')))
-              begin_end_values = list(map(int, begin_end_points.get().split(',')))
+              # delete previous curve if editing
+              target_copy = target.copy() if target else None
+              if target:
+                  self.objects.remove(target)
+                  # self.placed_objects_counter -= 1
+
+              control_values = list(map(float, control_points.get().split(',')))
+              begin_end_values = list(map(float, begin_end_points.get().split(',')))
 
               if len(control_values) != 4 or len(begin_end_values) != 4:
                   self.log("Erro: valores de entrada mal-formatados.")
@@ -401,18 +407,20 @@ class Viewport:
               for i in range(0, 4, 2):
                   self.build.append((begin_end_values[i], begin_end_values[i+1], 1))
 
-              popup.destroy()
-              
-              if not target:
-                  target = CurveObject_2D("Curve", self.build.copy(), self.camera.bezier_steps, id=self.placed_objects_counter)
-                  self.objects.append(target)
-                  self.placed_objects_counter += 1
-              else:
-                  target.points = self.build.copy()
+              popup.destroy()            
+              target = CurveObject_2D("Curve", self.build.copy(), self.camera.bezier_steps, id=self.placed_objects_counter)
+              if target_copy:
+                  target.line_color = target_copy.line_color
+                  target.fill_color = target_copy.fill_color
+                  target.thickness = target_copy.thickness
+                  
+              self.objects.append(target)
+              self.placed_objects_counter += 1
+
               self.cancel_building()
+              prompt_window.destroy() if prompt_window else None
 
           except Exception as e:
-              raise e
               self.log(f"Erro: {e}")
               raise e
 
@@ -461,7 +469,6 @@ class Viewport:
       match obj:
         case CurveObject_2D():
           if len(obj.points) < 4: continue
-          print("Drawing curve with points:", obj.points)
           for i in range(1, len(obj.points)):
             self.canva.create_line(obj.points[i-1][0], obj.points[i-1][1], obj.points[i][0], obj.points[i][1], fill=obj.line_color, width=obj.thickness)
 
@@ -606,10 +613,10 @@ class Viewport:
       begin_end_points_label = tk.Label(prompt_window, text=begin_end_points_prompt + f": ({target.begin_end_points[0][0]:.2f}, {target.begin_end_points[0][1]:.2f}), ({target.begin_end_points[1][0]:.2f}, {target.begin_end_points[1][1]:.2f})")
       control_points_label = tk.Label(prompt_window, text=control_points_prompt + ": " + ", ".join(f"({p[0]:.2f}, {p[1]:.2f})" for p in target.control_points))
       begin_end_points_label.grid(row=4, column=0, columnspan=2)
-      alter_begin_end_button = tk.Button(prompt_window, text="Alterar", command=lambda: self.add_bezier_curve(target))
+      alter_begin_end_button = tk.Button(prompt_window, text="Alterar", command=lambda: self.add_bezier_curve(target, prompt_window))
       alter_begin_end_button.grid(row=4, column=2)
       control_points_label.grid(row=5, column=0, columnspan=2)
-      alter_control_points_button = tk.Button(prompt_window, text="Alterar", command=lambda: self.add_bezier_curve(target))
+      alter_control_points_button = tk.Button(prompt_window, text="Alterar", command=lambda: self.add_bezier_curve(target, prompt_window))
       alter_control_points_button.grid(row=5, column=2)
 
   def load_objects(self, filepath: str) -> list[Wireframe]:
