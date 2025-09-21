@@ -114,25 +114,27 @@ class PolygonObject(Wireframe):
 
 class CurveObject_2D(Wireframe):
   def __init__(self, name: str, points: list[Point], steps: int, **kwargs):
-    super().__init__(name, points, **kwargs)
     self.steps = steps
-    self.control_points = points[1:-1]
-    self.begin_end_points = [points[0], points[-1]]
+    self.control_points = points
+    super().__init__(name, [], **kwargs)
+    
+    self.generate_bezier_points()
 
   def copy(self) -> 'CurveObject_2D':
-    if len(self.points) == 4: 
-      self.points = self.generate_bezier_points()
-    return CurveObject_2D(
+
+    new_obj = CurveObject_2D(
       name=self.name,
-      points=[self.points[i].copy() for i in range(len(self.points))],
+      points=[p.copy() for p in self.control_points], 
       steps=self.steps,
       id=self.id,
       thickness=self.thickness,
       line_color=self.line_color,
       fill_color=self.fill_color
     )
+    new_obj.points = [p.copy() for p in self.points]
+    return new_obj
         
-  def bezier_cubic(self, t, P0, P1, P2, P3) -> Point:
+  def bezier_algorithm(self, t, P0, P1, P2, P3) -> Point:
     """Calculate points on a cubic Bezier curve defined by four control points."""
     x = (1 - t)**3 * P0[0] + 3 * (1 - t)**2 * t * P1[0] + 3 * (1 - t) * t**2 * P2[0] + t**3 * P3[0]
     y = (1 - t)**3 * P0[1] + 3 * (1 - t)**2 * t * P1[1] + 3 * (1 - t) * t**2 * P2[1] + t**3 * P3[1]
@@ -143,24 +145,22 @@ class CurveObject_2D(Wireframe):
     """Generate points on the Bezier curve defined by the control points."""
     
     # TODO: remove this print
-    print("Generating Bezier curve points... Control points:", self.points, "length:", len(self.points))
-    if len(self.points) != 4:
-      raise ValueError("Cubic Bezier curve requires exactly 4 control points.")
-    P0, P1, P2, P3 = self.points
-    curve_points = [self.bezier_cubic(step / self.steps, P0, P1, P2, P3) for step in range(self.steps + 1)]
+    print("Generating Bezier curve points... Control points:", self.control_points, "length:", len(self.control_points))
+    if len(self.control_points) < 4:
+      raise ValueError("Cubic Bezier curve requires at least 4 control points.")
+    
+    curve_points = []
+    for i in range(0, len(self.control_points) - 3, 3):
+      P0, P1, P2, P3 = self.control_points[i:i+4]
+      curve_segment = [self.bezier_algorithm(step / self.steps, P0, P1, P2, P3) for step in range(self.steps + 1)]
+      
+      # Avoid duplicating points at segment joins
+      if curve_points:
+        curve_segment = curve_segment[1:]
+      
+      curve_points.extend(curve_segment)
+    self.points = curve_points
     return curve_points
-    
-    
-    
-    # P0, P1, P2, P3 = self.points
-    # curve_points = []
-    # for step in range(self.steps + 1):
-    #   t = step / self.steps
-    #   x = (1 - t)**3 * P0[0] + 3 * (1 - t)**2 * t * P1[0] + 3 * (1 - t) * t**2 * P2[0] + t**3 * P3[0]
-    #   y = (1 - t)**3 * P0[1] + 3 * (1 - t)**2 * t * P1[1] + 3 * (1 - t) * t**2 * P2[1] + t**3 * P3[1]
-    #   curve_points.append(np.array([x, y]))
-    # return curve_points
-        
 
   def __str__(self) -> str:
     vertices_str = '\n'.join(f"v {' '.join(map(str, p))}" for p in self.points)
