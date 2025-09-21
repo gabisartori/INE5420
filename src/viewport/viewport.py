@@ -647,6 +647,8 @@ class Viewport:
         objects: list[Wireframe] = []
         current_name = ""
         current_points: list[Point] = []
+        steps = self.camera.bezier_steps
+        
         for line in lines:
           header, *args = line.split()
           match header:
@@ -654,7 +656,8 @@ class Viewport:
               current_name = args[0]
               current_points = []
             case "v":
-              current_points.append(np.array([float(coord) for coord in args]))
+              vertex = np.array([float(coord) for coord in args])
+              current_points.append(vertex)
             case "p":
               if len(current_points) == 1:
                 objects.append(PointObject(current_name, current_points[0], id=len(objects), thickness=int(args[0]) if args[0].isnumeric() else 2))
@@ -665,7 +668,20 @@ class Viewport:
               else:
                 objects.append(PolygonObject(current_name, current_points.copy(), id=len(objects)))
               current_points = []
-            # TODO: Implementar curvas
+            case "c":
+              indices = [int(i) - 1 for i in args]
+              control_points = [current_points[i] for i in indices if 0 <= i < len(current_points)]
+              if len(control_points) >= 2:
+                  objects.append(CurveObject_2D(
+                      current_name,
+                      control_points,
+                      steps=steps,
+                      id=len(objects)
+                  ))
+              else:
+                  self.log(f"Aviso: Curva '{current_name}' ignorada por ter menos de 2 pontos válidos.")
+              current_points = []
+    
             case _:
               self.log(f"Aviso: Cabeçalho desconhecido '{header}' ignorado.")
 

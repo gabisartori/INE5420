@@ -114,7 +114,6 @@ class PolygonObject(Wireframe):
 
 class CurveObject_2D(Wireframe):
   def __init__(self, name: str, points: list[Point], steps: int, **kwargs):
-    print(points)
     self.steps = steps
     self.control_points = points
     super().__init__(name, [], **kwargs)
@@ -160,7 +159,6 @@ class CurveObject_2D(Wireframe):
     return curve_points
 
   def __str__(self) -> str:
-    vertices_str = '\n'.join(f"v {' '.join(map(str, p))}" for p in self.points)
-    indices_str = ' '.join(str(i + 1) for i in range(len(self.points)))
+    vertices_str = '\n'.join(f"v {' '.join(map(str, p))}" for p in self.control_points)
+    indices_str = ' '.join(str(i + 1) for i in range(len(self.control_points)))
     return f"o {self.name}\n{vertices_str}\nc {indices_str}"
-
