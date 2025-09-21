@@ -23,6 +23,7 @@ As utilidades do SGI são acessíveis por meio das seguintes entradas de instru�
   - **Ponto:** Cada clique no canva por padrão irá inserir um ponto
   - **Linhas:** O botão *Build* faz com que os pontos inseridos por cliques formem linhas interconectadas
   - **Polígonos:** No modo *Build*, após inserir os pontos desejados, clicar no botão *Polígono* vai unir o primeiro e último ponto inseridos para fechar o polígono.  
+  - **Curvas:** No modo *Build*, colocar ao menos 4 pontos e clicar no botão *Curva* irá inserir curvas de Bezier sendo cada quarteto de pontos (ponto inicial, controle 1, controle 2 e ponto final). Clicar no botão *Curva* sem estar no modo *Build* irá abrir uma janela para inserir os 4 pontos textualmente.
 - **Manipulação de objetos:** Na lista de objetos, clique no objeto cuja propriedade deseja alterar e siga as instruções condizentes.
   - **Translação:** Preencha os valores de deslocamento no eixo X e Y e aperte o botão *Deslocar*
   - **Rotações em torno:**
