@@ -491,7 +491,7 @@ class Viewport:
                     continue
 
                 dist = np.linalg.norm(p1 - p0)
-                if dist > 50:
+                if dist > 100:
                     continue  # Não conectar segmentos distantes
 
                 self.canva.create_line(p0[0], p0[1], p1[0], p1[1], fill=obj.line_color, width=obj.thickness)

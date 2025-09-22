@@ -23,7 +23,7 @@ As utilidades do SGI são acessíveis por meio das seguintes entradas de instru�
   - **Ponto:** Cada clique no canva por padrão irá inserir um ponto
   - **Linhas:** O botão *Build* faz com que os pontos inseridos por cliques formem linhas interconectadas
   - **Polígonos:** No modo *Build*, após inserir os pontos desejados, clicar no botão *Polígono* vai unir o primeiro e último ponto inseridos para fechar o polígono.  
-  - **Curvas:** No modo *Build*, colocar ao menos 4 pontos e clicar no botão *Curva* irá inserir curvas de Bezier sendo cada quarteto de pontos (ponto inicial, controle 1, controle 2 e ponto final). Clicar no botão *Curva* sem estar no modo *Build* irá abrir uma janela para inserir os 4 pontos textualmente.
+  - **Curvas:** No modo *Build*, colocar ao menos 4 pontos e clicar no botão *Curva* irá inserir curvas de Bezier de continuidade G(0). Clicar no botão *Curva* sem estar no modo *Build* irá abrir uma janela para inserir os pontos textualmente.
 - **Manipulação de objetos:** Na lista de objetos, clique no objeto cuja propriedade deseja alterar e siga as instruções condizentes.
   - **Translação:** Preencha os valores de deslocamento no eixo X e Y e aperte o botão *Deslocar*
   - **Rotações em torno:**
@@ -31,6 +31,6 @@ As utilidades do SGI são acessíveis por meio das seguintes entradas de instru�
     - **de um ponto específico:** Preencha os campos *X* e *Y* e proceda como na rotação em torno do próprio eixo.
     - **da origem:** Apenas aplicar a rotação em ponto específico no ponto (0, 0)
   - **Escalonamento natural:** Preencha o campo *Fator* e aperte o botão *Escalar*
-  - **Outras propriedades:** Detalhes como cor, grossura da linha, etc são acessíveis pelo botão de *propriedades*
+  - **Outras propriedades:** Detalhes como cor, grossura da linha, etc são acessíveis no menu pelo botão de *propriedades* ou clicando em cima do objeto na tabela com o botão direito do mouse
 - **Rotacionar Window:** Preencha o campo *ângulo* e aperte o botão *Rotacionar Window*
 - **Selecionar método de clipagem:** Na sessão *Métodos* do menu acima, selecione a opção desejada.
