@@ -1,4 +1,5 @@
 import json
+import my_logging
 
 def load_user_preferences(path="src/data/usr_data.json"):
   try:
@@ -6,10 +7,10 @@ def load_user_preferences(path="src/data/usr_data.json"):
       data = json.load(file)
       return data.get("user_preferences", {})
   except FileNotFoundError:
-    print("User preferences file not found")
+    my_logging.default_log("User preferences file not found")
     return {}
   except json.JSONDecodeError:
-    print("Error decoding JSON")
+    my_logging.default_log("Error decoding JSON")
     return {}
   
 def save_user_preferences(preferences, path="src/data/usr_data.json"):
@@ -25,4 +26,4 @@ def save_user_preferences(preferences, path="src/data/usr_data.json"):
     with open(path, "w") as file:
       json.dump(data, file, indent=2)
   except IOError:
-    print("Error writing to user preferences file")
+    my_logging.default_log("Error writing to user preferences file")

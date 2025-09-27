@@ -512,7 +512,6 @@ class Viewport:
         case CurveObject_2D():
             if len(obj.points) < 2: 
                 continue
-            print(obj.points)
             for i in range(1, len(obj.points)):
                 p0 = obj.points[i - 1]
                 p1 = obj.points[i]

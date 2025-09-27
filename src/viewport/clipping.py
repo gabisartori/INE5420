@@ -4,6 +4,7 @@ sys.path.append("..")
 from enum import Enum
 import numpy as np
 from wireframe import *
+import my_logging
 
 class Code(Enum):
   INSIDE = 0  # 0000
@@ -185,7 +186,7 @@ class Clipping:
 
     if len(new_points) == 0: return None
     elif len(new_points) < 3:
-      print("How tf'd u get here")
+      my_logging.default_log("How tf'd u get here")
       return None
     current_points = new_points.copy()
     new_points = []
@@ -215,7 +216,7 @@ class Clipping:
         new_points.append(curr)
     if len(new_points) == 0: return None
     elif len(new_points) < 3:
-      print("How tf'd u get here")
+      my_logging.default_log("How tf'd u get here")
       return None    
     current_points = new_points.copy()
     new_points = []
@@ -245,7 +246,7 @@ class Clipping:
         new_points.append(curr)
     if len(new_points) == 0: return None
     elif len(new_points) < 3:
-      print("How tf'd u get here")
+      my_logging.default_log("How tf'd u get here")
       return None
     current_points = new_points.copy()
     new_points = []
@@ -275,7 +276,7 @@ class Clipping:
         new_points.append(curr)
     if len(new_points) == 0: return None
     elif len(new_points) < 3:
-      print("How tf'd u get here")
+      my_logging.default_log("How tf'd u get here")
       return None
     return new_points
 
@@ -308,5 +309,3 @@ class Clipping:
         clipped_points.append(point1)
 
     return clipped_points if clipped_points else None
-
-
