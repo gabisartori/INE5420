@@ -280,7 +280,7 @@ class Clipping:
       return None
     return new_points
 
-  def pre_clip_curve(self, curve: CurveObject_2D, algorithm: str) -> list[np.ndarray] | None:
+  def pre_clip_curve(self, curve: CurveObject_2D, algorithm: ClippingAlgorithm) -> list[np.ndarray] | None:
     """Clip a cubic Bezier curve by approximating it with line segments and clipping each segment."""
     clipped_points = []
     

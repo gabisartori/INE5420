@@ -415,59 +415,57 @@ class Viewport:
       self.add_curve()
       
   def add_curve(self, target: CurveObject_2D | None=None, prompt_window: tk.Toplevel | None=None):
-      if target:
-        control_original = target.control_points.copy()
-      
-      popup = tk.Toplevel(self.root)
-      title = "Adicionar Curva de Bézier Cúbica" if self.curve_type.get() == "bezier" else "Adicionar Curva B-Spline Cúbica"
-      popup.title(title)
-      popup.geometry("300x200")
-      popup.grab_set()
+    popup = tk.Toplevel(self.root)
+    title = "Adicionar Curva de Bézier Cúbica" if self.curve_type.get() == "bezier" else "Adicionar Curva B-Spline Cúbica"
+    popup.title(title)
+    popup.geometry("300x200")
+    popup.resizable(False, False)
+    popup.grab_set()
 
-      instructions_control_points = tk.Label(popup, text="Pontos de controle (x0,y0,x1,y1,...,xN,yN)")
-      instructions_control_points.pack(pady=10)
-      control_points = tk.Entry(popup, textvariable=tk.StringVar(value=", ".join(f"{p[0]},{p[1]}" for p in control_original) if target else ""), justify="center")
-      control_points.pack(pady=5, padx=10, fill=tk.X, expand=True)
+    instructions_control_points = tk.Label(popup, text="Pontos de controle (x0,y0,x1,y1,...,xN,yN)")
+    instructions_control_points.pack(pady=10)
+    control_points = tk.Entry(popup, textvariable=tk.StringVar(value=", ".join(f"{p[0]},{p[1]}" for p in target.control_points) if target else ""), justify="center")
+    control_points.pack(pady=5, padx=10, fill=tk.X, expand=True)
 
-      def finish_curve_callback(target=target):
-          try:
-              # delete previous curve if editing
-              target_copy = target.copy() if target else None
-              if target:
-                  self.objects.remove(target)
-                  # self.placed_objects_counter -= 1
+    def finish_curve_callback(target=target):
+      try:
+        # delete previous curve if editing
+        target_copy = target.copy() if target else None
+        if target:
+          self.objects.remove(target)
+          # self.placed_objects_counter -= 1
 
-              control_values = list(map(float, control_points.get().split(',')))
-              input_points = [np.array([control_values[i], control_values[i+1], 1]) for i in range(0, len(control_values), 2)]
-              if len(input_points) < 4:
-                  self.log("Erro: insira ao menos 4 pontos de controle.")
-                  return
+        control_values = list(map(float, control_points.get().split(',')))
+        input_points = [np.array([control_values[i], control_values[i+1], 1]) for i in range(0, len(control_values), 2)]
+        if len(input_points) < 4:
+          self.log("Erro: insira ao menos 4 pontos de controle.")
+          return
 
-              self.build = input_points           
-              popup.destroy()            
-              target = CurveObject_2D("Curve", self.build.copy(), self.camera.bezier_steps, id=self.placed_objects_counter)
-              if self.curve_type.get() == "b_spline":
-                  target.generate_b_spline_points()
-              else:
-                  target.generate_bezier_points()
-                  
-              if target_copy:
-                  target.line_color = target_copy.line_color
-                  target.fill_color = target_copy.fill_color
-                  target.thickness = target_copy.thickness
-                  
-              self.objects.append(target)
-              self.placed_objects_counter += 1
+        self.build = input_points           
+        popup.destroy()            
+        target = CurveObject_2D("Curve", self.build.copy(), self.camera.bezier_steps, id=self.placed_objects_counter)
+        if self.curve_type.get() == "b_spline":
+          target.generate_b_spline_points()
+        else:
+          target.generate_bezier_points()
+            
+        if target_copy:
+          target.line_color = target_copy.line_color
+          target.fill_color = target_copy.fill_color
+          target.thickness = target_copy.thickness
 
-              self.cancel_building()
-              prompt_window.destroy() if prompt_window else None
+        self.objects.append(target)
+        self.placed_objects_counter += 1
 
-          except Exception as e:
-              self.log(f"Erro: {e}")
-              raise e
+        self.cancel_building()
+        prompt_window.destroy() if prompt_window else None
 
-      create_button = tk.Button(popup, text="Criar/Alterar Curva", command=finish_curve_callback)
-      create_button.pack(pady=10)          
+      except Exception as e:
+        self.log(f"Erro: {e}")
+        raise e
+
+    create_button = tk.Button(popup, text="Criar/Alterar Curva", command=finish_curve_callback)
+    create_button.pack(pady=10)          
 
   def finish_polygon(self):
     if len(self.build) < 3: 
@@ -618,14 +616,17 @@ class Viewport:
         thickness_prompt = "Raio do ponto"
         line_prompt = "Cor do contorno"
         fill_prompt = "Cor do ponto"
+        control_points_prompt = ""
       case LineObject():
         thickness_prompt = "Espessura da linha"
         line_prompt = "Cor da linha"
         fill_prompt = ""
+        control_points_prompt = ""
       case PolygonObject():
         thickness_prompt = "Espessura da linha"
         line_prompt = "Cor do contorno"
         fill_prompt = "Cor de preenchimento"
+        control_points_prompt = ""
       case CurveObject_2D():
         thickness_prompt = "Espessura da linha"
         line_prompt = "Cor da linha"
