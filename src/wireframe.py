@@ -118,7 +118,7 @@ class CurveObject_2D(Wireframe):
     self.control_points = points
     super().__init__(name, [], **kwargs)
     
-    self.generate_bezier_points()
+    #self.generate_bezier_points() if kwargs.get("curve_type", "bezier") == "bezier" else self.generate_b_spline_points()
 
   def copy(self) -> 'CurveObject_2D':
     new_obj = CurveObject_2D(
@@ -155,6 +155,74 @@ class CurveObject_2D(Wireframe):
         curve_segment = curve_segment[1:]
       
       curve_points.extend(curve_segment)
+    self.points = curve_points
+    return curve_points
+  
+  def generate_b_spline_points(self) -> list[Point]:
+    """Generate points on a B-Spline curve defined by the control points using the forward difference method."""
+    if len(self.control_points) < 4:
+      raise ValueError("Cubic B-Spline curve requires at least 4 control points.")
+        
+    # Algoritmo para Desenho de Curvas Paramétricas usando Forward Differences
+    # DesenhaCurvaFwdDiff( n, x, ∆x, ∆2x, ∆3x,
+    # y, ∆y, ∆2y, ∆3y,
+    # z, ∆z, ∆2z, ∆3z )
+    # início
+    # inteiro i = 0;
+    # mova(x, y, z);/* Move ao início da curva */
+    # enquanto i < n faça
+    # i <- i + 1;
+    # x <- x + ∆x; ∆x <- ∆x + ∆2x; ∆2x <- ∆2x + ∆3x;
+    # y <- y + ∆y; ∆y <- ∆y + ∆2y; ∆2y <- ∆2y + ∆3y;
+    # z <- z + ∆z; ∆z <- ∆z + ∆2z; ∆2z <- ∆2z + ∆3z;
+    # desenheAté(x, y, z); /* Desenha reta */
+    # fim enquanto;
+    # fim DesenhaCurvaFwdDiff;
+    
+    curve_points = []
+    h = 1 / self.steps
+    
+    M = np.array([
+      [-1/6,  3/6, -3/6, 1/6],
+      [ 3/6, -6/6,  3/6, 0],
+      [-3/6,  0,    3/6, 0],
+      [ 1/6,  4/6,  1/6, 0]
+    ])
+    
+    for i in range(0, len(self.control_points) - 3):
+      P0, P1, P2, P3 = self.control_points[i:i+4]
+      Gx = np.array([P0[0], P1[0], P2[0], P3[0]])
+      Gy = np.array([P0[1], P1[1], P2[1], P3[1]])
+      
+      # Coeficientes da curva
+      Cx = M @ Gx
+      Cy = M @ Gy
+      
+      # Valores iniciais
+      x = Cx[3]
+      y = Cy[3]
+      
+      # Primeiras diferenças
+      dx = Cx[2] * h + Cx[1] * h**2 + Cx[0] * h**3
+      dy = Cy[2] * h + Cy[1] * h**2 + Cy[0] * h**3
+      # Segundas diferenças
+      d2x = 2 * Cx[1] * h**2 + 6 * Cx[0] * h**3
+      d2y = 2 * Cy[1] * h**2 + 6 * Cy[0] * h**3
+      # Terceiras diferenças
+      d3x = 6 * Cx[0] * h**3
+      d3y = 6 * Cy[0] * h**3
+      
+      for step in range(self.steps):
+        new_point = np.array([x, y, 1])
+        curve_points.append(new_point)
+        
+        x += dx
+        dx += d2x
+        d2x += d3x
+        
+        y += dy
+        dy += d2y
+        d2y += d3y
     self.points = curve_points
     return curve_points
 

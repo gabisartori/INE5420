@@ -1,5 +1,5 @@
 import tkinter as tk
-from .color_scheme import ColorScheme
+from .my_types import ColorScheme
 
 class ToggleSwitch(tk.Canvas):
   def __init__(self, master=None, width=60, height=30, on_toggle=None, **kwargs):

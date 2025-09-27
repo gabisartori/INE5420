@@ -3,9 +3,8 @@ from tkinter import ttk, messagebox, font, colorchooser, simpledialog, scrolledt
 from wireframe import *
 from screen import *
 from components.toggle_switch import *
-from components.color_scheme import ColorScheme
+from components.my_types import *
 from data.usr_preferences import *
-from components.my_types import Point, CursorTypes
 from .clipping import Clipping, ClippingAlgorithm
 
 class Viewport:
@@ -90,24 +89,7 @@ class Viewport:
     scrollbar_y.grid(row=0, column=1, rowspan=2, sticky="ns")
     scrollbar_x.grid(row=1, column=0, sticky="ew")
 
-    # Navbar menu
-    self.menubar = tk.Menu(self.root)
-
-    # Arquivo menu items
-    file_menu = tk.Menu(self.menubar, tearoff=0)
-    file_menu.add_command(label="Limpar tela", command=self.clear)
-    file_menu.add_command(label="Sair", command=self.exit)
-    self.menubar.add_cascade(label="Arquivo", menu=file_menu)
-    # Inserir menu items
-    # Configurações menu items
-    settings_menu = tk.Menu(self.menubar, tearoff=0)
-    self.clipping = Clipping(*self.camera.get_corners())
-    self.clipping_algorithm = tk.IntVar(value=1)
-    settings_menu.add_radiobutton(label="Cohen-Sutherland", variable=self.clipping_algorithm, value=1, command=lambda: self.set_clipping_algorithm("cohen_sutherland"))
-    settings_menu.add_radiobutton(label="Liang-Barsky", variable=self.clipping_algorithm, value=2, command=lambda: self.set_clipping_algorithm("liang_barsky"))
-    settings_menu.add_command(label="Curvas", command=lambda: self.set_curve_config())
-    self.menubar.add_cascade(label="Configurações", menu=settings_menu)
-    self.root.config(menu=self.menubar)
+    self.build_menu()
 
     self.build_ui()
     self.controls()
@@ -175,6 +157,39 @@ class Viewport:
     origin = self.camera.world_to_viewport(np.array([0, 0, 0]))
     self.canva.create_text(origin[0] + 15, origin[1] - 10, text="(0,0)", fill=ColorScheme.LIGHT_TEXT.value if self.theme == "light" else ColorScheme.DARK_TEXT.value, font=("Arial", 10, "bold"))
 
+  
+  def build_menu(self):    
+    # Navbar menu
+    self.menubar = tk.Menu(self.root)
+
+    # Arquivo menu items
+    file_menu = tk.Menu(self.menubar, tearoff=0)
+    file_menu.add_command(label="Limpar tela", command=self.clear)
+    file_menu.add_command(label="Sair", command=self.exit)
+    self.menubar.add_cascade(label="Arquivo", menu=file_menu)
+    
+    # Inserir menu items
+    # Configurações menu items
+    settings_menu = tk.Menu(self.menubar, tearoff=0)
+    self.clipping = Clipping(*self.camera.get_corners())
+    self.clipping_algorithm = tk.IntVar(value=1)
+    
+    self.clipping_submenu = tk.Menu(settings_menu, tearoff=0)
+    self.clipping_submenu.add_radiobutton(label="Cohen-Sutherland", variable=self.clipping_algorithm, value=1, command=lambda: self.set_clipping_algorithm("cohen_sutherland"))
+    self.clipping_submenu.add_radiobutton(label="Liang-Barsky", variable=self.clipping_algorithm, value=2, command=lambda: self.set_clipping_algorithm("liang_barsky"))
+    settings_menu.add_cascade(label="Clipping ", menu=self.clipping_submenu)
+    
+    self.curve_type = tk.StringVar(value="bezier")
+    
+    self.curves_submenu = tk.Menu(settings_menu, tearoff=0)
+    self.curves_submenu.add_command(label="Passos", command=lambda: self.set_curve_config())
+    self.curves_submenu.add_radiobutton(label="Bezier", variable=self.curve_type, value="bezier", command=lambda: self.set_curve_type("bezier"))
+    self.curves_submenu.add_radiobutton(label="B-Spline", variable=self.curve_type, value="b_spline", command=lambda: self.set_curve_type("b_spline"))
+    settings_menu.add_cascade(label="Curvas ", menu=self.curves_submenu)
+    
+    self.menubar.add_cascade(label="Configurações", menu=settings_menu)
+    self.root.config(menu=self.menubar)
+  
   def toggle_light_dark_mode(self, state: bool):
     self.theme = "light" if not state else "dark"
 
@@ -306,6 +321,10 @@ class Viewport:
   def set_clipping_algorithm(self, algorithm: str):
     self.log(f"Algoritmo de clipagem alterado para {algorithm.title()}")
     self.update()
+    
+  def set_curve_type(self, curve_type: str):
+    self.log(f"Tipo de curva alterado para {curve_type.title()}")
+    self.update()
 
   # TODO: Put this in the proper place ffs
   # def set_theme(self):
@@ -384,18 +403,24 @@ class Viewport:
         return
       
       new_curve = CurveObject_2D("Curve", self.build.copy(), self.camera.bezier_steps, id=self.placed_objects_counter)
+      if self.curve_type.get() == "b_spline":
+        new_curve.generate_b_spline_points()
+      else:
+        new_curve.generate_bezier_points()
+
       self.objects.append(new_curve)
       self.placed_objects_counter += 1
       self.cancel_building()
     else:
-      self.add_bezier_curve()
+      self.add_curve()
       
-  def add_bezier_curve(self, target: CurveObject_2D | None=None, prompt_window: tk.Toplevel | None=None):
+  def add_curve(self, target: CurveObject_2D | None=None, prompt_window: tk.Toplevel | None=None):
       if target:
         control_original = target.control_points.copy()
       
       popup = tk.Toplevel(self.root)
-      popup.title("Adicionar Curva de Bézier Cúbica")
+      title = "Adicionar Curva de Bézier Cúbica" if self.curve_type.get() == "bezier" else "Adicionar Curva B-Spline Cúbica"
+      popup.title(title)
       popup.geometry("300x200")
       popup.grab_set()
 
@@ -421,6 +446,11 @@ class Viewport:
               self.build = input_points           
               popup.destroy()            
               target = CurveObject_2D("Curve", self.build.copy(), self.camera.bezier_steps, id=self.placed_objects_counter)
+              if self.curve_type.get() == "b_spline":
+                  target.generate_b_spline_points()
+              else:
+                  target.generate_bezier_points()
+                  
               if target_copy:
                   target.line_color = target_copy.line_color
                   target.fill_color = target_copy.fill_color
@@ -482,7 +512,7 @@ class Viewport:
         case CurveObject_2D():
             if len(obj.points) < 2: 
                 continue
-
+            print(obj.points)
             for i in range(1, len(obj.points)):
                 p0 = obj.points[i - 1]
                 p1 = obj.points[i]
@@ -635,7 +665,7 @@ class Viewport:
     if isinstance(target, CurveObject_2D):
       control_points_label = tk.Label(prompt_window, text=control_points_prompt + ": " + ", ".join(f"({p[0]:.2f}, {p[1]:.2f})" for p in target.control_points), wraplength=300, justify="left")
       control_points_label.grid(row=5, column=0, columnspan=2)
-      alter_control_points_button = tk.Button(prompt_window, text="Alterar", command=lambda: self.add_bezier_curve(target, prompt_window))
+      alter_control_points_button = tk.Button(prompt_window, text="Alterar", command=lambda: self.add_curve(target, prompt_window))
       alter_control_points_button.grid(row=5, column=2)
 
   def load_objects(self, filepath: str) -> list[Wireframe]:
@@ -672,12 +702,13 @@ class Viewport:
               indices = [int(i) - 1 for i in args]
               control_points = [current_points[i] for i in indices if 0 <= i < len(current_points)]
               if len(control_points) >= 2:
-                  objects.append(CurveObject_2D(
-                      current_name,
-                      control_points,
-                      steps=steps,
-                      id=len(objects)
-                  ))
+                new_curve = CurveObject_2D(current_name, control_points, steps=steps, id=len(objects))
+                if self.curve_type.get() == "b_spline":
+                  new_curve.generate_b_spline_points()
+                else:
+                  new_curve.generate_bezier_points()
+                objects.append(new_curve)
+                
               else:
                   self.log(f"Aviso: Curva '{current_name}' ignorada por ter menos de 2 pontos válidos.")
               current_points = []
