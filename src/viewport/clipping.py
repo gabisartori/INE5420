@@ -67,7 +67,7 @@ class Clipping:
 
         case _:
           continue
-    
+
     return clipped_objects
 
   def compute_out_code(self, x: float, y: float) -> int:
@@ -89,7 +89,7 @@ class Clipping:
     """Cohen-Sutherland clipping algorithm for a line"""
     out_code0 = self.compute_out_code(x0, y0)
     out_code1 = self.compute_out_code(x1, y1)
-    
+
     accept = False
     while not accept:
       if not (out_code0 | out_code1):
@@ -121,7 +121,7 @@ class Clipping:
         else:
           x1, y1 = x, y
           out_code1 = self.compute_out_code(x1, y1)
-          
+
   def liang_barsky_clip(self, x0: float, y0: float, x1: float, y1: float) -> tuple[float, float, float, float] | None:
     """Liang-Barsky clipping algorithm for a line"""
     dx = x1 - x0
@@ -281,27 +281,25 @@ class Clipping:
   def pre_clip_curve(self, curve: CurveObject_2D, algorithm: ClippingAlgorithm) -> list[np.ndarray] | None:
     """Clip a cubic Bezier curve by approximating it with line segments and clipping each segment."""
     clipped_points = []
-    
-    if len(curve.points) < 2: 
-      return None
-    
+    if len(curve.points) < 2:  return None
+
     if algorithm == ClippingAlgorithm.COHEN_SUTHERLAND:
       clip_func = self.cohen_sutherland_clip
     elif algorithm == ClippingAlgorithm.LIANG_BARSKY:
       clip_func = self.liang_barsky_clip
     else:
       return None
-    
+
     for i in range(1, len(curve.points)):
       p1 = curve.points[i - 1]
       p2 = curve.points[i]
       clipped_segment = clip_func(p1[0], p1[1], p2[0], p2[1])
-      
+
       if clipped_segment is not None:
         x0, y0, x1, y1 = clipped_segment
         point0 = np.array([int(x0), int(y0)])
         point1 = np.array([int(x1), int(y1)])
-        
+
         if len(clipped_points) == 0 or not np.array_equal(clipped_points[-1], point0):
           clipped_points.append(point0)
         clipped_points.append(point1)

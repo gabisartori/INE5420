@@ -38,7 +38,7 @@ class Viewport:
     # Ui components
     # Canva
     self.canva = tk.Canvas(self.root, background="white", width=width*2/3, height=height*5/6)
-    
+
     # Log session
     self.ui_log = scrolledtext.ScrolledText(self.root, bg="white", fg="black", state="disabled", font=("Arial", 10), height=9)
 
@@ -110,11 +110,11 @@ class Viewport:
     self.ui_build_button.grid(row=12, column=0, rowspan=1, columnspan=2, sticky="nsew")
     self.ui_close_polygon_button.grid(row=12, column=2, rowspan=1, columnspan=1, sticky="nsew")
     self.ui_create_curve_button.grid(row=12, column=3, rowspan=1, columnspan=1, sticky="nsew")
-    
+
     self.ui_rotate_object_button.grid(row=13, column=0, rowspan=1, columnspan=2, sticky="nsew")
     self.ui_translate_object_button.grid(row=13, column=2, rowspan=1, columnspan=1, sticky="nsew")
     self.ui_scale_button.grid(row=13, column=3, rowspan=1, columnspan=1, sticky="nsew")
-    
+
     self.ui_object_properties_button.grid(row=14, column=0, rowspan=1, columnspan=4, sticky="nsew")
 
     self.ui_point_label.grid(row=15, column=0, rowspan=1, columnspan=2, sticky="nsew")
@@ -131,11 +131,11 @@ class Viewport:
 
     width = self.width
     height = self.height
-  
+
     max_world_width = width / min_zoom
     max_world_height = height / min_zoom
     max_range = int(max(max_world_width, max_world_height) / 2)  # /2 para ter metade pra cada lado do centro
-    
+
     start = ( -max_range // step ) * step
     end = ( max_range // step + 1 ) * step
 
@@ -157,7 +157,6 @@ class Viewport:
     origin = self.camera.world_to_viewport(np.array([0, 0, 0]))
     self.canva.create_text(origin[0] + 15, origin[1] - 10, text="(0,0)", fill=ColorScheme.LIGHT_TEXT.value if self.theme == "light" else ColorScheme.DARK_TEXT.value, font=("Arial", 10, "bold"))
 
-  
   def build_menu(self):    
     # Navbar menu
     self.menubar = tk.Menu(self.root)
@@ -167,29 +166,29 @@ class Viewport:
     file_menu.add_command(label="Limpar tela", command=self.clear)
     file_menu.add_command(label="Sair", command=self.exit)
     self.menubar.add_cascade(label="Arquivo", menu=file_menu)
-    
+
     # Inserir menu items
     # Configurações menu items
     settings_menu = tk.Menu(self.menubar, tearoff=0)
     self.clipping = Clipping(*self.camera.get_corners())
     self.clipping_algorithm = tk.IntVar(value=1)
-    
+
     self.clipping_submenu = tk.Menu(settings_menu, tearoff=0)
     self.clipping_submenu.add_radiobutton(label="Cohen-Sutherland", variable=self.clipping_algorithm, value=1, command=lambda: self.set_clipping_algorithm("cohen_sutherland"))
     self.clipping_submenu.add_radiobutton(label="Liang-Barsky", variable=self.clipping_algorithm, value=2, command=lambda: self.set_clipping_algorithm("liang_barsky"))
     settings_menu.add_cascade(label="Clipping ", menu=self.clipping_submenu)
-    
+
     self.curve_type = tk.StringVar(value="bezier")
-    
+
     self.curves_submenu = tk.Menu(settings_menu, tearoff=0)
     self.curves_submenu.add_command(label="Passos", command=lambda: self.set_curve_config())
     self.curves_submenu.add_radiobutton(label="Bezier", variable=self.curve_type, value="bezier", command=lambda: self.set_curve_type("bezier"))
     self.curves_submenu.add_radiobutton(label="B-Spline", variable=self.curve_type, value="b_spline", command=lambda: self.set_curve_type("b_spline"))
     settings_menu.add_cascade(label="Curvas ", menu=self.curves_submenu)
-    
+
     self.menubar.add_cascade(label="Configurações", menu=settings_menu)
     self.root.config(menu=self.menubar)
-  
+
   def toggle_light_dark_mode(self, state: bool):
     self.theme = "light" if not state else "dark"
 
@@ -201,7 +200,7 @@ class Viewport:
       self.canva.config(bg=ColorScheme.LIGHT_CANVAS.value)
 
       self.ui_object_list.config()
-    
+
     self.update()
 
   def rotate(self):
@@ -259,7 +258,7 @@ class Viewport:
       return
     target.scale(factor)
     self.update()
-    
+
   def object_list_menu(self, event):
     selected_item = self.ui_object_list.identify_row(event.y)
     if selected_item:
@@ -267,7 +266,7 @@ class Viewport:
       menu = tk.Menu(self.root, tearoff=0)
       menu.add_command(label="Propriedades", command=self.properties_window)
       menu.add_command(label="Remover", command=self.remove_selected_object)
-      
+
       # Show the menu and close it if a click outside happens
       def close_menu_on_click(event2):
         menu.unpost()
@@ -310,7 +309,7 @@ class Viewport:
     self.build.clear()
     self.building = False
     self.update()
-    
+
   def set_curve_config(self):
     steps = simpledialog.askinteger("Configuração de Curvas", "Número de passos para desenhar curvas de Bézier (padrão 100):", initialvalue=self.camera.bezier_steps, minvalue=10, maxvalue=1000)
     if steps:
@@ -321,7 +320,7 @@ class Viewport:
   def set_clipping_algorithm(self, algorithm: str):
     self.log(f"Algoritmo de clipagem alterado para {algorithm.title()}")
     self.update()
-    
+
   def set_curve_type(self, curve_type: str):
     self.log(f"Tipo de curva alterado para {curve_type.title()}")
     self.update()
@@ -389,19 +388,19 @@ class Viewport:
   def canva_click(self, event):
     # Ignore click if it's outside the viewport area
     if not self.is_click_inside_viewport(event.x, event.y): return
-    
+
     if self.building: self.build.append(self.camera.viewport_to_world(event.x, event.y))
     else:
       self.objects.append(PointObject(f"Clicked Point", self.camera.viewport_to_world(event.x, event.y), id=self.placed_objects_counter))
       self.placed_objects_counter += 1
     self.update()    
-    
+
   def finish_curve(self):
     if self.building:
       if len(self.build) < 4: 
         self.log("Erro: Pelo menos quatro pontos são necessários para formar uma curva de Bézier cúbica.")
         return
-      
+
       new_curve = CurveObject_2D("Curve", self.build.copy(), self.camera.bezier_steps, id=self.placed_objects_counter)
       if self.curve_type.get() == "b_spline":
         new_curve.generate_b_spline_points()
@@ -413,7 +412,7 @@ class Viewport:
       self.cancel_building()
     else:
       self.add_curve()
-      
+
   def add_curve(self, target: CurveObject_2D | None=None, prompt_window: tk.Toplevel | None=None):
     popup = tk.Toplevel(self.root)
     title = "Adicionar Curva de Bézier Cúbica" if self.curve_type.get() == "bezier" else "Adicionar Curva B-Spline Cúbica"
@@ -448,7 +447,7 @@ class Viewport:
           target.generate_b_spline_points()
         else:
           target.generate_bezier_points()
-            
+
         if target:
           target.line_color = target.line_color
           target.fill_color = target.fill_color
@@ -507,25 +506,25 @@ class Viewport:
     for obj in all_objects:
       obj.points = [np.array(self.camera.world_to_viewport(point)) for point in obj.points]
     all_objects = self.clipping.clip(all_objects, ClippingAlgorithm(self.clipping_algorithm.get()))
-    
+
     # Draw all objects
     for obj in all_objects:
       match obj:
         case CurveObject_2D():
-            if len(obj.points) < 2: 
-                continue
-            for i in range(1, len(obj.points)):
-                p0 = obj.points[i - 1]
-                p1 = obj.points[i]
+          if len(obj.points) < 2: 
+            continue
+          for i in range(1, len(obj.points)):
+            p0 = obj.points[i - 1]
+            p1 = obj.points[i]
 
-                if p0 is None or p1 is None:
-                    continue
+            if p0 is None or p1 is None:
+              continue
 
-                dist = np.linalg.norm(p1 - p0)
-                if dist > 100:
-                    continue  # Não conectar segmentos distantes
+            dist = np.linalg.norm(p1 - p0)
+            if dist > 100:
+              continue  # Não conectar segmentos distantes
 
-                self.canva.create_line(p0[0], p0[1], p1[0], p1[1], fill=obj.line_color, width=obj.thickness)
+            self.canva.create_line(p0[0], p0[1], p1[0], p1[1], fill=obj.line_color, width=obj.thickness)
 
         case PolygonObject():
           if len(obj.points) < 3: continue
@@ -535,17 +534,17 @@ class Viewport:
             self.canva.create_line(start[0], start[1], end[0], end[1], fill=obj.line_color, width=obj.thickness)
           if obj.fill_color:
             self.canva.create_polygon(*((p[0], p[1]) for p in obj.points), fill=obj.fill_color, outline=obj.line_color, width=obj.thickness)
-        
+
         case LineObject():
           if len(obj.points) != 2: continue
           self.canva.create_line(obj.points[0][0], obj.points[0][1], obj.points[1][0], obj.points[1][1], fill=obj.line_color, width=obj.thickness)
-        
+
         case PointObject():
           p = obj.points[0] if obj.points else None
           if p is None: continue
           if not self.is_click_inside_viewport(p[0], p[1]): continue
           self.canva.create_oval(p[0]-obj.thickness, p[1]-obj.thickness, p[0]+obj.thickness, p[1]+obj.thickness, fill=obj.fill_color, outline=obj.line_color)
-        
+
         case _: 
           self.log(f"Erro: Tipo de objeto desconhecido: {type(obj)}")
           continue  # Unsupported object type
@@ -573,14 +572,14 @@ class Viewport:
       except Exception as e:
         self.log(f"Erro ao salvar objetos: {e}")
     return self.objects
-  
+
   def add_object_to_table(self, obj: Wireframe):
     formatted_coordinates = [f"({', '.join(f'{coord:.2f}' for coord in point)})" for point in obj.points]
     self.ui_object_list.insert("", "end", values=(obj.name, ", ".join(formatted_coordinates)), tags=(str(obj.id),))
 
     font_style = font.nametofont("TkDefaultFont")
     font_size = font_style.measure("".join(formatted_coordinates)) + 20
-    
+
   def draw_viewport_border(self):
     x0, y0, x1, y1 = self.camera.get_corners()
     self.canva.create_rectangle(x0, y0, x1, y1, outline="red", width=1)
@@ -633,7 +632,7 @@ class Viewport:
         line_prompt = "Cor da linha"
         fill_prompt = ""
         control_points_prompt = "Pontos de controle"
-        
+
       case _:
         return
     prompt_window = tk.Toplevel(self.root)
@@ -643,7 +642,7 @@ class Viewport:
     name_input = tk.Entry(prompt_window)
     name_input.insert(0, target.name)
     name_button = tk.Button(prompt_window, text="Alterar", command=lambda: (setattr(target, 'name', name_input.get()), prompt_window.destroy(), self.update()))
-    
+
     fill_color_label = tk.Label(prompt_window, text=fill_prompt)
     line_color_label = tk.Label(prompt_window, text=line_prompt)
     thickness_label = tk.Label(prompt_window, text=thickness_prompt)
@@ -662,7 +661,7 @@ class Viewport:
     if fill_prompt:
       fill_color_label.grid(row=3, column=0, columnspan=2)
       fill_color_button.grid(row=3, column=2)
-      
+
     if isinstance(target, CurveObject_2D):
       control_points_label = tk.Label(prompt_window, text=control_points_prompt + ": " + ", ".join(f"({p[0]:.2f}, {p[1]:.2f})" for p in target.control_points), wraplength=300, justify="left")
       control_points_label.grid(row=5, column=0, columnspan=2)
@@ -679,7 +678,7 @@ class Viewport:
         current_name = ""
         current_points: list[Point] = []
         steps = self.camera.bezier_steps
-        
+
         for line in lines:
           header, *args = line.split()
           match header:
@@ -709,11 +708,11 @@ class Viewport:
                 else:
                   new_curve.generate_bezier_points()
                 objects.append(new_curve)
-                
+
               else:
                   self.log(f"Aviso: Curva '{current_name}' ignorada por ter menos de 2 pontos válidos.")
               current_points = []
-    
+
             case _:
               self.log(f"Aviso: Cabeçalho desconhecido '{header}' ignorado.")
 

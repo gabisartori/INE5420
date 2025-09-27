@@ -46,6 +46,5 @@ import random
 # clipping = Clipping(*window)
 # clipped = clipping.clip([line1], ClippingAlgorithm(2))
 
-
 print("All tests passed!")
 exit(0)

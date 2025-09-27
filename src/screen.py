@@ -42,7 +42,7 @@ class Camera:
   def move_below(self): self.position[2] -= max(self.speed/self.zoom, 1)
 
   def move_above(self): self.position[2] += max(self.speed/self.zoom, 1)
-  
+
   def rotate(self, angle: int=5):
     """Rotate the camera around the normal vector."""
     M = np.array([
@@ -72,7 +72,6 @@ class Camera:
     # Ignore points behind camera
     # if np.dot(self.normal, point - self.position) < 0: point = self.position - self.normal
     x, y = self.world_to_camera(point)
-
 
     # Convert the camera view plane coordinates to viewport coordinates
     # - Centering the camera plane origin at the center of the viewport
@@ -112,7 +111,7 @@ class Camera:
 
   def viewport_to_world(self, x: float, y: float) -> Point:
     return self.camera_to_world(*self.viewport_to_camera(x, y))
-    
+
   def is_point_in_viewport(self, point: Point) -> bool:
     x, y = self.world_to_camera(point)
     half_width = (self.viewport_width / self.zoom) / 2

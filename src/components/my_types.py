@@ -8,7 +8,7 @@ class CursorTypes(Enum):
   NORMAL = 1
   DRAG = 2
   ROTATE_WINDOW = 3
-  
+
 class ColorScheme(Enum):
   LIGHT_CANVAS = "#fff"
   LIGHT_BG = "#f0f0f0"
@@ -28,7 +28,3 @@ class ColorScheme(Enum):
   DARK_DEBUG_GRID = "#777"
 
   DEFAULT_BUTTON_COLOR = "#f0f0f0"
-
-  
-  
-  

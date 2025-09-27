@@ -12,16 +12,16 @@ def load_user_preferences(path="src/data/usr_data.json"):
   except json.JSONDecodeError:
     my_logging.default_log("Error decoding JSON")
     return {}
-  
+
 def save_user_preferences(preferences, path="src/data/usr_data.json"):
   try:
     with open(path, "r") as file:
       data = json.load(file)
   except (FileNotFoundError, json.JSONDecodeError):
     data = {}
-  
+
   data["user_preferences"] = preferences
-  
+
   try:
     with open(path, "w") as file:
       json.dump(data, file, indent=2)
