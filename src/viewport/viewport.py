@@ -497,8 +497,11 @@ class Viewport:
     if self.debug:
       all_objects += [obj.copy() for obj in self.debug_objects]
       self.build_debug_grid()
-      self.canva.create_line(0, self.height*2/6, self.width, self.height*2/6, fill="blue")
-      self.canva.create_line(self.width*2/6, 0, self.width*2/6, self.height, fill="blue")  
+      x0, y0, x1, y1 = self.camera.get_corners()
+      # TODO: I still feel like these lines are not perfectly centered ffs
+      self.canva.create_line(x0, (y1+self.camera.padding)/2, x1, (y1+self.camera.padding)/2, fill="blue")
+      self.canva.create_line((x1+self.camera.padding)/2, y0, (x1+self.camera.padding)/2, y1, fill="blue")
+      self.draw_viewport_border()
 
     # Project all objects to the viewport and clip them
     for obj in all_objects:
@@ -559,9 +562,6 @@ class Viewport:
       self.canva.create_oval(point[0] - 2, point[1] - 2, point[0] + 2, point[1] + 2, fill="red")
       if prev is not None: self.canva.create_line(prev[0], prev[1], point[0], point[1], fill="red")
       prev = point
-
-    # Viewport border to visualize the clipping area
-    self.draw_viewport_border()
 
   def run(self) -> list[Wireframe]:
     self.root.mainloop()
