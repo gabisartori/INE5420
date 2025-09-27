@@ -430,12 +430,12 @@ class Viewport:
     def finish_curve_callback(target=target):
       try:
         # delete previous curve if editing
-        target_copy = target.copy() if target else None
-        if target:
-          self.objects.remove(target)
-          # self.placed_objects_counter -= 1
+        if target: self.objects.remove(target)
 
-        control_values = list(map(float, control_points.get().split(',')))
+        # Remove spaces and parentheses from input text before parsing it as a list of floats split by commas
+        control_points_str = control_points.get().strip("(").strip(")").replace(" ", "")
+        control_values = list(map(float, control_points_str.split(',')))
+
         input_points = [np.array([control_values[i], control_values[i+1], 1]) for i in range(0, len(control_values), 2)]
         if len(input_points) < 4:
           self.log("Erro: insira ao menos 4 pontos de controle.")
@@ -449,10 +449,10 @@ class Viewport:
         else:
           target.generate_bezier_points()
             
-        if target_copy:
-          target.line_color = target_copy.line_color
-          target.fill_color = target_copy.fill_color
-          target.thickness = target_copy.thickness
+        if target:
+          target.line_color = target.line_color
+          target.fill_color = target.fill_color
+          target.thickness = target.thickness
 
         self.objects.append(target)
         self.placed_objects_counter += 1
