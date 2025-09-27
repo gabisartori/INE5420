@@ -213,8 +213,8 @@ class CurveObject_2D(Wireframe):
       # Terceiras diferenças
       d3x = 6 * Cx[0] * h**3
       d3y = 6 * Cy[0] * h**3
-
-      for step in range(self.steps):
+      
+      for _ in range(self.steps + 1):
         new_point = np.array([x, y, 1])
         curve_points.append(new_point)
 
