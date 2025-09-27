@@ -82,7 +82,8 @@ class LineObject(Wireframe):
     super().__init__(name, [start, end], **kwargs)
   def copy(self) -> 'LineObject':
     return LineObject(
-      self.name, self.points[0].copy(),
+      self.name,
+      self.points[0].copy(),
       self.points[1].copy(),
       id=self.id,
       thickness=self.thickness,

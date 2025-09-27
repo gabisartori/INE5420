@@ -36,17 +36,17 @@ class Clipping:
 
   def clip(self, all_objects: list[Wireframe], algorithm: ClippingAlgorithm) -> list[Wireframe]:
     """Clip all wireframe objects using the specified algorithm."""
-    
     clipped_objects = []
-    for x in all_objects:
-      obj = x.copy()
+    for obj in all_objects:
       match obj:
         case CurveObject_2D():
           obj.points = self.pre_clip_curve(obj, algorithm) or []
+          if len(obj.points) >= 2: clipped_objects.append(obj)
 
         case PolygonObject():
           obj.points = self.sutherland_hodgman_clip(obj) or []
-        
+          if len(obj.points) >= 3: clipped_objects.append(obj)
+
         case LineObject():
           p1, p2 = obj.points
           if algorithm == ClippingAlgorithm.COHEN_SUTHERLAND:
@@ -58,18 +58,16 @@ class Clipping:
           if clipped is not None:
             x0, y0, x1, y1 = clipped
             obj.points = [np.array([x0, y0]), np.array([x1, y1])]
-          else:
-            obj.points = []
-        
+            clipped_objects.append(obj)
+
         case PointObject():
           p = obj.points[0]
-          if not self.point_in_window(p[0], p[1]):
-            obj.points = []
-        
+          if self.point_in_window(p[0], p[1]):
+            clipped_objects.append(obj)
+
         case _:
           continue
-        
-      clipped_objects.append(obj) if obj.points else None
+    
     return clipped_objects
 
   def compute_out_code(self, x: float, y: float) -> int:

@@ -500,6 +500,7 @@ class Viewport:
       self.canva.create_line(0, self.height*2/6, self.width, self.height*2/6, fill="blue")
       self.canva.create_line(self.width*2/6, 0, self.width*2/6, self.height, fill="blue")  
 
+    # Project all objects to the viewport and clip them
     for obj in all_objects:
       obj.points = [np.array(self.camera.world_to_viewport(point)) for point in obj.points]
     all_objects = self.clipping.clip(all_objects, ClippingAlgorithm(self.clipping_algorithm.get()))
