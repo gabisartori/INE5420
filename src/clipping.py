@@ -7,11 +7,11 @@ from wireframe import *
 import my_logging
 
 class Code(Enum):
-  INSIDE = 0  # 0000
-  LEFT = 1  # 0001
-  RIGHT = 2   # 0010
-  BOTTOM = 4  # 0100
-  TOP = 8   # 1000
+  INSIDE  = 0b0000
+  LEFT    = 0b0001
+  RIGHT   = 0b0010
+  BOTTOM  = 0b0100
+  TOP     = 0b1000
 
 class ClippingAlgorithm(Enum):
   COHEN_SUTHERLAND = 1
@@ -28,49 +28,78 @@ class ClippingAlgorithm(Enum):
     return "Unknown"
 
 class Clipping:
+  """This class implements various 2D clipping algorithms.
+  It holds the clipping window defined by (xmin, ymin) and (xmax, ymax).
+
+  3D objects can be projected to the 2D clipping window using orthographic or perspective projection. To then be clipped by this class.
+
+  Implemented algorithms:
+  - Point clipping by checking if the point lies within the clipping window
+  - Line clipping Cohen-Sutherland
+  - Line clipping Liang-Barsky
+  - Polygon clipping Sutherland-Hodgman
+  - Cubic Bezier curve clipping by approximating it with line segments and clipping each segment
+  """
+
   def __init__(self, xmin, ymin, xmax, ymax):
     self.xmin = xmin
     self.ymin = ymin
     self.xmax = xmax
     self.ymax = ymax
 
-  def clip(self, all_objects: list[Wireframe], algorithm: ClippingAlgorithm) -> list[Wireframe]:
-    """Clip all wireframe objects using the specified algorithm."""
-    clipped_objects = []
-    for obj in all_objects:
-      match obj:
-        case CurveObject_2D():
-          obj.points = self.pre_clip_curve(obj, algorithm) or []
-          if len(obj.points) >= 2: clipped_objects.append(obj)
+  def clip_all(self, all_objects: list[Wireframe], algorithm: ClippingAlgorithm) -> list[Wireframe]:
+    """Clip all wireframe objects using the designated algorithm."""
+    return [clipped for obj in all_objects if (clipped := self.clip(obj, algorithm)) is not None]
 
-        case PolygonObject():
-          obj.points = self.sutherland_hodgman_clip(obj) or []
-          if len(obj.points) >= 3: clipped_objects.append(obj)
+  def clip(self, object: Wireframe, algorithm: ClippingAlgorithm) -> Wireframe | None:
+    """Clips an wirefreame, altering its points accordingly. If the object is completely outside the clipping window, returns None.
+    
+    "Line" is the only type of object that can be clipped by more than one algorithm. So the algorithm parameter is used to select which one to use for lines. Curves will also be affected, since they're approximated with lines for clipping.
+    """
+    match object:
+      case CurveObject_2D():
+        object.points = self.pre_clip_curve(object, algorithm) or []
+        return object if len(object.points) >= 2 else None
 
-        case LineObject():
-          p1, p2 = obj.points
-          if algorithm == ClippingAlgorithm.COHEN_SUTHERLAND:
-            clipped = self.cohen_sutherland_clip(p1[0], p1[1], p2[0], p2[1])
-          elif algorithm == ClippingAlgorithm.LIANG_BARSKY:
-            clipped = self.liang_barsky_clip(p1[0], p1[1], p2[0], p2[1])
-          else:
-            continue
-          if clipped is not None:
-            x0, y0, x1, y1 = clipped
-            obj.points = [np.array([x0, y0]), np.array([x1, y1])]
-            clipped_objects.append(obj)
+      case PolygonObject():
+        object.points = self.sutherland_hodgman_clip(object) or []
+        return object if len(object.points) >= 3 else None
 
-        case PointObject():
-          p = obj.points[0]
-          if self.point_in_window(p[0], p[1]):
-            clipped_objects.append(obj)
+      case LineObject():
+        p1, p2 = object.points
+        if algorithm == ClippingAlgorithm.COHEN_SUTHERLAND:
+          clipped = self.cohen_sutherland_clip(p1[0], p1[1], p2[0], p2[1])
+        elif algorithm == ClippingAlgorithm.LIANG_BARSKY:
+          clipped = self.liang_barsky_clip(p1[0], p1[1], p2[0], p2[1])
+        else:
+          return None
+        if clipped is not None:
+          x0, y0, x1, y1 = clipped
+          object.points = [np.array([x0, y0]), np.array([x1, y1])]
+          return object
+        else:
+          return None
 
-        case _:
-          continue
+      # TODO: Add circle clipping by radius since points are actually circles with any radius although defaulted to 1
+      case PointObject():
+        p = object.points[0]
+        if self.point_in_window(p[0], p[1]):
+          return object
 
-    return clipped_objects
+      case _:
+        return None
 
   def compute_out_code(self, x: float, y: float) -> int:
+    """Used in the Cohen-Sutherland algorithm to compute the outcode of a point.
+    
+    Each point will be represented by a 4-bit code, each bit representing one of the regions outside the clipping window. From most to least significant bit:
+    1st bit: Top
+    2nd bit: Bottom
+    3rd bit: Right
+    4th bit: Left
+
+    If all bits are 0, the point is inside the clipping window.
+    """
     code = Code.INSIDE.value
     if x < self.xmin:    # to the left of clip window
       code |= Code.LEFT.value
@@ -83,7 +112,7 @@ class Clipping:
     return code
 
   def point_in_window(self, x: float, y: float) -> bool:
-    return self.xmin <= x <= self.xmax and self.ymin <= y <= self.ymax
+    return self.compute_out_code(x, y) == Code.INSIDE.value
 
   def cohen_sutherland_clip(self, x0: float, y0: float, x1: float, y1: float) -> tuple[float, float, float, float] | None:
     """Cohen-Sutherland clipping algorithm for a line"""
@@ -154,6 +183,7 @@ class Clipping:
     y1_clip = y0 + t_exit * dy
     return x0_clip, y0_clip, x1_clip, y1_clip
 
+  # TODO: This returns a list of points instead of altering the object directly like the other algorithms. Fix this inconsistency.
   def sutherland_hodgman_clip(self, polygon: PolygonObject) -> list[np.ndarray] | None:
     """Sutherland-Hodgman polygon clipping algorithm for polygons"""
     new_points = []

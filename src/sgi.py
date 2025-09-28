@@ -1,0 +1,2 @@
+class SGI:
+  pass

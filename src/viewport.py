@@ -1,11 +1,11 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, font, colorchooser, simpledialog, scrolledtext
 from wireframe import *
-from screen import *
+from window import *
 from components.toggle_switch import *
 from components.my_types import *
 from data.usr_preferences import *
-from .clipping import Clipping, ClippingAlgorithm
+from clipping import Clipping, ClippingAlgorithm
 
 class Viewport:
   def __init__(self, width, height, title="INE5420", input: str | None=None, output: str | None=None, debug: bool=False):
@@ -20,7 +20,8 @@ class Viewport:
 
     self.debug: bool = debug
     self.debug_objects: list[Wireframe] = [PointObject("World Origin", np.array([0, 0, 0]), id=0)]
-    self.camera = Camera(np.array([0, 0, -1]), np.array([0, 0, 1]), width*2/3, height*5/6)
+    # TODO: Reset the window position to the origin. It's only here right now to make the clipping tests easier.
+    self.window = Window(np.array([0, 0, -1]), np.array([-170, 160, 1]), width*2/3, height*5/6)
 
     # TODO: Move all of the functions in that file to here
     # TODO: Remove the unnecessary usage of self.theme instead of self.preferences["theme"], possibly turning self.preferences into a class of its own instead of it being a dict
@@ -127,7 +128,7 @@ class Viewport:
 
   def build_debug_grid(self):
     step = 75
-    min_zoom = self.camera.min_zoom 
+    min_zoom = self.window.min_zoom 
 
     width = self.width
     height = self.height
@@ -140,21 +141,21 @@ class Viewport:
     end = ( max_range // step + 1 ) * step
 
     for i in range(start, end, step):
-      start_h = self.camera.world_to_viewport(np.array([-max_range, i, 0]))
-      end_h = self.camera.world_to_viewport(np.array([max_range, i, 0]))
+      start_h = self.window.world_to_viewport(np.array([-max_range, i, 0]))
+      end_h = self.window.world_to_viewport(np.array([max_range, i, 0]))
       self.canva.create_line(
         start_h[0], start_h[1], end_h[0], end_h[1],
         fill=ColorScheme.LIGHT_DEBUG_GRID.value if self.theme == "light" else ColorScheme.DARK_DEBUG_GRID.value
       )
 
-      start_v = self.camera.world_to_viewport(np.array([i, -max_range, 0]))
-      end_v = self.camera.world_to_viewport(np.array([i, max_range, 0]))
+      start_v = self.window.world_to_viewport(np.array([i, -max_range, 0]))
+      end_v = self.window.world_to_viewport(np.array([i, max_range, 0]))
       self.canva.create_line(
         start_v[0], start_v[1], end_v[0], end_v[1],
         fill=ColorScheme.LIGHT_DEBUG_GRID.value if self.theme == "light" else ColorScheme.DARK_DEBUG_GRID.value
       )
 
-    origin = self.camera.world_to_viewport(np.array([0, 0, 0]))
+    origin = self.window.world_to_viewport(np.array([0, 0, 0]))
     self.canva.create_text(origin[0] + 15, origin[1] - 10, text="(0,0)", fill=ColorScheme.LIGHT_TEXT.value if self.theme == "light" else ColorScheme.DARK_TEXT.value, font=("Arial", 10, "bold"))
 
   def build_menu(self):    
@@ -170,7 +171,7 @@ class Viewport:
     # Inserir menu items
     # Configurações menu items
     settings_menu = tk.Menu(self.menubar, tearoff=0)
-    self.clipping = Clipping(*self.camera.get_corners())
+    self.clipping = Clipping(*self.window.get_corners())
     self.clipping_algorithm = tk.IntVar(value=1)
 
     self.clipping_submenu = tk.Menu(settings_menu, tearoff=0)
@@ -205,7 +206,7 @@ class Viewport:
 
   def rotate(self):
     '''Rotates something according to the inputs passed'''
-    '''If no object is selected, it'll rotate the camera'''
+    '''If no object is selected, it'll rotate the window'''
     '''If there's a selected object, it'll rotate it around the specified point'''
     '''If there are no specified points, it'll rotate the object around its center'''
     try: angle = int(self.ui_degree_input.get())
@@ -226,9 +227,9 @@ class Viewport:
       except ValueError:
         target.rotate(angle)
 
-    # No object selected, rotate camera
+    # No object selected, rotate window
     else:
-      self.camera.rotate(angle)
+      self.window.rotate(angle)
 
     self.update()
 
@@ -299,8 +300,8 @@ class Viewport:
     self.debug = not self.debug
     self.update()
 
-  def move_camera(self, event):
-    self.camera.position = self.camera.viewport_to_world(event.x, event.y)
+  def move_window(self, event):
+    self.window.position = self.window.viewport_to_world(event.x, event.y)
     self.update()
 
   def clear(self):
@@ -311,9 +312,9 @@ class Viewport:
     self.update()
 
   def set_curve_config(self):
-    steps = simpledialog.askinteger("Configuração de Curvas", "Número de passos para desenhar curvas de Bézier (padrão 100):", initialvalue=self.camera.bezier_steps, minvalue=10, maxvalue=1000)
+    steps = simpledialog.askinteger("Configuração de Curvas", "Número de passos para desenhar curvas de Bézier (padrão 100):", initialvalue=self.window.bezier_steps, minvalue=10, maxvalue=1000)
     if steps:
-      self.camera.bezier_steps = steps
+      self.window.bezier_steps = steps
       self.log(f"Número de passos para desenhar curvas de Bézier alterado para {steps}.")
       self.update() 
 
@@ -358,16 +359,16 @@ class Viewport:
 
   def controls(self):
     self.canva.bind("<ButtonRelease-1>", self.canva_click)
-    self.canva.bind("<Button-3>", self.move_camera)
+    self.canva.bind("<Button-3>", self.move_window)
     self.root.bind("<Button-2>", lambda e: self.set_debug())
-    self.root.bind("<Button-4>", lambda e: self.camera.zoom_in(e.x, e.y) or self.update())
-    self.root.bind("<Button-5>", lambda e: self.camera.zoom_out(e.x, e.y) or self.update())
-    self.root.bind("<KeyPress-w>", lambda e: self.camera.move_up() or self.update())
-    self.root.bind("<KeyPress-s>", lambda e: self.camera.move_down() or self.update())
-    self.root.bind("<KeyPress-a>", lambda e: self.camera.move_left() or self.update())
-    self.root.bind("<KeyPress-d>", lambda e: self.camera.move_right() or self.update())
-    self.root.bind("<KeyPress-q>", lambda e: self.camera.move_below() or self.update())
-    self.root.bind("<KeyPress-e>", lambda e: self.camera.move_above() or self.update())
+    self.root.bind("<Button-4>", lambda e: self.window.zoom_in(e.x, e.y) or self.update())
+    self.root.bind("<Button-5>", lambda e: self.window.zoom_out(e.x, e.y) or self.update())
+    self.root.bind("<KeyPress-w>", lambda e: self.window.move_up() or self.update())
+    self.root.bind("<KeyPress-s>", lambda e: self.window.move_down() or self.update())
+    self.root.bind("<KeyPress-a>", lambda e: self.window.move_left() or self.update())
+    self.root.bind("<KeyPress-d>", lambda e: self.window.move_right() or self.update())
+    self.root.bind("<KeyPress-q>", lambda e: self.window.move_below() or self.update())
+    self.root.bind("<KeyPress-e>", lambda e: self.window.move_above() or self.update())
     self.root.bind("<KeyPress-Escape>", lambda e: self.cancel_building())
     self.root.bind("<Control-z>", lambda e: self.undo())
 
@@ -382,16 +383,16 @@ class Viewport:
     self.root.bind_all("<Button-1>", focus_clicked_widget)
 
   def is_click_inside_viewport(self, x, y) -> bool:
-    x0, y0, x1, y1 = self.camera.get_corners()
+    x0, y0, x1, y1 = self.window.get_corners()
     return x0 <= x <= x1 and y0 <= y <= y1
 
   def canva_click(self, event):
     # Ignore click if it's outside the viewport area
     if not self.is_click_inside_viewport(event.x, event.y): return
 
-    if self.building: self.build.append(self.camera.viewport_to_world(event.x, event.y))
+    if self.building: self.build.append(self.window.viewport_to_world(event.x, event.y))
     else:
-      self.objects.append(PointObject(f"Clicked Point", self.camera.viewport_to_world(event.x, event.y), id=self.placed_objects_counter))
+      self.objects.append(PointObject(f"Clicked Point", self.window.viewport_to_world(event.x, event.y), id=self.placed_objects_counter))
       self.placed_objects_counter += 1
     self.update()    
 
@@ -401,7 +402,7 @@ class Viewport:
         self.log("Erro: Pelo menos quatro pontos são necessários para formar uma curva de Bézier cúbica.")
         return
 
-      new_curve = CurveObject_2D("Curve", self.build.copy(), self.camera.bezier_steps, id=self.placed_objects_counter)
+      new_curve = CurveObject_2D("Curve", self.build.copy(), self.window.bezier_steps, id=self.placed_objects_counter)
       if self.curve_type.get() == "b_spline":
         new_curve.generate_b_spline_points()
       else:
@@ -442,7 +443,7 @@ class Viewport:
 
         self.build = input_points           
         popup.destroy()            
-        target = CurveObject_2D("Curve", self.build.copy(), self.camera.bezier_steps, id=self.placed_objects_counter)
+        target = CurveObject_2D("Curve", self.build.copy(), self.window.bezier_steps, id=self.placed_objects_counter)
         if self.curve_type.get() == "b_spline":
           target.generate_b_spline_points()
         else:
@@ -496,16 +497,16 @@ class Viewport:
     if self.debug:
       all_objects += [obj.copy() for obj in self.debug_objects]
       self.build_debug_grid()
-      x0, y0, x1, y1 = self.camera.get_corners()
+      x0, y0, x1, y1 = self.window.get_corners()
       # TODO: I still feel like these lines are not perfectly centered ffs
-      self.canva.create_line(x0, (y1+self.camera.padding)/2, x1, (y1+self.camera.padding)/2, fill="blue")
-      self.canva.create_line((x1+self.camera.padding)/2, y0, (x1+self.camera.padding)/2, y1, fill="blue")
+      self.canva.create_line(x0, (y1+self.window.padding)/2, x1, (y1+self.window.padding)/2, fill="blue")
+      self.canva.create_line((x1+self.window.padding)/2, y0, (x1+self.window.padding)/2, y1, fill="blue")
       self.draw_viewport_border()
 
     # Project all objects to the viewport and clip them
     for obj in all_objects:
-      obj.points = [np.array(self.camera.world_to_viewport(point)) for point in obj.points]
-    all_objects = self.clipping.clip(all_objects, ClippingAlgorithm(self.clipping_algorithm.get()))
+      obj.points = [np.array(self.window.world_to_viewport(point)) for point in obj.points]
+    all_objects = self.clipping.clip_all(all_objects, ClippingAlgorithm(self.clipping_algorithm.get()))
 
     # Draw all objects
     for obj in all_objects:
@@ -557,7 +558,7 @@ class Viewport:
     # Redraw the building lines if in building mode
     prev = None
     for point in self.build:
-      point = self.camera.world_to_viewport(point)
+      point = self.window.world_to_viewport(point)
       self.canva.create_oval(point[0] - 2, point[1] - 2, point[0] + 2, point[1] + 2, fill="red")
       if prev is not None: self.canva.create_line(prev[0], prev[1], point[0], point[1], fill="red")
       prev = point
@@ -581,7 +582,7 @@ class Viewport:
     font_size = font_style.measure("".join(formatted_coordinates)) + 20
 
   def draw_viewport_border(self):
-    x0, y0, x1, y1 = self.camera.get_corners()
+    x0, y0, x1, y1 = self.window.get_corners()
     self.canva.create_rectangle(x0, y0, x1, y1, outline="red", width=1)
 
   def change_thickness(self, target: Wireframe, thickness: str, window: tk.Toplevel):
@@ -677,7 +678,7 @@ class Viewport:
         objects: list[Wireframe] = []
         current_name = ""
         current_points: list[Point] = []
-        steps = self.camera.bezier_steps
+        steps = self.window.bezier_steps
 
         for line in lines:
           header, *args = line.split()

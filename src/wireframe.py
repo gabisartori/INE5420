@@ -4,6 +4,18 @@ import numpy as np
 
 @dataclass
 class Wireframe:
+  """Parent class for all wireframe objects.
+  Each subclass will implement its own way of manipulating the *points* attribute.
+
+  Attributes:
+  - name: Name of the object, to be displayed in object lists.
+  TODO: the definition of *points* may not match what's actually built in the code.
+  - points: List of points that define the object. Each point is a numpy array of 3 or 4 elements, which will be treated as 2D (x, y, 1) or 3D (x, y, z, 1) homogeneous coordinates.
+  - fill_color: Color used to fill the object when rendering (if applicable).
+  - line_color: Color used to draw the object's edges.
+  - thickness: Thickness of the lines used to draw the object.
+  - id: Unique identifier for the object. The main program class will keep count of the last used ID and assign a new one when creating a new object.
+  """
   name: str
   points: list[Point]
   fill_color: str = "white"
@@ -15,25 +27,41 @@ class Wireframe:
 
   def __str__(self) -> str: raise NotImplementedError("Subclasses should implement this method")
 
+  # TODO: For 3D objects, there must be three different rotations, one for each axis.
+  # TODO: Decide whether this function should alter the original object or return a new one with the new coordinates.
   def rotate(self, degrees: int=5, point: Point | None=None) -> None:
-    """Rotate the object around a given point in the XY plane."""
-    """If no point is given, rotate around the center of the object."""
-    if point is not None:
-      px = point[0]
-      py = point[1]
-    else:
+    """Rotates the object around a given point in the XY plane.
+    If no point is given, rotate around the center of the object.
+
+    The XY plane is chosen as the default plane for the 2D implementation of the program. This will then be replaced by the specific XY rotation for the 3D implementation.
+    """
+
+    # If no point is given, set the rotation center to be the object's center.
+    if point is None:
       px = self.center[0]
       py = self.center[1]
+    # Otherwise, use the given point.
+    else:
+      px = point[0]
+      py = point[1]
+
+    # Move the object to be centered around the rotation point.
     self.translate(-px, -py)
+    # TODO: When needing to specify which plane the rotation is in, all that needs to change is which matrix is being used.
+    # Apply the rotation matrix.
     self.transform2d(np.array([
       [np.cos(np.radians(degrees)), -np.sin(np.radians(degrees)), 0],
       [np.sin(np.radians(degrees)),  np.cos(np.radians(degrees)), 0],
       [0, 0, 1]
     ]))
+    # Move the object back to its original position.
     self.translate(px, py)
 
   def translate(self, dx: float, dy: float) -> None:
-    """Translate the object in the XY plane."""
+    """Translate the object in the XY plane.
+    
+    Everything that was said about the XY plane in the rotate() method also applies here.
+    """
     self.transform2d(np.array([
       [1, 0, dx],
       [0, 1, dy],
@@ -52,8 +80,9 @@ class Wireframe:
     ]))
     self.translate(px, py)
 
+  # TODO: again, decide whether this should modify the original object or return a new one.
   def transform2d(self, M: np.ndarray) -> None:
-    """Aplica M (3x3 homogênea) aos pontos no plano XZ, mantendo Y."""
+    """Applies the given matrix to all of the object's points."""
     self.points = [M @ p for p in self.points]
 
   @property

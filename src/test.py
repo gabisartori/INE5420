@@ -1,9 +1,11 @@
-from screen import Camera
+from window import Camera
 import numpy as np
 from wireframe import *
-from viewport.clipping import Clipping, ClippingAlgorithm
+from clipping import Clipping, ClippingAlgorithm
 import random
 
+
+# TODO: re-enable these tests and write better ones lmao
 # WIDTH = 800
 # HEIGHT = 600
 

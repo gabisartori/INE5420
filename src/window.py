@@ -1,6 +1,5 @@
 import numpy as np
 
-from dataclasses import dataclass
 from components.my_types import Point
 
 def normalize(v: Point) -> Point:
@@ -8,7 +7,7 @@ def normalize(v: Point) -> Point:
   norm = np.linalg.norm(v)
   return v / norm if norm != 0 else v
 
-class Camera:
+class Window:
   def __init__(self, normal: Point, position: Point, viewport_width: int, viewport_height: int, zoom: float=1.0):
     self.normal: Point = normalize(normal)
     self.position: Point = position
@@ -17,7 +16,7 @@ class Camera:
     self.viewport_width: int = viewport_width
     self.viewport_height: int = viewport_height
     self.viewport_focus: tuple[float, float] = (self.viewport_width // 2, self.viewport_height // 2)
-    self.camera_focus: tuple[float, float] = (0, 0)
+    self.window_focus: tuple[float, float] = (0, 0)
     self.max_zoom = 100.0
     self.min_zoom = 0.1
     self.padding = 15
@@ -44,7 +43,7 @@ class Camera:
   def move_above(self): self.position[2] += max(self.speed/self.zoom, 1)
 
   def rotate(self, angle: int=5):
-    """Rotate the camera around the normal vector."""
+    """Rotate the window around the normal vector."""
     M = np.array([
       [np.cos(np.radians(angle)), -np.sin(np.radians(angle)), 0],
       [np.sin(np.radians(angle)),  np.cos(np.radians(angle)), 0],
@@ -65,24 +64,24 @@ class Camera:
     self.position = np.array([0, 0, 100])
     self.normal = np.array([0, 0, -1])
     self.zoom = 1.0
-    self.camera_focus = (0, 0)
+    self.window_focus = (0, 0)
     self.viewport_focus = (self.viewport_width // 2, self.viewport_height // 2)
 
   def world_to_viewport(self, point: Point) -> tuple[float, float]:
-    # Ignore points behind camera
+    # Ignore points behind window
     # if np.dot(self.normal, point - self.position) < 0: point = self.position - self.normal
-    x, y = self.world_to_camera(point)
+    x, y = self.world_to_window(point)
 
-    # Convert the camera view plane coordinates to viewport coordinates
-    # - Centering the camera plane origin at the center of the viewport
+    # Convert the window view plane coordinates to viewport coordinates
+    # - Centering the window plane origin at the center of the viewport
     # - Scaling the coordinates by the zoom factor
     # - Adjusting the y-coordinate to match the canvas coordinate system
-    position = self.camera_to_viewport(x, y)
+    position = self.window_to_viewport(x, y)
 
     return position
 
-  def world_to_camera(self, point: Point) -> tuple[float, float]:
-    # Project the point onto the camera view plane
+  def world_to_window(self, point: Point) -> tuple[float, float]:
+    # Project the point onto the window view plane
     t = sum(self.normal[i] * (self.position[i] - point[i]) for i in range(len(point)))
     t /= sum(self.normal[i] * self.normal[i] for i in range(len(point)))
     c = np.array([point[i] + t * self.normal[i] for i in range(len(point))])
@@ -90,33 +89,33 @@ class Camera:
     v = c - self.position
     return np.dot(v, self.right), np.dot(v, self.up)
 
-  def camera_to_world(self, x: float, y: float) -> Point:
-    # Return a 3D point based on the camera's position and orientation
-    # TODO: This creates a point at the exact position of the camera
-    # It would be more useful if the user could control a distance from the camera to which clicks are applied
+  def window_to_world(self, x: float, y: float) -> Point:
+    # Return a 3D point based on the window's position and orientation
+    # TODO: This creates a point at the exact position of the window
+    # It would be more useful if the user could control a distance from the window to which clicks are applied
     # This is quite simple to implement, but it would mess with how zoom is behaving
     return x*self.right + y*self.up + self.position
 
-  def camera_to_viewport(self, x: float, y: float) -> tuple[float, float]:
+  def window_to_viewport(self, x: float, y: float) -> tuple[float, float]:
     x = x*self.zoom + self.viewport_focus[0]
     y = y*self.zoom + self.viewport_focus[1]
     y = self.viewport_height - y
     return x, y
 
-  def viewport_to_camera(self, x: float, y: float) -> tuple[float, float]:
+  def viewport_to_window(self, x: float, y: float) -> tuple[float, float]:
     y = self.viewport_height - y
     x = (x-self.viewport_focus[0])/self.zoom
     y = (y-self.viewport_focus[1])/self.zoom
     return x, y
 
   def viewport_to_world(self, x: float, y: float) -> Point:
-    return self.camera_to_world(*self.viewport_to_camera(x, y))
+    return self.window_to_world(*self.viewport_to_window(x, y))
 
   def is_point_in_viewport(self, point: Point) -> bool:
-    x, y = self.world_to_camera(point)
+    x, y = self.world_to_window(point)
     half_width = (self.viewport_width / self.zoom) / 2
     half_height = (self.viewport_height / self.zoom) / 2
-    center_x, center_y = self.camera_focus
+    center_x, center_y = self.window_focus
     return center_x - half_width <= x <= center_x + half_width and center_y - half_height <= y <= center_y + half_height
 
   def get_corners(self) -> tuple[float, float, float, float]:
