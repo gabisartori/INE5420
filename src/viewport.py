@@ -182,7 +182,7 @@ class Viewport:
     self.curve_type = tk.StringVar(value="bezier")
 
     self.curves_submenu = tk.Menu(settings_menu, tearoff=0)
-    self.curves_submenu.add_command(label="Passos", command=lambda: self.set_curve_config())
+    self.curves_submenu.add_command(label="Coeficiente", command=lambda: self.set_curve_config())
     self.curves_submenu.add_radiobutton(label="Bezier", variable=self.curve_type, value="bezier", command=lambda: self.set_curve_type("bezier"))
     self.curves_submenu.add_radiobutton(label="B-Spline", variable=self.curve_type, value="b_spline", command=lambda: self.set_curve_type("b_spline"))
     settings_menu.add_cascade(label="Curvas ", menu=self.curves_submenu)
@@ -312,11 +312,11 @@ class Viewport:
     self.update()
 
   def set_curve_config(self):
-    steps = simpledialog.askinteger("Configuração de Curvas", "Número de passos para desenhar curvas de Bézier (padrão 100):", initialvalue=self.window.bezier_steps, minvalue=10, maxvalue=1000)
-    if steps:
-      self.window.bezier_steps = steps
-      self.log(f"Número de passos para desenhar curvas de Bézier alterado para {steps}.")
-      self.update() 
+    coeff = simpledialog.askinteger("Configuração de Curvas", "Coeficiente para desenhar curvas de Bézier ou B-Spline(padrão 100):", initialvalue=self.window.coeff, minvalue=10, maxvalue=1000)
+    if coeff:
+      self.window.coeff = coeff
+      self.log(f"Coeficiente para desenhar curvas alterado para {coeff}.")
+      self.update()
 
   def set_clipping_algorithm(self, algorithm: str):
     self.log(f"Algoritmo de clipagem alterado para {algorithm.title()}")
@@ -402,7 +402,7 @@ class Viewport:
         self.log("Erro: Pelo menos quatro pontos são necessários para formar uma curva de Bézier cúbica.")
         return
 
-      new_curve = CurveObject_2D("Curve", self.build.copy(), self.window.bezier_steps, id=self.placed_objects_counter)
+      new_curve = CurveObject_2D("Curve", self.build.copy(), self.window.coeff, id=self.placed_objects_counter)
       if self.curve_type.get() == "b_spline":
         new_curve.generate_b_spline_points()
       else:
@@ -443,7 +443,7 @@ class Viewport:
 
         self.build = input_points           
         popup.destroy()            
-        target = CurveObject_2D("Curve", self.build.copy(), self.window.bezier_steps, id=self.placed_objects_counter)
+        target = CurveObject_2D("Curve", self.build.copy(), self.window.coeff, id=self.placed_objects_counter)
         if self.curve_type.get() == "b_spline":
           target.generate_b_spline_points()
         else:
@@ -522,7 +522,7 @@ class Viewport:
               continue
 
             dist = np.linalg.norm(p1 - p0)
-            if dist > 100:
+            if dist > 200:
               continue  # Não conectar segmentos distantes
 
             self.canva.create_line(p0[0], p0[1], p1[0], p1[1], fill=obj.line_color, width=obj.thickness)
@@ -678,7 +678,7 @@ class Viewport:
         objects: list[Wireframe] = []
         current_name = ""
         current_points: list[Point] = []
-        steps = self.window.bezier_steps
+        steps = self.window.coeff
 
         for line in lines:
           header, *args = line.split()
