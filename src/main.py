@@ -1,5 +1,6 @@
-import viewport as viewport
 import argparse
+
+from sgi import SGI
 
 # Command-line argument parsing
 # -i; --input: input file path. The file must follow the wavefront .obj format and all its objects will be displayed upon start up. If no file is passed, or if the passed file doesn't exist, the program will start with no objects.
@@ -9,6 +10,5 @@ parser.add_argument("-i", "--input", help="Path to the input file", type=str, de
 parser.add_argument("-o", "--output", help="Path to the output file", type=str, default=None, dest="output_file")
 args = parser.parse_args()
 
-# Initialize and run the viewport with the fixed dimensions of 1400x900 pixels
-screen = viewport.Viewport(1400, 900, input=args.input_file, output=args.output_file, debug=True)
-screen.run()
+# Initialize and run the viewport with the fixed dimensions of 1400x900 pixels (the default values in the config file)
+sgi = SGI(input=args.input_file, output=args.output_file, debug=True)
