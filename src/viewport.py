@@ -20,8 +20,7 @@ class Viewport:
 
     self.debug: bool = debug
     self.debug_objects: list[Wireframe] = [PointObject("World Origin", np.array([0, 0, 0]), id=0)]
-    # TODO: Reset the window position to the origin. It's only here right now to make the clipping tests easier.
-    self.window = Window(np.array([0, 0, -1]), np.array([-170, 160, 1]), width*2/3, height*5/6)
+    self.window = Window(np.array([0, 0, -1]), np.array([0, 0, 1]), width*2/3, height*5/6)
 
     # TODO: Move all of the functions in that file to here
     # TODO: Remove the unnecessary usage of self.theme instead of self.preferences["theme"], possibly turning self.preferences into a class of its own instead of it being a dict
