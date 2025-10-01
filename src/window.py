@@ -1,5 +1,6 @@
 import numpy as np
 
+import config
 from components.my_types import Point
 
 def normalize(v: Point) -> Point:
@@ -8,14 +9,14 @@ def normalize(v: Point) -> Point:
   return v / norm if norm != 0 else v
 
 class Window:
-  def __init__(self, normal: Point, position: Point, viewport_width: int, viewport_height: int, zoom: float=1.0):
+  def __init__(self, normal: Point=config.WINDOW_NORMAL, position: Point=config.WINDOW_POSITION, width: int=config.WIDTH, height: int=config.HEIGHT, zoom: float=config.ZOOM):
     self.normal: Point = normalize(normal)
     self.position: Point = position
     self.speed: int = 5
     self.zoom: float = zoom
-    self.viewport_width: int = viewport_width
-    self.viewport_height: int = viewport_height
-    self.viewport_focus: tuple[float, float] = (self.viewport_width // 2, self.viewport_height // 2)
+    self.width: int = width*2//3
+    self.height: int = height*5//6
+    self.focus: tuple[float, float] = (self.width // 2, self.height // 2)
     self.window_focus: tuple[float, float] = (0, 0)
     self.max_zoom = 100.0
     self.min_zoom = 0.1
@@ -65,7 +66,7 @@ class Window:
     self.normal = np.array([0, 0, -1])
     self.zoom = 1.0
     self.window_focus = (0, 0)
-    self.viewport_focus = (self.viewport_width // 2, self.viewport_height // 2)
+    self.focus = (self.width // 2, self.height // 2)
 
   def world_to_viewport(self, point: Point) -> tuple[float, float]:
     # Ignore points behind window
@@ -97,26 +98,23 @@ class Window:
     return x*self.right + y*self.up + self.position
 
   def window_to_viewport(self, x: float, y: float) -> tuple[float, float]:
-    x = x*self.zoom + self.viewport_focus[0]
-    y = y*self.zoom + self.viewport_focus[1]
-    y = self.viewport_height - y
+    x = x*self.zoom + self.focus[0]
+    y = y*self.zoom + self.focus[1]
+    y = self.height - y
     return x, y
 
   def viewport_to_window(self, x: float, y: float) -> tuple[float, float]:
-    y = self.viewport_height - y
-    x = (x-self.viewport_focus[0])/self.zoom
-    y = (y-self.viewport_focus[1])/self.zoom
+    y = self.height - y
+    x = (x-self.focus[0])/self.zoom
+    y = (y-self.focus[1])/self.zoom
     return x, y
 
   def viewport_to_world(self, x: float, y: float) -> Point:
     return self.window_to_world(*self.viewport_to_window(x, y))
 
-  def is_point_in_viewport(self, point: Point) -> bool:
-    x, y = self.world_to_window(point)
-    half_width = (self.viewport_width / self.zoom) / 2
-    half_height = (self.viewport_height / self.zoom) / 2
-    center_x, center_y = self.window_focus
-    return center_x - half_width <= x <= center_x + half_width and center_y - half_height <= y <= center_y + half_height
+  def click_in_window(self, x: float, y: float) -> bool:
+    xmin, ymin, xmax, ymax = self.get_corners()
+    return xmin <= x <= xmax and ymin <= y <= ymax
 
   def get_corners(self) -> tuple[float, float, float, float]:
-    return self.padding, self.padding, self.viewport_width - self.padding, self.viewport_height - self.padding
+    return self.padding, self.padding, self.width - self.padding, self.height - self.padding

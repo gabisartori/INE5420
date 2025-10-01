@@ -12,3 +12,4 @@ args = parser.parse_args()
 
 # Initialize and run the viewport with the fixed dimensions of 1400x900 pixels (the default values in the config file)
 sgi = SGI(input=args.input_file, output=args.output_file, debug=True)
+sgi.run()

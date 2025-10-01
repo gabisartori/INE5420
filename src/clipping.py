@@ -41,24 +41,25 @@ class Clipping:
   - Cubic Bezier curve clipping by approximating it with line segments and clipping each segment
   """
 
-  def __init__(self, xmin, ymin, xmax, ymax):
+  def __init__(self, line_clipping_algorithm, xmin, ymin, xmax, ymax):
+    self.line_clipping_algorithm = line_clipping_algorithm
     self.xmin = xmin
     self.ymin = ymin
     self.xmax = xmax
     self.ymax = ymax
 
-  def clip_all(self, all_objects: list[Wireframe], algorithm: ClippingAlgorithm) -> list[Wireframe]:
+  def clip_all(self, all_objects: list[Wireframe]) -> list[Wireframe]:
     """Clip all wireframe objects using the designated algorithm."""
-    return [clipped for obj in all_objects if (clipped := self.clip(obj, algorithm)) is not None]
+    return [clipped for obj in all_objects if (clipped := self.clip(obj)) is not None]
 
-  def clip(self, object: Wireframe, algorithm: ClippingAlgorithm) -> Wireframe | None:
+  def clip(self, object: Wireframe) -> Wireframe | None:
     """Clips an wirefreame, altering its points accordingly. If the object is completely outside the clipping window, returns None.
     
     "Line" is the only type of object that can be clipped by more than one algorithm. So the algorithm parameter is used to select which one to use for lines. Curves will also be affected, since they're approximated with lines for clipping.
     """
     match object:
       case CurveObject_2D():
-        object.points = self.pre_clip_curve(object, algorithm) or []
+        object.points = self.pre_clip_curve(object, self.line_clipping_algorithm) or []
         return object if len(object.points) >= 2 else None
 
       case PolygonObject():
@@ -67,9 +68,9 @@ class Clipping:
 
       case LineObject():
         p1, p2 = object.points
-        if algorithm == ClippingAlgorithm.COHEN_SUTHERLAND:
+        if self.line_clipping_algorithm == ClippingAlgorithm.COHEN_SUTHERLAND:
           clipped = self.cohen_sutherland_clip(p1[0], p1[1], p2[0], p2[1])
-        elif algorithm == ClippingAlgorithm.LIANG_BARSKY:
+        elif self.line_clipping_algorithm == ClippingAlgorithm.LIANG_BARSKY:
           clipped = self.liang_barsky_clip(p1[0], p1[1], p2[0], p2[1])
         else:
           return None
