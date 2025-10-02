@@ -9,22 +9,24 @@ def normalize(v: Point) -> Point:
   return v / norm if norm != 0 else v
 
 class Window:
-  def __init__(self, normal: Point=config.WINDOW_NORMAL, position: Point=config.WINDOW_POSITION, width: int=config.WIDTH, height: int=config.HEIGHT, zoom: float=config.ZOOM):
-    self.normal: Point = normalize(normal)
-    self.position: Point = position
+  #def __init__(self, normal: Point=config.WINDOW_NORMAL, position: Point=config.WINDOW_POSITION, width: int=config.WIDTH, height: int=config.HEIGHT, zoom: float=config.ZOOM):
+  def __init__(self):
+    self.preferences = config.PREFERENCES 
+    self.normal: Point = normalize(self.preferences.window_normal)
+    self.position: Point = self.preferences.window_position
     self.speed: int = 5
-    self.zoom: float = zoom
-    self.width: int = width*2//3
-    self.height: int = height*5//6
+    self.zoom: float = self.preferences.zoom
+    self.width: int = self.preferences.width*2//3
+    self.height: int = self.preferences.height*5//6
     self.focus: tuple[float, float] = (self.width // 2, self.height // 2)
     self.window_focus: tuple[float, float] = (0, 0)
     self.max_zoom = 100.0
     self.min_zoom = 0.1
     self.padding = 15
-    self.bezier_steps = 100
+    self.curve_coeff = self.preferences.curve_coefficient
 
     UP = np.array([0, 1, 0])
-    if np.array_equal(normal, UP) or np.array_equal(normal, -UP):
+    if np.array_equal(self.normal, UP) or np.array_equal(self.normal, -UP):
       self.right = np.array([1, 0, 0])
       self.up = np.array([0, 0, 1])
     else:

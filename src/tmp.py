@@ -4,7 +4,6 @@ from wireframe import *
 from window import *
 from components.toggle_switch import *
 from components.my_types import *
-from data.usr_preferences import *
 from clipping import Clipping, ClippingAlgorithm
 
 class Viewport:

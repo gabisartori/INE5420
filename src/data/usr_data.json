@@ -1,6 +1,26 @@
 {
   "user_preferences": {
     "theme": "light",
-    "show_onboarding": true
+    "show_onboarding": true,
+    "curve_algorithm": "bezier",
+    "curve_coefficient": 100,
+    "clipping_algorithm": "sutherland-hodgman",
+    "window_normal": {
+      "x": 0,
+      "y": 0,
+      "z": -1
+    },
+    "window_position": {
+      "x": 0,
+      "y": 0,
+      "z": 100
+    },
+    "application_name": "INE5420 - SGI",
+    "debug": true,
+    "input_file": "example.obj",
+    "output_file": "output.obj",
+    "height": 900,
+    "width": 1400,
+    "zoom": 1
   }
 }

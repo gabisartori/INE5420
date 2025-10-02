@@ -6,28 +6,32 @@ from wireframe import *
 from window import *
 from components.my_types import *
 from clipping import *
+from data import preferences
 import config
+
 
 class SGI:
   def __init__(
     self,
-    width: int=config.WIDTH, 
-    height: int=config.HEIGHT, 
-    title: str=config.APPLICATION_NAME, 
-    input: str | None=config.INPUT_FILE, 
-    output: str | None=config.OUTPUT_FILE, 
-    debug: bool=config.DEBUG
+    # width: int=config.WIDTH, 
+    # height: int=config.HEIGHT, 
+    # title: str=config.APPLICATION_NAME, 
+    input: str | None, 
+    output: str | None, 
+    debug: bool
+    #preferences: preferences.Preferences
   ):
     # Config
-    self.width: int = width
-    self.height: int = height
-    self.input_file: str | None = input
-    self.output_file: str | None = output
+    #self.pr = preferences.load_user_preferences()
+    self.width: int = config.PREFERENCES.width
+    self.height: int = config.PREFERENCES.height
+    self.input_file: str | None = input if input is not None else config.PREFERENCES.input_file
+    self.output_file: str | None = output if output is not None else config.PREFERENCES.output_file
     self.debug: bool = debug
 
     # GUI
     self.root = tk.Tk()
-    self.set_up_root(title)
+    self.set_up_root(config.PREFERENCES.application_name)
     self.create_components()
     self.create_navbar()
     self.position_components()
@@ -56,8 +60,8 @@ class SGI:
 
     ## The *clipping_algorithm* and *curve_type* variables will be also passed to the Viewport class
     ## Hopefully, this means that changing them here will change them in the Viewport class too
-    clipping_algorithm = tk.IntVar(value=config.DEFAULT_CLIPPING_ALGORITHM)
-    curve_type = tk.IntVar(value=config.DEFAULT_CURVE_TYPE)
+    clipping_algorithm = tk.IntVar(value=config.PREFERENCES.clipping_algorithm)
+    curve_type = tk.IntVar(value=config.PREFERENCES.curve_algorithm)
 
     clipping_submenu.add_radiobutton(label="Cohen-Sutherland", value=0, variable=clipping_algorithm)
     clipping_submenu.add_radiobutton(label="Liang-Barsky", value=1, variable=clipping_algorithm)
@@ -188,6 +192,7 @@ class SGI:
 
   def exit(self):
     # TODO: Save user preferences and current objects to output file
+    config.PREFERENCES.save_user_preferences()
     self.root.quit()
 
 # Additional Windows
