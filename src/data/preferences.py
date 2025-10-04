@@ -1,10 +1,9 @@
 import json
 import my_logging
 import numpy as np
-from numpy import ndarray
 
 class Preferences:
-  def __init__(self, application_name="INE5420 - SGI", debug=True, input_file="example.obj", output_file="output.obj", height=900, width=1400, zoom=1, window_normal={"x": 0, "y": 0, "z": -1}, window_position={"x": 0, "y": 0, "z": 100}, theme="light", show_onboarding=True, curve_algorithm="bezier", curve_coefficient=100, clipping_algorithm="sutherland-hodgman"):
+  def __init__(self, application_name="INE5420 - SGI", debug=True, input_file="example.obj", output_file="output.obj", mode="3D", height=900, width=1400, zoom=1, window_normal={"x": 0, "y": 0, "z": -1}, window_position={"x": 0, "y": 0, "z": 100}, theme="light", show_onboarding=True, curve_algorithm="bezier", curve_coefficient=100, clipping_algorithm="sutherland-hodgman"):
     self.application_name = application_name
     self.debug = debug
     self.input_file = input_file
@@ -19,6 +18,7 @@ class Preferences:
     self.curve_algorithm = curve_algorithm
     self.curve_coefficient = curve_coefficient
     self.clipping_algorithm = clipping_algorithm
+    self.mode = mode
 
   def load_user_preferences(self, path="src/data/usr_data.json"):
     try:
@@ -40,6 +40,7 @@ class Preferences:
         self.height = pref.get("height", 900)
         self.width = pref.get("width", 1400)
         self.zoom = pref.get("zoom", 1)
+        self.mode = pref.get("mode", "2D")
 
         return Preferences(
           theme=self.theme,
@@ -55,8 +56,8 @@ class Preferences:
           output_file=self.output_file,
           height=self.height,
           width=self.width,
-          zoom=self.zoom
-          
+          zoom=self.zoom,
+          mode=self.mode
         )
         
     except FileNotFoundError:
@@ -83,7 +84,8 @@ class Preferences:
       "output_file": self.output_file,
       "height": self.height,
       "width": self.width,
-      "zoom": self.zoom
+      "zoom": self.zoom,
+      "mode": self.mode
     }
 
     try:

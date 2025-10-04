@@ -21,6 +21,7 @@
     "output_file": "output.obj",
     "height": 900,
     "width": 1400,
-    "zoom": 1
+    "zoom": 1,
+    "mode": "2D"
   }
 }
