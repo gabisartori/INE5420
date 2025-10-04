@@ -51,7 +51,10 @@ class Window:
   def rotation_matrix(self, angle: int, axis: str="z") -> np.ndarray:
     """Create a rotation matrix for a given angle (in degrees) around a specified axis."""
     rad = np.radians(angle)
-    print("axis", axis)
+    
+    if PREFERENCES.mode == "2D":
+      axis = "z"
+
     if axis == "x":
       return np.array([
         [1, 0, 0],
@@ -75,7 +78,6 @@ class Window:
 
   def rotate(self, angle: int=5, axis: str="z"):
     """Rotate the window around the normal vector."""
-    print(f"Rotating window {angle} degrees around {axis}-axis")
     M = self.rotation_matrix(angle, axis)
     self.right = normalize(M @ self.right)
     self.up = normalize(M @ self.up)
@@ -101,9 +103,11 @@ class Window:
     if PREFERENCES.mode == "2D":
       x, y= self.world_to_window(point)
     else: # 3D
-      point_h = np.append(point, 1)
-      transformed = self.view_matrix @ point_h
-      x, y, z = transformed[:3]
+      # TODO: fix this
+      x, y= self.world_to_window(point)
+      # point_h = np.append(point, 1)
+      # transformed = self.view_matrix @ point_h
+      # x, y, z = transformed[:3]
       
     return self.window_to_viewport(x, y)
 

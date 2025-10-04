@@ -7,6 +7,8 @@ from components.my_types import *
 from clipping import Clipping, ClippingAlgorithm
 from config import PREFERENCES
 from grid import Grid
+import numpy as np
+from typing import Callable, Optional, List
 
 class Viewport:
   def __init__(self, width, height, title="INE5420", input: str | None=None, output: str | None=None, debug: bool=False):
@@ -51,8 +53,8 @@ class Viewport:
     self.ui_scale_button = tk.Button(self.root, text="Escalar", command=self.scale_selected_object)
     self.ui_object_properties_button = tk.Button(self.root, text="Propriedades", command=self.properties_window) # also on mouse right click on object at table
 
-    self.ui_rotate_x_button = tk.Button(self.root, text="Girar X", command=lambda: self.rotate(axis="x"))
-    self.ui_rotate_y_button = tk.Button(self.root, text="Girar Y", command=lambda: self.rotate(axis="y"))
+    self.ui_rotate_x_button = tk.Button(self.root, text="Girar X", command=lambda: self.rotate(axis="x"), state=tk.NORMAL if PREFERENCES.mode == "3D" else tk.DISABLED)
+    self.ui_rotate_y_button = tk.Button(self.root, text="Girar Y", command=lambda: self.rotate(axis="y"), state=tk.NORMAL if PREFERENCES.mode == "3D" else tk.DISABLED)
     self.ui_rotate_z_button = tk.Button(self.root, text="Girar Z", command=lambda: self.rotate(axis="z"))
 
     self.ui_point_label = tk.Label(self.root, text="Ponto (x,y):")
@@ -117,11 +119,14 @@ class Viewport:
     self.ui_create_curve_button.grid(row=12, column=3, rowspan=1, columnspan=1, sticky="nsew")
 
     #self.ui_rotate_object_button.grid(row=13, column=0, rowspan=1, columnspan=2, sticky="nsew")
-    self.ui_translate_object_button.grid(row=13, column=2, rowspan=1, columnspan=1, sticky="nsew")
-    self.ui_scale_button.grid(row=13, column=3, rowspan=1, columnspan=1, sticky="nsew")
+    self.ui_translate_object_button.grid(row=13, column=0, rowspan=1, columnspan=2, sticky="nsew")
+    self.ui_scale_button.grid(row=13, column=2, rowspan=1, columnspan=1, sticky="nsew")
+    self.ui_object_properties_button.grid(row=13, column=3, rowspan=1, columnspan=1, sticky="nsew")
 
-    self.ui_object_properties_button.grid(row=14, column=0, rowspan=1, columnspan=4, sticky="nsew")
-
+    self.ui_rotate_x_button.grid(row=14, column=0, rowspan=1, columnspan=2, sticky="nsew")
+    self.ui_rotate_y_button.grid(row=14, column=2, rowspan=1, columnspan=1, sticky="nsew")
+    self.ui_rotate_z_button.grid(row=14, column=3, rowspan=1, columnspan=1, sticky="nsew")   
+    
     self.ui_point_label.grid(row=15, column=0, rowspan=1, columnspan=2, sticky="nsew")
     self.ui_point_x_input.grid(row=15, column=2, rowspan=1, columnspan=1, sticky="nsew")
     self.ui_point_y_input.grid(row=15, column=3, rowspan=1, columnspan=1, sticky="nsew")
@@ -131,10 +136,6 @@ class Viewport:
     
     self.ui_scale_factor_label.grid(row=17, column=0, rowspan=1, columnspan=2, sticky="nsew")
     self.ui_scale_factor_input.grid(row=17, column=2, rowspan=1, columnspan=2, sticky="nsew")
-    
-    self.ui_rotate_x_button.grid(row=18, column=0, rowspan=1, columnspan=2, sticky="nsew")
-    self.ui_rotate_y_button.grid(row=18, column=2, rowspan=1, columnspan=1, sticky="nsew")
-    self.ui_rotate_z_button.grid(row=18, column=3, rowspan=1, columnspan=1, sticky="nsew")   
     
   def build_debug_grid(self):
     step = 75
@@ -150,9 +151,9 @@ class Viewport:
     start = ( -max_range // step ) * step
     end = ( max_range // step + 1 ) * step
     
-    color = ColorScheme.LIGHT_DEBUG_GRID.value if self.theme == "light" else ColorScheme.DARK_DEBUG_GRID.value
+    color = "lightgrey"
     
-    if self.mode == "2D":
+    if PREFERENCES.mode == "2D":
       for i in range(start, end, step):
         start_h = self.window.world_to_viewport(np.array([-max_range, i, 0]))
         end_h = self.window.world_to_viewport(np.array([max_range, i, 0]))
@@ -381,6 +382,8 @@ class Viewport:
     
   def set_mode(self, mode: str):
     PREFERENCES.mode = mode
+    self.ui_rotate_x_button.config(state="normal" if mode == "3D" else "disabled")
+    self.ui_rotate_y_button.config(state="normal" if mode == "3D" else "disabled")
     self.log(f"Modo alterado para {mode}.")
     self.update()
 
@@ -469,61 +472,100 @@ class Viewport:
       self.objects.append(new_curve)
       self.placed_objects_counter += 1
       self.cancel_building()
-    else:
+    else:      
       self.add_curve()
-
+      
   def add_curve(self, target: CurveObject_2D | None=None, prompt_window: tk.Toplevel | None=None):
-    popup = tk.Toplevel(self.root)
     title = "Adicionar Curva de Bézier Cúbica" if self.curve_type.get() == "bezier" else "Adicionar Curva B-Spline Cúbica"
+    hint = "Pontos de controle (x0,y0;x1,y1;...;xN,yN)" if PREFERENCES.mode == "2D" else "Pontos de controle (x0,y0,z0;x1,y1,z1;...;xN,yN,zN)"
+    initial_values = target.points if target else None
+    
+    def obj_constructor(points: list[np.ndarray]) -> CurveObject_2D:      
+      if len(points) < 4:
+        raise ValueError("Insira ao menos 4 pontos de controle.")
+      
+      obj = CurveObject_2D("Curve", points, self.window.coeff, id=self.placed_objects_counter)
+      if self.curve_type.get() == "b_spline":
+        obj.generate_b_spline_points()
+      else:
+        obj.generate_bezier_points()
+        
+      if target:
+        obj.line_color = target.line_color
+        obj.fill_color = target.fill_color
+        obj.thickness = target.thickness
+      return obj
+    self.add_object_popup(title, hint, prompt_window, initial_values, obj_constructor, target, 4) 
+         
+  def parser(self, input_str: str) -> list[np.ndarray]:
+    pairs = [pair for pair in input_str.strip().replace(" ", "").split(";") if pair]
+    if PREFERENCES.mode == "2D":
+        return [np.array([float(x), float(y), 1]) for x, y in (p.split(",") for p in pairs)]
+    else:
+        return [np.array([float(x), float(y), float(z), 1]) for x, y, z in (p.split(",") for p in pairs)]      
+  def add_object_popup(self,
+                      title: str,
+                      hint: str,
+                      prompt_window: Optional[tk.Toplevel],
+                      initial_values: Optional[List[np.ndarray]],
+                      obj_constructor: Callable[[List[np.ndarray]], Wireframe],
+                      target: Optional[Wireframe],
+                      parser: Callable[[str], List[np.ndarray]],
+                      min_points: int = 0) -> None:
+    popup = tk.Toplevel(self.root)
+    title = title
     popup.title(title)
     popup.geometry("300x200")
     popup.resizable(False, False)
     popup.grab_set()
 
-    instructions_control_points = tk.Label(popup, text="Pontos de controle (x0,y0,x1,y1,...,xN,yN)")
-    instructions_control_points.pack(pady=10)
-    control_points = tk.Entry(popup, textvariable=tk.StringVar(value=", ".join(f"{p[0]},{p[1]}" for p in target.control_points) if target else ""), justify="center")
+    instructions = tk.Label(popup, text=hint)
+    instructions.pack(pady=10)
+
+
+    initial_str = ""
+    if initial_values:
+        initial_str = ";".join(f"{','.join(map(str, p[:-1]))}" for p in initial_values)
+    control_points = tk.Entry(popup, textvariable=tk.StringVar(value=initial_str), justify="center")
     control_points.pack(pady=5, padx=10, fill=tk.X, expand=True)
+    
+    def finish_callback():
+      def parser(input_str: str) -> list[np.ndarray]:
+          pairs = input_str.strip().replace(" ", "").split(";")
+          if PREFERENCES.mode == "2D":
+              return [np.array([float(x), float(y), 1]) for x, y in (p.split(",") for p in pairs)]
+          else:
+              return [np.array([float(x), float(y), float(z), 1]) for x, y, z in (p.split(",") for p in pairs)]
 
-    def finish_curve_callback(target=target):
       try:
-        # delete previous curve if editing
-        if target: self.objects.remove(target)
+          s = control_points.get().strip().replace(" ", "")
+          if not s:
+            self.log("Erro: Nenhum ponto de controle inserido.")
+            return
+          
+          points = self.parser(s)
+          
+          if len(points) < min_points:
+            self.log(f"Erro: Insira ao menos {min_points} pontos de controle.")
+            return
+          
+          obj = obj_constructor(points)
 
-        # Remove spaces and parentheses from input text before parsing it as a list of floats split by commas
-        control_points_str = control_points.get().strip("(").strip(")").replace(" ", "")
-        control_values = list(map(float, control_points_str.split(',')))
+          if target and target in self.objects:
+            self.objects.remove(target)
+          self.objects.append(obj)  
+          self.placed_objects_counter += 1
+          self.cancel_building()
 
-        input_points = [np.array([control_values[i], control_values[i+1], 1]) for i in range(0, len(control_values), 2)]
-        if len(input_points) < 4:
-          self.log("Erro: insira ao menos 4 pontos de controle.")
-          return
-
-        self.build = input_points           
-        popup.destroy()            
-        target = CurveObject_2D("Curve", self.build.copy(), self.window.coeff, id=self.placed_objects_counter)
-        if self.curve_type.get() == "b_spline":
-          target.generate_b_spline_points()
-        else:
-          target.generate_bezier_points()
-
-        if target:
-          target.line_color = target.line_color
-          target.fill_color = target.fill_color
-          target.thickness = target.thickness
-
-        self.objects.append(target)
-        self.placed_objects_counter += 1
-
-        self.cancel_building()
-        prompt_window.destroy() if prompt_window else None
+          popup.destroy()
+          if prompt_window:
+              prompt_window.destroy()
 
       except Exception as e:
-        self.log(f"Erro: {e}")
-        raise e
+          self.log(f"Erro: {e}")
 
-    create_button = tk.Button(popup, text="Criar/Alterar Curva", command=finish_curve_callback)
-    create_button.pack(pady=10)          
+    create_button = tk.Button(popup, text="Adicionar" if initial_values is None else "Atualizar", command=finish_callback)
+    create_button.pack(pady=10)  
 
   def finish_polygon(self):
     if len(self.build) < 3: 
