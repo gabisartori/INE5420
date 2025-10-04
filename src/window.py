@@ -1,6 +1,7 @@
 import numpy as np
 
 from components.my_types import Point
+from config import PREFERENCES
 
 def normalize(v: Point) -> Point:
   """Normalize a vector."""
@@ -21,6 +22,11 @@ class Window:
     self.min_zoom = 0.1
     self.padding = 15
     self.coeff = 100
+        
+    self.vrp = np.array([0, 0, 0])  # View Reference Point
+    self.vpn = np.array([0, 0, -1]) # View Plane Normal
+    self.vup = np.array([0, 1, 0])  # View Up Vector
+    self.view_matrix = np.eye(4) # View Matrix
 
     UP = np.array([0, 1, 0])
     if np.array_equal(normal, UP) or np.array_equal(normal, -UP):
@@ -41,14 +47,36 @@ class Window:
   def move_below(self): self.position[2] -= max(self.speed/self.zoom, 1)
 
   def move_above(self): self.position[2] += max(self.speed/self.zoom, 1)
+  
+  def rotation_matrix(self, angle: int, axis: str="z") -> np.ndarray:
+    """Create a rotation matrix for a given angle (in degrees) around a specified axis."""
+    rad = np.radians(angle)
+    print("axis", axis)
+    if axis == "x":
+      return np.array([
+        [1, 0, 0],
+        [0, np.cos(rad), -np.sin(rad)],
+        [0, np.sin(rad),  np.cos(rad)]
+      ])
+    elif axis == "y":
+      return np.array([
+        [ np.cos(rad), 0, np.sin(rad)],
+        [0, 1, 0],
+        [-np.sin(rad), 0, np.cos(rad)]
+      ])
+    elif axis == "z":
+      return np.array([
+        [np.cos(rad), -np.sin(rad), 0],
+        [np.sin(rad),  np.cos(rad), 0],
+        [0, 0, 1]
+      ])
+    else:
+      raise ValueError(f"Unknown axis: {axis}")
 
-  def rotate(self, angle: int=5):
+  def rotate(self, angle: int=5, axis: str="z"):
     """Rotate the window around the normal vector."""
-    M = np.array([
-      [np.cos(np.radians(angle)), -np.sin(np.radians(angle)), 0],
-      [np.sin(np.radians(angle)),  np.cos(np.radians(angle)), 0],
-      [0, 0, 1]
-    ])
+    print(f"Rotating window {angle} degrees around {axis}-axis")
+    M = self.rotation_matrix(angle, axis)
     self.right = normalize(M @ self.right)
     self.up = normalize(M @ self.up)
     self.normal = normalize(np.cross(self.right, self.up))
@@ -70,15 +98,22 @@ class Window:
   def world_to_viewport(self, point: Point) -> tuple[float, float]:
     # Ignore points behind window
     # if np.dot(self.normal, point - self.position) < 0: point = self.position - self.normal
-    x, y = self.world_to_window(point)
+    if PREFERENCES.mode == "2D":
+      x, y= self.world_to_window(point)
+    else: # 3D
+      point_h = np.append(point, 1)
+      transformed = self.view_matrix @ point_h
+      x, y, z = transformed[:3]
+      
+    return self.window_to_viewport(x, y)
 
     # Convert the window view plane coordinates to viewport coordinates
     # - Centering the window plane origin at the center of the viewport
     # - Scaling the coordinates by the zoom factor
     # - Adjusting the y-coordinate to match the canvas coordinate system
-    position = self.window_to_viewport(x, y)
+    # position = self.window_to_viewport(x, y)
 
-    return position
+    # return position
 
   def world_to_window(self, point: Point) -> tuple[float, float]:
     # Project the point onto the window view plane
@@ -94,7 +129,12 @@ class Window:
     # TODO: This creates a point at the exact position of the window
     # It would be more useful if the user could control a distance from the window to which clicks are applied
     # This is quite simple to implement, but it would mess with how zoom is behaving
-    return x*self.right + y*self.up + self.position
+    if PREFERENCES.mode == "2D":
+      return x*self.right + y*self.up + self.position
+    else: # 3D
+      return self.vrp + x*self.right + y*self.up + (self.coeff * self.normal)
+    
+    # return x*self.right + y*self.up + self.position
 
   def window_to_viewport(self, x: float, y: float) -> tuple[float, float]:
     x = x*self.zoom + self.viewport_focus[0]
@@ -109,7 +149,8 @@ class Window:
     return x, y
 
   def viewport_to_world(self, x: float, y: float) -> Point:
-    return self.window_to_world(*self.viewport_to_window(x, y))
+    x, y = self.viewport_to_window(x, y)
+    return self.window_to_world(x, y)
 
   def is_point_in_viewport(self, point: Point) -> bool:
     x, y = self.world_to_window(point)
@@ -120,3 +161,31 @@ class Window:
 
   def get_corners(self) -> tuple[float, float, float, float]:
     return self.padding, self.padding, self.viewport_width - self.padding, self.viewport_height - self.padding
+
+  def update_view_matrix(self):
+    # Cria a base da câmera
+    n = self.vpn / np.linalg.norm(self.vpn)
+    u = np.cross(self.vup, n)
+    u /= np.linalg.norm(u)
+    v = np.cross(n, u)
+
+    # Guarda os vetores caso precise
+    self.u = u
+    self.v = v
+    self.n = n
+
+    # Matriz de rotação (orienta a câmera)
+    rot = np.array([
+        [u[0], u[1], u[2], 0],
+        [v[0], v[1], v[2], 0],
+        [n[0], n[1], n[2], 0],
+        [0,    0,    0,    1]
+    ])
+
+    # Matriz de translação (leva VRP para origem)
+    trans = np.identity(4)
+    trans[:3, 3] = -self.vrp
+
+    # Matriz de visualização final
+    self.view_matrix = rot @ trans
+

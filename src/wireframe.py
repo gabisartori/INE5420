@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from components.my_types import Point
 import numpy as np
+from config import PREFERENCES
 
 @dataclass
 class Wireframe:
@@ -29,13 +30,21 @@ class Wireframe:
 
   # TODO: For 3D objects, there must be three different rotations, one for each axis.
   # TODO: Decide whether this function should alter the original object or return a new one with the new coordinates.
-  def rotate(self, degrees: int=5, point: Point | None=None) -> None:
+  def rotate(self, degrees: int=5, point: Point | None=None, axis: str="z") -> None:
     """Rotates the object around a given point in the XY plane.
     If no point is given, rotate around the center of the object.
 
-    The XY plane is chosen as the default plane for the 2D implementation of the program. This will then be replaced by the specific XY rotation for the 3D implementation.
+    The XY plane is chosen as the default plane for the 2D implementation of the program. 
+    This will then be replaced by the specific XY rotation for the 3D implementation.
     """
 
+    if PREFERENCES.mode == "2D":
+      self.rotate_2d(degrees, point)
+    else:
+      self.rotate_3d(degrees, point, axis)
+
+  def rotate_2d(self, degrees: int=5, point: Point | None=None) -> None:
+    print("called rotate_2d ")
     # If no point is given, set the rotation center to be the object's center.
     if point is None:
       px = self.center[0]
@@ -57,6 +66,59 @@ class Wireframe:
     # Move the object back to its original position.
     self.translate(px, py)
 
+  def rotate_3d(self, degrees: int=5, point: Point | None=None, axis: str="z") -> None:
+    print("called rotate_3d ")
+    px, py, pz = point[:3]
+    self.translate3d(-px, -py, -pz)
+    
+    if axis == "x":
+      self.rotate_x(degrees)
+    elif axis == "y":
+      self.rotate_y(degrees)
+    elif axis == "z":
+      self.rotate_z(degrees)
+    else:
+      raise ValueError(f"Unknown axis: {axis}")
+    
+    self.translate3d(px, py, pz)
+
+  
+  def rotate_x(self, degrees: int=5) -> None:
+    rad = np.radians(degrees)
+    self.transform3d(np.array([
+      [1, 0, 0, 0],
+      [0, np.cos(rad), -np.sin(rad), 0],
+      [0, np.sin(rad),  np.cos(rad), 0],
+      [0, 0, 0, 1]
+    ]))
+    
+  def rotate_y(self, degrees: int=5) -> None:
+    rad = np.radians(degrees)
+    self.transform3d(np.array([
+      [ np.cos(rad), 0, np.sin(rad), 0],
+      [0, 1, 0, 0],
+      [-np.sin(rad), 0, np.cos(rad), 0],
+      [0, 0, 0, 1]
+    ]))
+    
+  def rotate_z(self, degrees: int=5) -> None:
+    rad = np.radians(degrees)
+    self.transform3d(np.array([
+      [np.cos(rad), -np.sin(rad), 0, 0],
+      [np.sin(rad),  np.cos(rad), 0, 0],
+      [0, 0, 1, 0],
+      [0, 0, 0, 1]
+    ]))
+    
+  def translate3d(self, dx: float, dy: float, dz: float) -> None:
+    """Translate the object in 3D space."""
+    self.transform3d(np.array([
+      [1, 0, 0, dx],
+      [0, 1, 0, dy],
+      [0, 0, 1, dz],
+      [0, 0, 0, 1]
+    ]))
+    
   def translate(self, dx: float, dy: float) -> None:
     """Translate the object in the XY plane.
     
@@ -84,6 +146,26 @@ class Wireframe:
   def transform2d(self, M: np.ndarray) -> None:
     """Applies the given matrix to all of the object's points."""
     self.points = [M @ p for p in self.points]
+    
+  def transform3d(self, M: np.ndarray) -> None:
+    """Applies the given matrix to all of the object's points."""
+    self.points = [M @ p for p in self.points]
+    
+  def project_3D_on_2D(self) -> None:
+    """Converts the object's 3D points to 2D points using orthographic projection. """
+    # if object is already 2D, do nothing
+    # temporarily disabled because 3D shapes are not being used yet
+    # if self.points[0].shape[0] == 3: return
+    if self.points[0].shape[0] == 3: return
+    print("projecting 3D to 2D")
+    new_points = []
+    for p in self.points:
+      p_h = np.append(p[:3], 1)
+      
+      x, y, z, w = p
+      new_points.append(np.array([x, y, 1]))
+    self.points = new_points
+    
 
   @property
   def center(self) -> Point:

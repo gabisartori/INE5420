@@ -4,8 +4,9 @@ from wireframe import *
 from window import *
 from components.toggle_switch import *
 from components.my_types import *
-from data.usr_preferences import *
 from clipping import Clipping, ClippingAlgorithm
+from config import PREFERENCES
+from grid import Grid
 
 class Viewport:
   def __init__(self, width, height, title="INE5420", input: str | None=None, output: str | None=None, debug: bool=False):
@@ -21,12 +22,11 @@ class Viewport:
     self.debug: bool = debug
     self.debug_objects: list[Wireframe] = [PointObject("World Origin", np.array([0, 0, 0]), id=0)]
     self.window = Window(np.array([0, 0, -1]), np.array([0, 0, 1]), width*2/3, height*5/6)
-
+    
     # TODO: Move all of the functions in that file to here
     # TODO: Remove the unnecessary usage of self.theme instead of self.preferences["theme"], possibly turning self.preferences into a class of its own instead of it being a dict
-    self.preferences = load_user_preferences()
-    self.show_onboarding = self.preferences.get("show_onboarding", True)
-    self.theme = self.preferences.get("theme", "light")
+    self.show_onboarding = PREFERENCES.show_onboarding
+    self.theme = PREFERENCES.theme
 
     # Tkinter setup
     self.root: tk.Tk = tk.Tk()
@@ -46,10 +46,14 @@ class Viewport:
     self.ui_build_button = tk.Button(self.root, text="Build", command=self.set_building)
     self.ui_close_polygon_button = tk.Button(self.root, text="Polígono", command=self.finish_polygon)
     self.ui_create_curve_button = tk.Button(self.root, text="Curva", command=self.finish_curve)
-    self.ui_object_properties_button = tk.Button(self.root, text="Propriedades", command=self.properties_window) # also on mouse right click on object at table
-    self.ui_rotate_object_button = tk.Button(self.root, text="Girar", command=self.rotate)
+    # self.ui_rotate_object_button = tk.Button(self.root, text="Girar", command=self.rotate)
     self.ui_translate_object_button = tk.Button(self.root, text="Deslocar", command=self.translate)
     self.ui_scale_button = tk.Button(self.root, text="Escalar", command=self.scale_selected_object)
+    self.ui_object_properties_button = tk.Button(self.root, text="Propriedades", command=self.properties_window) # also on mouse right click on object at table
+
+    self.ui_rotate_x_button = tk.Button(self.root, text="Girar X", command=lambda: self.rotate(axis="x"))
+    self.ui_rotate_y_button = tk.Button(self.root, text="Girar Y", command=lambda: self.rotate(axis="y"))
+    self.ui_rotate_z_button = tk.Button(self.root, text="Girar Z", command=lambda: self.rotate(axis="z"))
 
     self.ui_point_label = tk.Label(self.root, text="Ponto (x,y):")
     self.ui_point_x_input = tk.Entry(self.root)
@@ -94,6 +98,7 @@ class Viewport:
     self.build_ui()
     self.controls()
     self.objects: list[Wireframe] = self.load_objects(input) if input else []
+    # self.grid = Grid(window=self.window, width=self.width, height=self.height)  
     self.update()
 
   # TODO: For some goddamn reason rowspan and columnspan are being ignored by most components
@@ -111,7 +116,7 @@ class Viewport:
     self.ui_close_polygon_button.grid(row=12, column=2, rowspan=1, columnspan=1, sticky="nsew")
     self.ui_create_curve_button.grid(row=12, column=3, rowspan=1, columnspan=1, sticky="nsew")
 
-    self.ui_rotate_object_button.grid(row=13, column=0, rowspan=1, columnspan=2, sticky="nsew")
+    #self.ui_rotate_object_button.grid(row=13, column=0, rowspan=1, columnspan=2, sticky="nsew")
     self.ui_translate_object_button.grid(row=13, column=2, rowspan=1, columnspan=1, sticky="nsew")
     self.ui_scale_button.grid(row=13, column=3, rowspan=1, columnspan=1, sticky="nsew")
 
@@ -120,11 +125,17 @@ class Viewport:
     self.ui_point_label.grid(row=15, column=0, rowspan=1, columnspan=2, sticky="nsew")
     self.ui_point_x_input.grid(row=15, column=2, rowspan=1, columnspan=1, sticky="nsew")
     self.ui_point_y_input.grid(row=15, column=3, rowspan=1, columnspan=1, sticky="nsew")
+    
     self.ui_degree_label.grid(row=16, column=0, rowspan=1, columnspan=2, sticky="nsew")
     self.ui_degree_input.grid(row=16, column=2, rowspan=1, columnspan=2, sticky="nsew")
+    
     self.ui_scale_factor_label.grid(row=17, column=0, rowspan=1, columnspan=2, sticky="nsew")
     self.ui_scale_factor_input.grid(row=17, column=2, rowspan=1, columnspan=2, sticky="nsew")
-
+    
+    self.ui_rotate_x_button.grid(row=18, column=0, rowspan=1, columnspan=2, sticky="nsew")
+    self.ui_rotate_y_button.grid(row=18, column=2, rowspan=1, columnspan=1, sticky="nsew")
+    self.ui_rotate_z_button.grid(row=18, column=3, rowspan=1, columnspan=1, sticky="nsew")   
+    
   def build_debug_grid(self):
     step = 75
     min_zoom = self.window.min_zoom 
@@ -138,21 +149,57 @@ class Viewport:
 
     start = ( -max_range // step ) * step
     end = ( max_range // step + 1 ) * step
+    
+    color = ColorScheme.LIGHT_DEBUG_GRID.value if self.theme == "light" else ColorScheme.DARK_DEBUG_GRID.value
+    
+    if self.mode == "2D":
+      for i in range(start, end, step):
+        start_h = self.window.world_to_viewport(np.array([-max_range, i, 0]))
+        end_h = self.window.world_to_viewport(np.array([max_range, i, 0]))
+        self.canva.create_line(
+          start_h[0], start_h[1], end_h[0], end_h[1],
+          fill=color
+        )
 
-    for i in range(start, end, step):
-      start_h = self.window.world_to_viewport(np.array([-max_range, i, 0]))
-      end_h = self.window.world_to_viewport(np.array([max_range, i, 0]))
-      self.canva.create_line(
-        start_h[0], start_h[1], end_h[0], end_h[1],
-        fill=ColorScheme.LIGHT_DEBUG_GRID.value if self.theme == "light" else ColorScheme.DARK_DEBUG_GRID.value
-      )
+        start_v = self.window.world_to_viewport(np.array([i, -max_range, 0]))
+        end_v = self.window.world_to_viewport(np.array([i, max_range, 0]))
+        self.canva.create_line(
+          start_v[0], start_v[1], end_v[0], end_v[1],
+          fill=color
+        )
+    else: # 3D
+      step_3d = step * 5
+      for i in range(start, end, step_3d):
+        start_h = self.window.world_to_viewport(np.array([-max_range, i, 0]))
+        end_h = self.window.world_to_viewport(np.array([max_range, i, 0]))
+        self.canva.create_line(
+          start_h[0], start_h[1], end_h[0], end_h[1],
+          fill=color
+        )
 
-      start_v = self.window.world_to_viewport(np.array([i, -max_range, 0]))
-      end_v = self.window.world_to_viewport(np.array([i, max_range, 0]))
-      self.canva.create_line(
-        start_v[0], start_v[1], end_v[0], end_v[1],
-        fill=ColorScheme.LIGHT_DEBUG_GRID.value if self.theme == "light" else ColorScheme.DARK_DEBUG_GRID.value
-      )
+        start_v = self.window.world_to_viewport(np.array([i, -max_range, 0]))
+        end_v = self.window.world_to_viewport(np.array([i, max_range, 0]))
+        self.canva.create_line(
+          start_v[0], start_v[1], end_v[0], end_v[1],
+          fill=color
+        )
+
+      step_3d_z = step * 10
+      for i in range(start, end, step_3d_z):
+        start_h = self.window.world_to_viewport(np.array([-max_range, 0, i]))
+        end_h = self.window.world_to_viewport(np.array([max_range, 0, i]))
+        self.canva.create_line(
+          start_h[0], start_h[1], end_h[0], end_h[1],
+          fill=color
+        )
+
+        start_v = self.window.world_to_viewport(np.array([0, -max_range, i]))
+        end_v = self.window.world_to_viewport(np.array([0, max_range, i]))
+        self.canva.create_line(
+          start_v[0], start_v[1], end_v[0], end_v[1],
+          fill=color
+        )
+    # Draw the origin point
 
     origin = self.window.world_to_viewport(np.array([0, 0, 0]))
     self.canva.create_text(origin[0] + 15, origin[1] - 10, text="(0,0)", fill=ColorScheme.LIGHT_TEXT.value if self.theme == "light" else ColorScheme.DARK_TEXT.value, font=("Arial", 10, "bold"))
@@ -185,7 +232,14 @@ class Viewport:
     self.curves_submenu.add_radiobutton(label="Bezier", variable=self.curve_type, value="bezier", command=lambda: self.set_curve_type("bezier"))
     self.curves_submenu.add_radiobutton(label="B-Spline", variable=self.curve_type, value="b_spline", command=lambda: self.set_curve_type("b_spline"))
     settings_menu.add_cascade(label="Curvas ", menu=self.curves_submenu)
+    
+    self.mode = tk.StringVar(value=PREFERENCES.mode)
 
+    self.mode_submenu = tk.Menu(settings_menu, tearoff=0)
+    self.mode_submenu.add_radiobutton(label="2D", variable=self.mode, value="2D", command=lambda: self.set_mode("2D"))
+    self.mode_submenu.add_radiobutton(label="3D", variable=self.mode, value="3D", command=lambda: self.set_mode("3D"))
+    settings_menu.add_cascade(label="Modo ", menu=self.mode_submenu)
+    
     self.menubar.add_cascade(label="Configurações", menu=settings_menu)
     self.root.config(menu=self.menubar)
 
@@ -203,7 +257,7 @@ class Viewport:
 
     self.update()
 
-  def rotate(self):
+  def rotate(self, axis: str="z"):
     '''Rotates something according to the inputs passed'''
     '''If no object is selected, it'll rotate the window'''
     '''If there's a selected object, it'll rotate it around the specified point'''
@@ -221,14 +275,14 @@ class Viewport:
       try:
         rx = float(rx)
         ry = float(ry)
-        target.rotate(angle, np.array([rx, ry, 1]))
+        target.rotate(angle, np.array([rx, ry, 1]), axis=axis)
       # No valid point, rotate around the object's center
       except ValueError:
         target.rotate(angle)
 
     # No object selected, rotate window
     else:
-      self.window.rotate(angle)
+      self.window.rotate(angle, axis=axis)
 
     self.update()
 
@@ -323,6 +377,11 @@ class Viewport:
 
   def set_curve_type(self, curve_type: str):
     self.log(f"Tipo de curva alterado para {curve_type.title()}")
+    self.update()
+    
+  def set_mode(self, mode: str):
+    PREFERENCES.mode = mode
+    self.log(f"Modo alterado para {mode}.")
     self.update()
 
   # TODO: Put this in the proper place ffs
@@ -504,6 +563,8 @@ class Viewport:
 
     # Project all objects to the viewport and clip them
     for obj in all_objects:
+      if PREFERENCES.mode == "3D": # if object was 2D, projecting it again won't do anything
+        obj.project_3D_on_2D()
       obj.points = [np.array(self.window.world_to_viewport(point)) for point in obj.points]
     all_objects = self.clipping.clip_all(all_objects, ClippingAlgorithm(self.clipping_algorithm.get()))
 
@@ -741,13 +802,7 @@ class Viewport:
     self.update()
 
   def exit(self):
-    # For the love of christ I ain't confirming exit anymore
-    # if messagebox.askokcancel("Sair", "Deseja sair?"):
-      usr_pref = {
-        "theme": self.theme,
-        "show_onboarding": self.show_onboarding
-      }
-      save_user_preferences(usr_pref)
+      PREFERENCES.save_user_preferences()
       self.root.quit()
 
   def get_selected_object(self) -> Wireframe | None:
