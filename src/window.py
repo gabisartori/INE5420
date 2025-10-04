@@ -2,6 +2,7 @@ import numpy as np
 
 from components.my_types import Point
 from config import PREFERENCES
+from data.matrices import rotation_matrix
 
 def normalize(v: Point) -> Point:
   """Normalize a vector."""
@@ -21,12 +22,11 @@ class Window:
     self.max_zoom = 100.0
     self.min_zoom = 0.1
     self.padding = 15
-    self.coeff = 100
+    self.coeff = PREFERENCES.curve_coefficient # coefficient only for curves
         
     self.vrp = np.array([0, 0, 0])  # View Reference Point
     self.vpn = np.array([0, 0, -1]) # View Plane Normal
     self.vup = np.array([0, 1, 0])  # View Up Vector
-    self.view_matrix = np.eye(4) # View Matrix
 
     UP = np.array([0, 1, 0])
     if np.array_equal(normal, UP) or np.array_equal(normal, -UP):
@@ -47,38 +47,10 @@ class Window:
   def move_below(self): self.position[2] -= max(self.speed/self.zoom, 1)
 
   def move_above(self): self.position[2] += max(self.speed/self.zoom, 1)
-  
-  def rotation_matrix(self, angle: int, axis: str="z") -> np.ndarray:
-    """Create a rotation matrix for a given angle (in degrees) around a specified axis."""
-    rad = np.radians(angle)
-    
-    if PREFERENCES.mode == "2D":
-      axis = "z"
-
-    if axis == "x":
-      return np.array([
-        [1, 0, 0],
-        [0, np.cos(rad), -np.sin(rad)],
-        [0, np.sin(rad),  np.cos(rad)]
-      ])
-    elif axis == "y":
-      return np.array([
-        [ np.cos(rad), 0, np.sin(rad)],
-        [0, 1, 0],
-        [-np.sin(rad), 0, np.cos(rad)]
-      ])
-    elif axis == "z":
-      return np.array([
-        [np.cos(rad), -np.sin(rad), 0],
-        [np.sin(rad),  np.cos(rad), 0],
-        [0, 0, 1]
-      ])
-    else:
-      raise ValueError(f"Unknown axis: {axis}")
 
   def rotate(self, angle: int=5, axis: str="z"):
     """Rotate the window around the normal vector."""
-    M = self.rotation_matrix(angle, axis)
+    M = rotation_matrix(angle, axis)
     self.right = normalize(M @ self.right)
     self.up = normalize(M @ self.up)
     self.normal = normalize(np.cross(self.right, self.up))
@@ -101,15 +73,18 @@ class Window:
     # Ignore points behind window
     # if np.dot(self.normal, point - self.position) < 0: point = self.position - self.normal
     if PREFERENCES.mode == "2D":
-      x, y= self.world_to_window(point)
+      x, y = self.world_to_window(point)
+      x_vp, y_vp = self.window_to_viewport(x, y)
+      return x_vp, y_vp
     else: # 3D
-      # TODO: fix this
-      x, y= self.world_to_window(point)
-      # point_h = np.append(point, 1)
-      # transformed = self.view_matrix @ point_h
-      # x, y, z = transformed[:3]
-      
-    return self.window_to_viewport(x, y)
+      if point.shape[0] == 3:
+        point = np.append(point, 1)
+
+      transformed = self.view_matrix @ point
+      x, y, z, w = transformed
+      x_vp, y_vp = self.window_to_viewport(x, y)
+
+      return x_vp, y_vp, z, 1
 
     # Convert the window view plane coordinates to viewport coordinates
     # - Centering the window plane origin at the center of the viewport
@@ -128,19 +103,15 @@ class Window:
     v = c - self.position
     return np.dot(v, self.right), np.dot(v, self.up)
 
-  def window_to_world(self, x: float, y: float) -> Point:
+  def window_to_world(self, x: float, y: float, z: float | None) -> Point:
     # Return a 3D point based on the window's position and orientation
     # TODO: This creates a point at the exact position of the window
     # It would be more useful if the user could control a distance from the window to which clicks are applied
     # This is quite simple to implement, but it would mess with how zoom is behaving
-    if PREFERENCES.mode == "2D":
-      return x*self.right + y*self.up + self.position
-    else: # 3D
-      return self.vrp + x*self.right + y*self.up + (self.coeff * self.normal)
-    
-    # return x*self.right + y*self.up + self.position
 
-  def window_to_viewport(self, x: float, y: float) -> tuple[float, float]:
+    return self.position + x * self.right + y * self.up + (z * self.normal if z is not None else 0)
+
+  def window_to_viewport(self, x: float, y: float, z: float = None) -> tuple[float, float, float | None]:
     x = x*self.zoom + self.viewport_focus[0]
     y = y*self.zoom + self.viewport_focus[1]
     y = self.viewport_height - y
@@ -152,9 +123,9 @@ class Window:
     y = (y-self.viewport_focus[1])/self.zoom
     return x, y
 
-  def viewport_to_world(self, x: float, y: float) -> Point:
+  def viewport_to_world(self, x: float, y: float, z: float | None) -> Point:
     x, y = self.viewport_to_window(x, y)
-    return self.window_to_world(x, y)
+    return self.window_to_world(x, y, z)
 
   def is_point_in_viewport(self, point: Point) -> bool:
     x, y = self.world_to_window(point)

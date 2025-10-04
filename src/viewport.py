@@ -46,12 +46,14 @@ class Viewport:
 
     # Control buttons and input fields
     self.ui_build_button = tk.Button(self.root, text="Build", command=self.set_building)
+    self.ui_object_properties_button = tk.Button(self.root, text="Propriedades", command=self.properties_window) # also on mouse right click on object at table
+   
+    self.ui_create_line_button = tk.Button(self.root, text="Linha", command=self.finish_lines)
     self.ui_close_polygon_button = tk.Button(self.root, text="Polígono", command=self.finish_polygon)
     self.ui_create_curve_button = tk.Button(self.root, text="Curva", command=self.finish_curve)
-    # self.ui_rotate_object_button = tk.Button(self.root, text="Girar", command=self.rotate)
+
     self.ui_translate_object_button = tk.Button(self.root, text="Deslocar", command=self.translate)
     self.ui_scale_button = tk.Button(self.root, text="Escalar", command=self.scale_selected_object)
-    self.ui_object_properties_button = tk.Button(self.root, text="Propriedades", command=self.properties_window) # also on mouse right click on object at table
 
     self.ui_rotate_x_button = tk.Button(self.root, text="Girar X", command=lambda: self.rotate(axis="x"), state=tk.NORMAL if PREFERENCES.mode == "3D" else tk.DISABLED)
     self.ui_rotate_y_button = tk.Button(self.root, text="Girar Y", command=lambda: self.rotate(axis="y"), state=tk.NORMAL if PREFERENCES.mode == "3D" else tk.DISABLED)
@@ -451,9 +453,9 @@ class Viewport:
     # Ignore click if it's outside the viewport area
     if not self.is_click_inside_viewport(event.x, event.y): return
 
-    if self.building: self.build.append(self.window.viewport_to_world(event.x, event.y))
+    if self.building: self.build.append(self.window.viewport_to_world(event.x, event.y, -100 if PREFERENCES.mode == "3D" else None))
     else:
-      self.objects.append(PointObject(f"Clicked Point", self.window.viewport_to_world(event.x, event.y), id=self.placed_objects_counter))
+      self.objects.append(PointObject(f"Clicked Point {self.placed_objects_counter}", self.window.viewport_to_world(event.x, event.y, -100 if PREFERENCES.mode == "3D" else None), id=self.placed_objects_counter))
       self.placed_objects_counter += 1
     self.update()    
 
@@ -478,13 +480,13 @@ class Viewport:
   def add_curve(self, target: CurveObject_2D | None=None, prompt_window: tk.Toplevel | None=None):
     title = "Adicionar Curva de Bézier Cúbica" if self.curve_type.get() == "bezier" else "Adicionar Curva B-Spline Cúbica"
     hint = "Pontos de controle (x0,y0;x1,y1;...;xN,yN)" if PREFERENCES.mode == "2D" else "Pontos de controle (x0,y0,z0;x1,y1,z1;...;xN,yN,zN)"
-    initial_values = target.points if target else None
+    initial_values = target.control_points.copy() if target else None
     
     def obj_constructor(points: list[np.ndarray]) -> CurveObject_2D:      
       if len(points) < 4:
         raise ValueError("Insira ao menos 4 pontos de controle.")
-      
-      obj = CurveObject_2D("Curve", points, self.window.coeff, id=self.placed_objects_counter)
+
+      obj = CurveObject_2D(f"Curve {self.placed_objects_counter}", points.copy(), self.window.coeff, id=self.placed_objects_counter)
       if self.curve_type.get() == "b_spline":
         obj.generate_b_spline_points()
       else:
@@ -496,13 +498,35 @@ class Viewport:
         obj.thickness = target.thickness
       return obj
     self.add_object_popup(title, hint, prompt_window, initial_values, obj_constructor, target, 4) 
+     
+  def add_polygon(self, target: PolygonObject | None=None, prompt_window: tk.Toplevel | None=None):
+    title = "Adicionar Polígono"
+    hint = "Pontos do polígono (x0,y0;x1,y1;...;xN,yN)" if PREFERENCES.mode == "2D" else "Pontos do polígono (x0,y0,z0;x1,y1,z1;...;xN,yN,zN)"
+    initial_values = target.points if target else None
+    
+    def obj_constructor(points: list[np.ndarray]) -> PolygonObject:
+      if len(points) < 3:
+        raise ValueError("Insira ao menos 3 pontos de controle.")
+      obj = PolygonObject(f"Polygon {self.placed_objects_counter}", points, id=self.placed_objects_counter)
+      if target:
+        obj.line_color = target.line_color
+        obj.fill_color = target.fill_color
+        obj.thickness = target.thickness
+      return obj
+    self.add_object_popup(title, hint, prompt_window, initial_values, obj_constructor, target, 3)
          
   def parser(self, input_str: str) -> list[np.ndarray]:
     pairs = [pair for pair in input_str.strip().replace(" ", "").split(";") if pair]
     if PREFERENCES.mode == "2D":
-        return [np.array([float(x), float(y), 1]) for x, y in (p.split(",") for p in pairs)]
+      if any(len(p.split(",")) != 2 for p in pairs):
+        self.log("Formato inválido. Use (x0,y0;x1,y1;...;xN,yN) para 2D ou (x0,y0,z0;x1,y1,z1;...;xN,yN,zN) para 3D.")     
+        return []
+      return [np.array([float(x), float(y), 1]) for x, y in (p.split(",") for p in pairs)]
     else:
-        return [np.array([float(x), float(y), float(z), 1]) for x, y, z in (p.split(",") for p in pairs)]      
+      if any(len(p.split(",")) != 3 for p in pairs):
+        self.log("Formato inválido. Use (x0,y0;x1,y1;...;xN,yN) para 2D ou (x0,y0,z0;x1,y1,z1;...;xN,yN,zN) para 3D.")
+        return []
+      return [np.array([float(x), float(y), float(z), 1]) for x, y, z in (p.split(",") for p in pairs)]
   def add_object_popup(self,
                       title: str,
                       hint: str,
@@ -516,10 +540,10 @@ class Viewport:
     title = title
     popup.title(title)
     popup.geometry("300x200")
-    popup.resizable(False, False)
+    popup.resizable(True, True)
     popup.grab_set()
 
-    instructions = tk.Label(popup, text=hint)
+    instructions = tk.Label(popup, text=hint, wraplength=280, justify="center")
     instructions.pack(pady=10)
 
 
@@ -530,13 +554,6 @@ class Viewport:
     control_points.pack(pady=5, padx=10, fill=tk.X, expand=True)
     
     def finish_callback():
-      def parser(input_str: str) -> list[np.ndarray]:
-          pairs = input_str.strip().replace(" ", "").split(";")
-          if PREFERENCES.mode == "2D":
-              return [np.array([float(x), float(y), 1]) for x, y in (p.split(",") for p in pairs)]
-          else:
-              return [np.array([float(x), float(y), float(z), 1]) for x, y, z in (p.split(",") for p in pairs)]
-
       try:
           s = control_points.get().strip().replace(" ", "")
           if not s:
@@ -563,26 +580,31 @@ class Viewport:
 
       except Exception as e:
           self.log(f"Erro: {e}")
+          raise e
 
     create_button = tk.Button(popup, text="Adicionar" if initial_values is None else "Atualizar", command=finish_callback)
     create_button.pack(pady=10)  
 
   def finish_polygon(self):
+    if not self.building:
+      self.add_polygon()
+      return
+    
     if len(self.build) < 3: 
       self.log("Erro: Pelo menos três pontos são necessários para formar um polígono.")
       return
 
-    self.objects.append(PolygonObject("Polygon", self.build.copy(), id=self.placed_objects_counter))
+    self.objects.append(PolygonObject(f"Polygon {self.placed_objects_counter}", self.build.copy(), id=self.placed_objects_counter))
     self.placed_objects_counter += 1
     self.cancel_building()
 
   def finish_lines(self):
     if len(self.build) == 1:
-      self.objects.append(PointObject("Point", self.build[0], id=self.placed_objects_counter))
+      self.objects.append(PointObject(f"Point {self.placed_objects_counter}", self.build[0], id=self.placed_objects_counter))
 
     for i in range(len(self.build) - 1):
       start, end = self.build[i:i+2]
-      self.objects.append(LineObject(f"Line", start, end, id=self.placed_objects_counter))
+      self.objects.append(LineObject(f"Line {self.placed_objects_counter}", start, end, id=self.placed_objects_counter))
       self.placed_objects_counter += 1
 
     self.build.clear()
@@ -591,12 +613,17 @@ class Viewport:
 
   def update(self):
     self.canva.delete("all")
+    
+    if PREFERENCES.mode == "3D":
+      self.window.update_view_matrix()
+      
     all_objects = [obj.copy() for obj in self.objects]
 
     # Add debug objects to the list of objects to be drawn if debug mode is on
     if self.debug:
       all_objects += [obj.copy() for obj in self.debug_objects]
       self.build_debug_grid()
+      
       x0, y0, x1, y1 = self.window.get_corners()
       # TODO: I still feel like these lines are not perfectly centered ffs
       self.canva.create_line(x0, (y1+self.window.padding)/2, x1, (y1+self.window.padding)/2, fill="blue")
@@ -606,12 +633,14 @@ class Viewport:
     # Project all objects to the viewport and clip them
     for obj in all_objects:
       if PREFERENCES.mode == "3D": # if object was 2D, projecting it again won't do anything
-        obj.project_3D_on_2D()
+        obj.project_3D_on_2D(self.window.view_matrix)
+        
       obj.points = [np.array(self.window.world_to_viewport(point)) for point in obj.points]
     all_objects = self.clipping.clip_all(all_objects, ClippingAlgorithm(self.clipping_algorithm.get()))
 
     # Draw all objects
     for obj in all_objects:
+      print(obj)
       match obj:
         case CurveObject_2D():
           if len(obj.points) < 2: 
@@ -651,10 +680,10 @@ class Viewport:
         case _: 
           self.log(f"Erro: Tipo de objeto desconhecido: {type(obj)}")
           continue  # Unsupported object type
-
+            
     # Refresh the object list
     self.ui_object_list.delete(*self.ui_object_list.get_children())
-    for obj in self.objects:
+    for obj in all_objects:
       self.add_object_to_table(obj)
 
     # Redraw the building lines if in building mode
@@ -677,6 +706,7 @@ class Viewport:
     return self.objects
 
   def add_object_to_table(self, obj: Wireframe):
+    print(obj)
     formatted_coordinates = [f"({', '.join(f'{coord:.2f}' for coord in point)})" for point in obj.points]
     self.ui_object_list.insert("", "end", values=(obj.name, ", ".join(formatted_coordinates)), tags=(str(obj.id),))
 
