@@ -47,11 +47,14 @@ class Viewport:
     # Control buttons and input fields
     self.ui_build_button = tk.Button(self.root, text="Build", command=self.set_building)
     self.ui_object_properties_button = tk.Button(self.root, text="Propriedades", command=self.properties_window) # also on mouse right click on object at table
-   
+    
+    self.ui_create_point_button = tk.Button(self.root, text="Ponto", command=self.finish_point)
     self.ui_create_line_button = tk.Button(self.root, text="Linha", command=self.finish_lines)
     self.ui_close_polygon_button = tk.Button(self.root, text="Polígono", command=self.finish_polygon)
+    
     self.ui_create_curve_button = tk.Button(self.root, text="Curva", command=self.finish_curve)
-
+    self.ui_create_object_3d_button = tk.Button(self.root, text="Objeto 3D", command=self.create_3d_object)
+    
     self.ui_translate_object_button = tk.Button(self.root, text="Deslocar", command=self.translate)
     self.ui_scale_button = tk.Button(self.root, text="Escalar", command=self.scale_selected_object)
 
@@ -60,8 +63,8 @@ class Viewport:
     self.ui_rotate_z_button = tk.Button(self.root, text="Girar Z", command=lambda: self.rotate(axis="z"))
 
     self.ui_point_label = tk.Label(self.root, text="Ponto (x,y):")
-    self.ui_point_x_input = tk.Entry(self.root)
-    self.ui_point_y_input = tk.Entry(self.root)
+    self.ui_point_x_y_input = tk.Entry(self.root)
+    #self.ui_point_y_input = tk.Entry(self.root)
 
     self.ui_degree_label = tk.Label(self.root, text="Ângulo:")
     self.ui_degree_var = tk.StringVar(value="Ângulo")
@@ -116,29 +119,45 @@ class Viewport:
 
     self.ui_object_list_frame.grid(row=0, column=0, rowspan=12, columnspan=4, sticky="nsew")
 
+    #row 12:
     self.ui_build_button.grid(row=12, column=0, rowspan=1, columnspan=2, sticky="nsew")
-    self.ui_close_polygon_button.grid(row=12, column=2, rowspan=1, columnspan=1, sticky="nsew")
-    self.ui_create_curve_button.grid(row=12, column=3, rowspan=1, columnspan=1, sticky="nsew")
-
-    #self.ui_rotate_object_button.grid(row=13, column=0, rowspan=1, columnspan=2, sticky="nsew")
-    self.ui_translate_object_button.grid(row=13, column=0, rowspan=1, columnspan=2, sticky="nsew")
-    self.ui_scale_button.grid(row=13, column=2, rowspan=1, columnspan=1, sticky="nsew")
-    self.ui_object_properties_button.grid(row=13, column=3, rowspan=1, columnspan=1, sticky="nsew")
-
-    self.ui_rotate_x_button.grid(row=14, column=0, rowspan=1, columnspan=2, sticky="nsew")
-    self.ui_rotate_y_button.grid(row=14, column=2, rowspan=1, columnspan=1, sticky="nsew")
-    self.ui_rotate_z_button.grid(row=14, column=3, rowspan=1, columnspan=1, sticky="nsew")   
+    self.ui_object_properties_button.grid(row=12, column=2, rowspan=1, columnspan=2, sticky="nsew")
     
-    self.ui_point_label.grid(row=15, column=0, rowspan=1, columnspan=2, sticky="nsew")
-    self.ui_point_x_input.grid(row=15, column=2, rowspan=1, columnspan=1, sticky="nsew")
-    self.ui_point_y_input.grid(row=15, column=3, rowspan=1, columnspan=1, sticky="nsew")
+    # row 13:
+    self.ui_create_point_button.grid(row=13, column=0, rowspan=1, columnspan=2, sticky="nsew")
+    self.ui_create_line_button.grid(row=13, column=2, rowspan=1, columnspan=1, sticky="nsew")
+    self.ui_close_polygon_button.grid(row=13, column=3, rowspan=1, columnspan=1, sticky="nsew")
+  
+    # row 14:
+    self.ui_create_curve_button.grid(row=14, column=0, rowspan=1, columnspan=2, sticky="nsew")
+    self.ui_create_object_3d_button.grid(row=14, column=2, rowspan=1, columnspan=2, sticky="nsew")
+
+    # row 15:
+    self.ui_rotate_x_button.grid(row=15, column=0, rowspan=1, columnspan=2, sticky="nsew")
+    self.ui_rotate_y_button.grid(row=15, column=2, rowspan=1, columnspan=1, sticky="nsew")
+    self.ui_rotate_z_button.grid(row=15, column=3, rowspan=1, columnspan=1, sticky="nsew")
+
     
+    # row 16:
     self.ui_degree_label.grid(row=16, column=0, rowspan=1, columnspan=2, sticky="nsew")
     self.ui_degree_input.grid(row=16, column=2, rowspan=1, columnspan=2, sticky="nsew")
+
+
+    # row 17:
+    self.ui_point_label.grid(row=17, column=0, rowspan=1, columnspan=2, sticky="nsew")
+    self.ui_point_x_y_input.grid(row=17, column=2, rowspan=1, columnspan=1, sticky="nsew")
+    #self.ui_point_y_input.grid(row=17, column=3, rowspan=1, columnspan=1, sticky="nsew")
+    self.ui_translate_object_button.grid(row=17, column=3, rowspan=1, columnspan=1, sticky="nsew")
     
-    self.ui_scale_factor_label.grid(row=17, column=0, rowspan=1, columnspan=2, sticky="nsew")
-    self.ui_scale_factor_input.grid(row=17, column=2, rowspan=1, columnspan=2, sticky="nsew")
-    
+    # row 18:
+    self.ui_scale_factor_label.grid(row=18, column=0, rowspan=1, columnspan=2, sticky="nsew")
+    self.ui_scale_factor_input.grid(row=18, column=2, rowspan=1, columnspan=1, sticky="nsew")
+    self.ui_scale_button.grid(row=18, column=3, rowspan=1, columnspan=1, sticky="nsew")
+
+
+    # row 19:
+
+
   def build_debug_grid(self):
     step = 75
     min_zoom = self.window.min_zoom 
@@ -272,8 +291,7 @@ class Viewport:
     target = self.get_selected_object()
     # Object selected, check if it'll be rotated around its center or a specified point
     if target:
-      rx = self.ui_point_x_input.get()
-      ry = self.ui_point_y_input.get()
+      rx, ry = self.ui_point_x_y_input.get().split(",")
       # Valid point, rotate around it
       try:
         rx = float(rx)
@@ -295,8 +313,9 @@ class Viewport:
       self.log("Aviso: Nenhum objeto selecionado.")
       return
     try:
-      dx = float(self.ui_point_x_input.get())
-      dy = float(self.ui_point_y_input.get())
+      dx, dy = self.ui_point_x_y_input.get().split(",")
+      dx = float(dx)
+      dy = float(dy)
     except ValueError:
       self.log("Erro: Coordenadas inválidas.")
       return
@@ -610,6 +629,15 @@ class Viewport:
     self.build.clear()
     self.building = False
     self.update()
+    
+  def finish_point(self):
+    pass
+  
+  def create_3d_object(self):
+    pass
+  
+  def finish_lines(self):
+    pass
 
   def update(self):
     self.canva.delete("all")
