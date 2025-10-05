@@ -144,24 +144,23 @@ class PolygonObject(Wireframe):
     return f"o {self.name}\n{vertices_str}\nl {indices_str}"
 
 class CurveObject_2D(Wireframe):
-  def __init__(self, name: str, points: list[Point], steps: int, **kwargs):
+  def __init__(self, name: str, control_points: list[Point], steps: int, **kwargs):
     self.steps = steps
-    self.control_points = points
+    self.control_points = control_points
     super().__init__(name, [], **kwargs)
 
-    #self.generate_bezier_points() if kwargs.get("curve_type", "bezier") == "bezier" else self.generate_b_spline_points()
+    self.generate_bezier_points() if kwargs.get("curve_algorithm", 0) == 0 else self.generate_b_spline_points()
 
   def copy(self) -> 'CurveObject_2D':
     new_obj = CurveObject_2D(
       name=self.name,
-      points=[p.copy() for p in self.control_points], 
+      control_points=[p.copy() for p in self.control_points],
       steps=self.steps,
       id=self.id,
       thickness=self.thickness,
       line_color=self.line_color,
       fill_color=self.fill_color
     )
-    new_obj.points = [p.copy() for p in self.points]
     return new_obj
 
   def bezier_algorithm(self, t, P0, P1, P2, P3) -> Point:

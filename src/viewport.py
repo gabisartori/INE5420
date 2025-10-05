@@ -1,22 +1,47 @@
-from tkinter import Canvas, Event
+from tkinter import Canvas, Event, IntVar
+
+from enum import Enum
 
 from wireframe import *
 from window import *
 from clipping import Clipping, ClippingAlgorithm
 from components.my_types import Point
 
+class CurveType(Enum):
+  BEZIER = 0
+  B_SPLINE = 1
+
+  def __str__(self) -> str:
+    if self == CurveType.BEZIER:
+      return "Bézier"
+    elif self == CurveType.B_SPLINE:
+      return "B-Spline"
+    return "Unknown"
+
 class Viewport:
-  def __init__(self, canva: Canvas, input_file: str | None = None):
+  def __init__(
+      self,
+      canva: Canvas,
+      clipping_algorithm: IntVar,
+      curve_type: IntVar,
+      log_function,
+      debug: bool=False,
+      input_file: str | None = None
+    ):
     self.canva = canva
     self.window = Window()
-    self.clipper = Clipping(ClippingAlgorithm(1), self.window.padding, self.window.padding, self.window.width-self.window.padding, self.window.height-self.window.padding)
+    self.clipper = Clipping(clipping_algorithm, self.window.padding, self.window.padding, self.window.width-self.window.padding, self.window.height-self.window.padding)
 
     self.id_counter: int
     self.objects: list[Wireframe]
     self.id_counter, self.objects = self.load_objects(input_file, curve_type=0)
     self.building_buffer: list[Point] = []
     self.building: bool = False
-    self.debug: bool = False
+    self.debug: bool = debug
+
+    self.log = log_function
+
+    self.update()
 
   def load_objects(self, filepath: str | None, curve_type: int=0) -> tuple[int, list[Wireframe]]:
     if not filepath: return 0, []
@@ -65,13 +90,13 @@ class Viewport:
             case _:
               raise Exception(f"Aviso: Cabeçalho desconhecido '{header}' ignorado.")
 
-      return objects
+      return len(objects), objects
     except FileNotFoundError:
       self.log(f"Arquivo {filepath} não encontrado.")
-      return []
+      return 0, []
     except Exception as e:
       self.log(f"Erro: Erro ao carregar objetos: {e}")
-      return []
+      return 0, []
 
   def save_objects(self, path: str):
     with open(path, "w") as f:
@@ -109,9 +134,7 @@ class Viewport:
   def update(self):
     self.canva.delete("all")
     all_objects = [obj.copy() for obj in self.objects]
-
     # Add debug objects to the list of objects to be drawn if debug mode is on
-    # TODO: Rebuild debug stuff
     if self.debug:
       self.build_debug_grid()
       x0, y0, x1, y1 = self.window.get_corners()
@@ -128,7 +151,7 @@ class Viewport:
     for obj in all_objects:
       match obj:
         case CurveObject_2D():
-          if len(obj.points) < 2: 
+          if len(obj.points) < 2:
             continue
           for i in range(1, len(obj.points)):
             p0 = obj.points[i - 1]
@@ -265,7 +288,6 @@ class Viewport:
 
     # Clear buffer and reset building state
     self.cancel_building()
-    self.update()
 
   def finish_curve(self):
     if len(self.building_buffer) < 4: 
@@ -273,5 +295,4 @@ class Viewport:
     self.objects.append(CurveObject_2D("Curva", self.building_buffer.copy(), steps=100, id=self.id_counter))
     self.id_counter += 1
     self.cancel_building()
-    self.update()
 

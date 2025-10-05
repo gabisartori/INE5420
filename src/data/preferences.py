@@ -2,25 +2,26 @@ import json
 import my_logging
 import numpy as np
 
+# TODO: Turn this into a dataclass and replace json load/save with asdict and fromdict
 class Preferences:
-  def __init__(self, application_name="INE5420 - SGI", debug=True, input_file="example.obj", output_file="output.obj", mode="3D", height=900, width=1400, zoom=1, window_normal={"x": 0, "y": 0, "z": -1}, window_position={"x": 0, "y": 0, "z": 100}, theme="light", show_onboarding=True, curve_algorithm="bezier", curve_coefficient=100, clipping_algorithm="sutherland-hodgman"):
-    self.application_name = application_name
-    self.debug = debug
-    self.input_file = input_file
-    self.output_file = output_file
-    self.height = height
-    self.width = width
-    self.zoom = zoom
-    self.window_normal = window_normal
-    self.window_position = window_position
-    self.theme = theme
-    self.show_onboarding = show_onboarding
-    self.curve_algorithm = curve_algorithm
-    self.curve_coefficient = curve_coefficient
-    self.clipping_algorithm = clipping_algorithm
-    self.mode = mode
+  def __init__(self, application_name="INE5420 - SGI", debug=True, input_file="example.obj", output_file="output.obj", mode="3D", height=900, width=1400, zoom=1.0, window_normal={"x": 0, "y": 0, "z": -1}, window_position={"x": 0, "y": 0, "z": 100}, theme="light", show_onboarding=True, curve_algorithm=0, curve_coefficient=100, clipping_algorithm=1):
+    self.application_name: str = application_name
+    self.debug: bool = debug
+    self.input_file: str = input_file
+    self.output_file: str = output_file
+    self.height: int = height
+    self.width: int = width
+    self.zoom: float = zoom
+    self.window_normal: np.ndarray = window_normal
+    self.window_position: np.ndarray = window_position
+    self.theme: str = theme
+    self.show_onboarding: bool = show_onboarding
+    self.curve_algorithm: int = curve_algorithm
+    self.curve_coefficient: int = curve_coefficient
+    self.clipping_algorithm: int = clipping_algorithm
+    self.mode: str = mode
 
-  def load_user_preferences(self, path="src/data/usr_data.json"):
+  def load_user_preferences(self, path="src/data/usr_data.json") -> 'Preferences':
     try:
       with open(path, "r") as file:
         data = json.load(file)
@@ -39,7 +40,7 @@ class Preferences:
         self.output_file = pref.get("output_file", "output.obj")
         self.height = pref.get("height", 900)
         self.width = pref.get("width", 1400)
-        self.zoom = pref.get("zoom", 1)
+        self.zoom = pref.get("zoom", 1.0)
         self.mode = pref.get("mode", "2D")
 
         return Preferences(
@@ -62,30 +63,33 @@ class Preferences:
         
     except FileNotFoundError:
       my_logging.default_log("User preferences file not found")
-      return {}
+      return Preferences()
     except json.JSONDecodeError:
       my_logging.default_log("Error decoding JSON")
-      return {}
+      return Preferences()
+    except Exception as e:
+      my_logging.default_log(f"Unexpected error: {e}")
+      return Preferences()
 
   def save_user_preferences(self, path="src/data/usr_data.json"):
-    data = {}
-
-    data["user_preferences"] = {
-      "theme": self.theme,
-      "show_onboarding": self.show_onboarding,
-      "curve_algorithm": self.curve_algorithm,
-      "curve_coefficient": self.curve_coefficient,
-      "clipping_algorithm": self.clipping_algorithm,
-      "window_normal": {"x": int(self.window_normal[0]), "y": int(self.window_normal[1]), "z": int(self.window_normal[2])},
-      "window_position": {"x": int(self.window_position[0]), "y": int(self.window_position[1]), "z": int(self.window_position[2])},
-      "application_name": self.application_name,
-      "debug": self.debug,
-      "input_file": self.input_file,
-      "output_file": self.output_file,
-      "height": self.height,
-      "width": self.width,
-      "zoom": self.zoom,
-      "mode": self.mode
+    data = {
+      "user_preferences": {
+        "theme": self.theme,
+        "show_onboarding": self.show_onboarding,
+        "curve_algorithm": self.curve_algorithm,
+        "curve_coefficient": self.curve_coefficient,
+        "clipping_algorithm": self.clipping_algorithm,
+        "window_normal": {"x": int(self.window_normal[0]), "y": int(self.window_normal[1]), "z": int(self.window_normal[2])},
+        "window_position": {"x": int(self.window_position[0]), "y": int(self.window_position[1]), "z": int(self.window_position[2])},
+        "application_name": self.application_name,
+        "debug": self.debug,
+        "input_file": self.input_file,
+        "output_file": self.output_file,
+        "height": self.height,
+        "width": self.width,
+        "zoom": self.zoom,
+        "mode": self.mode
+      }
     }
 
     try:

@@ -2,16 +2,16 @@
   "user_preferences": {
     "theme": "light",
     "show_onboarding": true,
-    "curve_algorithm": "bezier",
+    "curve_algorithm": 1,
     "curve_coefficient": 100,
-    "clipping_algorithm": "sutherland-hodgman",
+    "clipping_algorithm": 0,
     "window_normal": {
       "x": 0,
       "y": 0,
       "z": -1
     },
     "window_position": {
-      "x": 0,
+      "x": -35,
       "y": 0,
       "z": 100
     },

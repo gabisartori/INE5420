@@ -1,3 +1,5 @@
+from tkinter import IntVar
+
 import sys
 sys.path.append("..")
 
@@ -14,17 +16,14 @@ class Code(Enum):
   TOP     = 0b1000
 
 class ClippingAlgorithm(Enum):
-  COHEN_SUTHERLAND = 1
-  LIANG_BARSKY = 2
-  SUTHERLAND_HODGMAN = 3
+  COHEN_SUTHERLAND = 0
+  LIANG_BARSKY = 1
 
   def __str__(self) -> str:
     if self == ClippingAlgorithm.COHEN_SUTHERLAND:
       return "Cohen-Sutherland"
     elif self == ClippingAlgorithm.LIANG_BARSKY:
       return "Liang-Barsky"
-    elif self == ClippingAlgorithm.SUTHERLAND_HODGMAN:
-      return "Sutherland-Hodgman"
     return "Unknown"
 
 class Clipping:
@@ -42,11 +41,15 @@ class Clipping:
   """
 
   def __init__(self, line_clipping_algorithm, xmin, ymin, xmax, ymax):
-    self.line_clipping_algorithm = line_clipping_algorithm
+    self._line_clipping_algorithm: IntVar = line_clipping_algorithm
     self.xmin = xmin
     self.ymin = ymin
     self.xmax = xmax
     self.ymax = ymax
+
+  @property
+  def line_clipping_algorithm(self) -> ClippingAlgorithm:
+    return ClippingAlgorithm(self._line_clipping_algorithm.get())
 
   def clip_all(self, all_objects: list[Wireframe]) -> list[Wireframe]:
     """Clip all wireframe objects using the designated algorithm."""

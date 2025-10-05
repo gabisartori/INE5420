@@ -7,7 +7,7 @@ from window import *
 from components.my_types import *
 from clipping import *
 from data import preferences
-import config
+from config import PREFERENCES
 
 
 class SGI:
@@ -23,15 +23,22 @@ class SGI:
   ):
     # Config
     #self.pr = preferences.load_user_preferences()
-    self.width: int = config.PREFERENCES.width
-    self.height: int = config.PREFERENCES.height
-    self.input_file: str | None = input if input is not None else config.PREFERENCES.input_file
-    self.output_file: str | None = output if output is not None else config.PREFERENCES.output_file
+    self.width: int = PREFERENCES.width
+    self.height: int = PREFERENCES.height
+    self.input_file: str | None = input if input is not None else PREFERENCES.input_file
+    self.output_file: str | None = output if output is not None else PREFERENCES.output_file
     self.debug: bool = debug
 
     # GUI
     self.root = tk.Tk()
-    self.set_up_root(config.PREFERENCES.application_name)
+    self.set_up_root(PREFERENCES.application_name)
+
+    ## The *clipping_algorithm* and *curve_type* variables will be also passed to the Viewport class
+    ## Hopefully, this means that changing them here will change them in the Viewport class too
+    ## TODO: There's probably a better place to initialize these variables
+    self.clipping_algorithm = tk.IntVar(value=PREFERENCES.clipping_algorithm)
+    self.curve_type = tk.IntVar(value=PREFERENCES.curve_algorithm)
+
     self.create_components()
     self.create_navbar()
     self.position_components()
@@ -58,18 +65,10 @@ class SGI:
     clipping_submenu = tk.Menu(settings_menu, tearoff=0)
     curve_submenu = tk.Menu(settings_menu, tearoff=0)
 
-    ## The *clipping_algorithm* and *curve_type* variables will be also passed to the Viewport class
-    ## Hopefully, this means that changing them here will change them in the Viewport class too
-    clipping_algorithm = tk.IntVar(value=config.PREFERENCES.clipping_algorithm)
-    curve_type = tk.IntVar(value=config.PREFERENCES.curve_algorithm)
-
-    clipping_submenu.add_radiobutton(label="Cohen-Sutherland", value=0, variable=clipping_algorithm)
-    clipping_submenu.add_radiobutton(label="Liang-Barsky", value=1, variable=clipping_algorithm)
-    curve_submenu.add_radiobutton(label="Bézier", value=0, variable=curve_type)
-    curve_submenu.add_radiobutton(label="B-Spline", value=1, variable=curve_type)
-
-    self.viewport.clipping_algorithm = clipping_algorithm
-    self.viewport.curve_type = curve_type
+    clipping_submenu.add_radiobutton(label="Cohen-Sutherland", value=0, variable=self.clipping_algorithm)
+    clipping_submenu.add_radiobutton(label="Liang-Barsky", value=1, variable=self.clipping_algorithm)
+    curve_submenu.add_radiobutton(label="Bézier", value=0, variable=self.curve_type)
+    curve_submenu.add_radiobutton(label="B-Spline", value=1, variable=self.curve_type)
 
     self.navbar.add_cascade(label="Arquivo", menu=file_menu)
     self.navbar.add_cascade(label="Configurações", menu=settings_menu)
@@ -78,15 +77,15 @@ class SGI:
   def create_components(self):
     # Canva
     self.canva = tk.Canvas(self.root, background="white", width=self.width*2//3, height=self.height*5//6)
-    self.viewport = Viewport(self.canva)
+    self.viewport = Viewport(self.canva, self.clipping_algorithm, self.curve_type, self.log, debug=self.debug)
 
     # Log session
     self.ui_log = scrolledtext.ScrolledText(self.root, bg="white", fg="black", state="disabled", font=("Arial", 10), height=9)
 
     # Control buttons and input fields
     self.ui_build_button = tk.Button(self.root, text="Build", command=self.toggle_building)
-    self.ui_close_polygon_button = tk.Button(self.root, text="Polígono", command=self.viewport.finish_polygon)
-    self.ui_create_curve_button = tk.Button(self.root, text="Curva", command=self.viewport.finish_curve)
+    self.ui_close_polygon_button = tk.Button(self.root, text="Polígono", command=self.finish_polygon)
+    self.ui_create_curve_button = tk.Button(self.root, text="Curva", command=self.finish_curve)
     self.ui_object_properties_button = tk.Button(self.root, text="Propriedades", command=None)#self.properties_window) # also on mouse right click on object at table
     self.ui_rotate_object_button = tk.Button(self.root, text="Girar", command=None)#self.viewport.rotate)
     self.ui_translate_object_button = tk.Button(self.root, text="Deslocar", command=None)#self.translate)
@@ -192,7 +191,7 @@ class SGI:
 
   def exit(self):
     # TODO: Save user preferences and current objects to output file
-    config.PREFERENCES.save_user_preferences()
+    PREFERENCES.save_user_preferences()
     self.root.quit()
 
 # Additional Windows
@@ -240,3 +239,12 @@ class SGI:
     self.ui_log.insert(tk.END, f"{''.join([str(m) for m in message])}\n")
     self.ui_log.see(tk.END)
     self.ui_log.config(state="disabled")
+
+# Wrappers for viewport methods
+  def finish_polygon(self):
+    self.ui_build_button.config(relief=tk.RAISED)
+    self.viewport.finish_polygon()
+  
+  def finish_curve(self):
+    self.ui_build_button.config(relief=tk.RAISED)
+    self.viewport.finish_curve()

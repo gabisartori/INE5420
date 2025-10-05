@@ -192,9 +192,3 @@ class Viewport:
   def get_object_by_id(self, id: int) -> Wireframe | None:
     return next((o for o in self.objects if o.id == id), None)
 
-  @property
-  def building(self) -> bool: return self._building
-
-  @building.setter
-  def building(self, value: bool):
-    self._building = value
