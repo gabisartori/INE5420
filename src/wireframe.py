@@ -1,6 +1,19 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from components.my_types import Point
 import numpy as np
+
+from enum import Enum
+
+class CurveType(Enum):
+  BEZIER = 0
+  B_SPLINE = 1
+
+  def __str__(self) -> str:
+    if self == CurveType.BEZIER:
+      return "Bézier"
+    elif self == CurveType.B_SPLINE:
+      return "B-Spline"
+    return "Unknown"
 
 @dataclass
 class Wireframe:
@@ -144,18 +157,20 @@ class PolygonObject(Wireframe):
     return f"o {self.name}\n{vertices_str}\nl {indices_str}"
 
 class CurveObject_2D(Wireframe):
-  def __init__(self, name: str, control_points: list[Point], steps: int, **kwargs):
+  def __init__(self, name: str, control_points: list[Point], steps: int, curve_type: CurveType = CurveType.BEZIER, **kwargs):
     self.steps = steps
     self.control_points = control_points
+    self.curve_type = curve_type
     super().__init__(name, [], **kwargs)
 
-    self.generate_bezier_points() if kwargs.get("curve_algorithm", 0) == 0 else self.generate_b_spline_points()
+    self.generate_bezier_points() if self.curve_type == CurveType.BEZIER else self.generate_b_spline_points()
 
   def copy(self) -> 'CurveObject_2D':
     new_obj = CurveObject_2D(
       name=self.name,
       control_points=[p.copy() for p in self.control_points],
       steps=self.steps,
+      curve_type=self.curve_type,
       id=self.id,
       thickness=self.thickness,
       line_color=self.line_color,

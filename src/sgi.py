@@ -70,6 +70,9 @@ class SGI:
     curve_submenu.add_radiobutton(label="Bézier", value=0, variable=self.curve_type)
     curve_submenu.add_radiobutton(label="B-Spline", value=1, variable=self.curve_type)
 
+    settings_menu.add_cascade(label="Algoritmo de Recorte", menu=clipping_submenu)
+    settings_menu.add_cascade(label="Tipo de Curva", menu=curve_submenu)
+
     self.navbar.add_cascade(label="Arquivo", menu=file_menu)
     self.navbar.add_cascade(label="Configurações", menu=settings_menu)
     self.root.config(menu=self.navbar)

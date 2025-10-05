@@ -7,17 +7,6 @@ from window import *
 from clipping import Clipping, ClippingAlgorithm
 from components.my_types import Point
 
-class CurveType(Enum):
-  BEZIER = 0
-  B_SPLINE = 1
-
-  def __str__(self) -> str:
-    if self == CurveType.BEZIER:
-      return "Bézier"
-    elif self == CurveType.B_SPLINE:
-      return "B-Spline"
-    return "Unknown"
-
 class Viewport:
   def __init__(
       self,
@@ -38,10 +27,15 @@ class Viewport:
     self.building_buffer: list[Point] = []
     self.building: bool = False
     self.debug: bool = debug
+    self._curve_type: IntVar = curve_type
 
     self.log = log_function
 
     self.update()
+
+  @property
+  def curve_type(self) -> CurveType:
+    return CurveType(self._curve_type.get())
 
   def load_objects(self, filepath: str | None, curve_type: int=0) -> tuple[int, list[Wireframe]]:
     if not filepath: return 0, []
@@ -292,7 +286,7 @@ class Viewport:
   def finish_curve(self):
     if len(self.building_buffer) < 4: 
       raise Exception("Erro: Pelo menos quatro pontos são necessários para formar uma curva de Bézier cúbica.")
-    self.objects.append(CurveObject_2D("Curva", self.building_buffer.copy(), steps=100, id=self.id_counter))
+    self.objects.append(CurveObject_2D("Curva", self.building_buffer.copy(), steps=100, id=self.id_counter, curve_type=self.curve_type))
     self.id_counter += 1
     self.cancel_building()
 
