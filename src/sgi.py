@@ -6,7 +6,6 @@ from wireframe import *
 from window import *
 from components.my_types import *
 from clipping import *
-from data import preferences
 from config import PREFERENCES
 
 
@@ -38,7 +37,9 @@ class SGI:
     ## TODO: There's probably a better place to initialize these variables
     self.clipping_algorithm = tk.IntVar(value=PREFERENCES.clipping_algorithm)
     self.curve_type = tk.IntVar(value=PREFERENCES.curve_algorithm)
-
+    self.mode = tk.StringVar(value=PREFERENCES.mode)
+    self.coeff = PREFERENCES.curve_coefficient
+    
     self.create_components()
     self.create_navbar()
     self.position_components()
@@ -65,14 +66,25 @@ class SGI:
     settings_menu = tk.Menu(self.navbar, tearoff=0)
     clipping_submenu = tk.Menu(settings_menu, tearoff=0)
     curve_submenu = tk.Menu(settings_menu, tearoff=0)
+    mode_submenu = tk.Menu(settings_menu, tearoff=0)
+    curve_coefficient_submenu = tk.Menu(settings_menu, tearoff=0)
 
-    clipping_submenu.add_radiobutton(label="Cohen-Sutherland", value=0, variable=self.clipping_algorithm)
-    clipping_submenu.add_radiobutton(label="Liang-Barsky", value=1, variable=self.clipping_algorithm)
-    curve_submenu.add_radiobutton(label="Bézier", value=0, variable=self.curve_type)
-    curve_submenu.add_radiobutton(label="B-Spline", value=1, variable=self.curve_type)
+    clipping_submenu.add_radiobutton(label="Cohen-Sutherland", value=0, variable=self.clipping_algorithm, command=lambda: self.set_clipping_algorithm())
+    clipping_submenu.add_radiobutton(label="Liang-Barsky", value=1, variable=self.clipping_algorithm, command=lambda: self.set_clipping_algorithm())
+
+    curve_submenu.add_radiobutton(label="Bézier", value=0, variable=self.curve_type, command=lambda: self.set_curve_type())
+    curve_submenu.add_radiobutton(label="B-Spline", value=1, variable=self.curve_type, command=lambda: self.set_curve_type())
+
+    curve_coefficient_submenu.add_command(label="Coeficiente para curvas", 
+                                          command=lambda: self.set_curve_coefficient())
+
+    mode_submenu.add_radiobutton(label="2D", value="2D", variable=self.mode, command=lambda: self.set_mode())
+    mode_submenu.add_radiobutton(label="3D", value="3D", variable=self.mode, command=lambda: self.set_mode())
 
     settings_menu.add_cascade(label="Algoritmo de Recorte", menu=clipping_submenu)
     settings_menu.add_cascade(label="Tipo de Curva", menu=curve_submenu)
+    settings_menu.add_cascade(label="Coeficiente de Curva", menu=curve_coefficient_submenu)
+    settings_menu.add_cascade(label="Modo", menu=mode_submenu)
 
     self.navbar.add_cascade(label="Arquivo", menu=file_menu)
     self.navbar.add_cascade(label="Configurações", menu=settings_menu)
@@ -101,23 +113,29 @@ class SGI:
     self.canva = tk.Canvas(self.root, background="white", width=self.width*2//3, height=self.height*5//6)
     self.viewport = Viewport(self.canva, self.clipping_algorithm, self.curve_type, self.log, self.ui_object_list, debug=self.debug)
 
-
-
     # Log session
     self.ui_log = scrolledtext.ScrolledText(self.root, bg="white", fg="black", state="disabled", font=("Arial", 10), height=9)
 
     # Control buttons and input fields
     self.ui_build_button = tk.Button(self.root, text="Build", command=self.toggle_building)
-    self.ui_close_polygon_button = tk.Button(self.root, text="Polígono", command=self.finish_polygon)
-    self.ui_create_curve_button = tk.Button(self.root, text="Curva", command=self.finish_curve)
     self.ui_object_properties_button = tk.Button(self.root, text="Propriedades", command=self.properties_window) # also on mouse right click on object at table
-    self.ui_rotate_object_button = tk.Button(self.root, text="Girar", command=self.rotate_selected_object)
+    
+    self.ui_create_point_button = tk.Button(self.root, text="Ponto", command=self.finish_point)
+    self.ui_create_line_button = tk.Button(self.root, text="Linha", command=self.finish_lines)
+    self.ui_close_polygon_button = tk.Button(self.root, text="Polígono", command=self.finish_polygon)
+    
+    self.ui_create_curve_button = tk.Button(self.root, text="Curva", command=self.finish_curve)
+    self.ui_create_object_3d_button = tk.Button(self.root, text="Objeto 3D", command=self.create_3d_object)
+    
     self.ui_translate_object_button = tk.Button(self.root, text="Deslocar", command=self.translate_selected_object)
     self.ui_scale_button = tk.Button(self.root, text="Escalar", command=self.scale_selected_object)
 
-    self.ui_point_label = tk.Label(self.root, text="Ponto (x,y):")
-    self.ui_point_x_input = tk.Entry(self.root)
-    self.ui_point_y_input = tk.Entry(self.root)
+    self.ui_rotate_x_button = tk.Button(self.root, text="Girar X", command=lambda: self.rotate_selected_object(axis="x"), state=tk.NORMAL if PREFERENCES.mode == "3D" else tk.DISABLED)
+    self.ui_rotate_y_button = tk.Button(self.root, text="Girar Y", command=lambda: self.rotate_selected_object(axis="y"), state=tk.NORMAL if PREFERENCES.mode == "3D" else tk.DISABLED)
+    self.ui_rotate_z_button = tk.Button(self.root, text="Girar Z", command=lambda: self.rotate_selected_object(axis="z"))
+
+    self.ui_point_label = tk.Label(self.root, text="Ponto (x,y):" if PREFERENCES.mode == "2D" else "Ponto (x,y,z):")
+    self.ui_point_x_y_input = tk.Entry(self.root)
 
     self.ui_degree_label = tk.Label(self.root, text="Ângulo:")
     self.ui_degree_var = tk.StringVar(value="Ângulo")
@@ -137,30 +155,77 @@ class SGI:
     scrollbar_y.grid(row=0, column=1, rowspan=2, sticky="ns")
     scrollbar_x.grid(row=1, column=0, sticky="ew")
 
+  def set_curve_coefficient(self):
+    coeff = simpledialog.askinteger("Configuração de Curvas", "Coeficiente para desenhar curvas de Bézier ou B-Spline(padrão 100):", initialvalue=self.window.coeff, minvalue=10, maxvalue=1000)
+    if coeff:
+      self.coeff = coeff
+      self.log(f"Coeficiente para desenhar curvas alterado para {coeff}.")
+      self.viewport.update()
+   
+  def set_clipping_algorithm(self):
+    PREFERENCES.clipping_algorithm = self.clipping_algorithm.get()
+    self.log(f"Algoritmo de recorte alterado para {'Cohen-Sutherland' if self.clipping_algorithm.get() == 0 else 'Liang-Barsky'}.")
+    self.viewport.update()
+    
+  def set_curve_type(self):
+    PREFERENCES.curve_algorithm = self.curve_type.get()
+    self.log(f"Tipo de curva alterado para {'Bézier' if self.curve_type.get() == 0 else 'B-Spline'}.")
+    self.viewport.update()
+    
+  def set_mode(self):
+    PREFERENCES.mode = self.mode.get()
+    self.ui_point_label.config(text="Ponto (x,y):" if PREFERENCES.mode == "2D" else "Ponto (x,y,z):")
+    if PREFERENCES.mode == "2D":
+      self.ui_rotate_x_button.config(state=tk.DISABLED)
+      self.ui_rotate_y_button.config(state=tk.DISABLED)
+    else:
+      self.ui_rotate_x_button.config(state=tk.NORMAL)
+      self.ui_rotate_y_button.config(state=tk.NORMAL)
+    self.log(f"Modo alterado para {PREFERENCES.mode}.")
+    self.viewport.set_mode(PREFERENCES.mode)
+    self.viewport.update()
+       
   def position_components(self):
     self.canva.grid(row=0, column=4, columnspan=8, rowspan=20, sticky="nsew")
     self.ui_log.grid(row=20, column=4, columnspan=12, rowspan=4, sticky="nsew")
 
     self.ui_object_list_frame.grid(row=0, column=0, rowspan=12, columnspan=4, sticky="nsew")
 
+    #row 12:
     self.ui_build_button.grid(row=12, column=0, rowspan=1, columnspan=2, sticky="nsew")
-    self.ui_close_polygon_button.grid(row=12, column=2, rowspan=1, columnspan=1, sticky="nsew")
-    self.ui_create_curve_button.grid(row=12, column=3, rowspan=1, columnspan=1, sticky="nsew")
+    self.ui_object_properties_button.grid(row=12, column=2, rowspan=1, columnspan=2, sticky="nsew")
+    
+    # row 13:
+    self.ui_create_point_button.grid(row=13, column=0, rowspan=1, columnspan=2, sticky="nsew")
+    self.ui_create_line_button.grid(row=13, column=2, rowspan=1, columnspan=1, sticky="nsew")
+    self.ui_close_polygon_button.grid(row=13, column=3, rowspan=1, columnspan=1, sticky="nsew")
+  
+    # row 14:
+    self.ui_create_curve_button.grid(row=14, column=0, rowspan=1, columnspan=2, sticky="nsew")
+    self.ui_create_object_3d_button.grid(row=14, column=2, rowspan=1, columnspan=2, sticky="nsew")
 
-    self.ui_rotate_object_button.grid(row=13, column=0, rowspan=1, columnspan=2, sticky="nsew")
-    self.ui_translate_object_button.grid(row=13, column=2, rowspan=1, columnspan=1, sticky="nsew")
-    self.ui_scale_button.grid(row=13, column=3, rowspan=1, columnspan=1, sticky="nsew")
-
-    self.ui_object_properties_button.grid(row=14, column=0, rowspan=1, columnspan=4, sticky="nsew")
-
-    self.ui_point_label.grid(row=15, column=0, rowspan=1, columnspan=2, sticky="nsew")
-    self.ui_point_x_input.grid(row=15, column=2, rowspan=1, columnspan=1, sticky="nsew")
-    self.ui_point_y_input.grid(row=15, column=3, rowspan=1, columnspan=1, sticky="nsew")
+    # row 15:
+    self.ui_rotate_x_button.grid(row=15, column=0, rowspan=1, columnspan=2, sticky="nsew")
+    self.ui_rotate_y_button.grid(row=15, column=2, rowspan=1, columnspan=1, sticky="nsew")
+    self.ui_rotate_z_button.grid(row=15, column=3, rowspan=1, columnspan=1, sticky="nsew")
+    
+    # row 16:
     self.ui_degree_label.grid(row=16, column=0, rowspan=1, columnspan=2, sticky="nsew")
     self.ui_degree_input.grid(row=16, column=2, rowspan=1, columnspan=2, sticky="nsew")
-    self.ui_scale_factor_label.grid(row=17, column=0, rowspan=1, columnspan=2, sticky="nsew")
-    self.ui_scale_factor_input.grid(row=17, column=2, rowspan=1, columnspan=2, sticky="nsew")
 
+    # row 17:
+    self.ui_point_label.grid(row=17, column=0, rowspan=1, columnspan=2, sticky="nsew")
+    self.ui_point_x_y_input.grid(row=17, column=2, rowspan=1, columnspan=1, sticky="nsew")
+    #self.ui_point_y_input.grid(row=17, column=3, rowspan=1, columnspan=1, sticky="nsew")
+    self.ui_translate_object_button.grid(row=17, column=3, rowspan=1, columnspan=1, sticky="nsew")
+    
+    # row 18:
+    self.ui_scale_factor_label.grid(row=18, column=0, rowspan=1, columnspan=2, sticky="nsew")
+    self.ui_scale_factor_input.grid(row=18, column=2, rowspan=1, columnspan=1, sticky="nsew")
+    self.ui_scale_button.grid(row=18, column=3, rowspan=1, columnspan=1, sticky="nsew")
+
+    # row 19:
+    
   def controls(self):
     self.canva.bind("<ButtonRelease-1>", self.viewport.canva_click)
     self.canva.bind("<Button-3>", self.viewport.move_window)
@@ -176,7 +241,7 @@ class SGI:
     self.root.bind("<KeyPress-Escape>", lambda e: self.cancel_building())
     self.root.bind("<Control-z>", lambda e: self.viewport.undo())
 
-    self.ui_object_list.bind("<Button-3>", lambda e: self.properties_window())
+    self.ui_object_list.bind("<Button-3>", lambda e: self.object_list_menu(e))
 
     # This one is not a control. It's used to remove focus from a text input when clicking outside of it
     def focus_clicked_widget(event):
@@ -208,6 +273,21 @@ class SGI:
     popup.minsize(width, height)
     popup.resizable(False, False)
     return popup
+  
+  def object_list_menu(self, event):
+    selected_item = self.ui_object_list.identify_row(event.y)
+    if selected_item:
+      self.ui_object_list.selection_set(selected_item)
+      menu = tk.Menu(self.root, tearoff=0)
+      menu.add_command(label="Propriedades", command=self.properties_window)
+      menu.add_command(label="Remover", command=lambda: self.viewport.remove_selected_object(selected_item))
+      
+      def close_menu(event2):
+        menu.unpost()
+        self.root.unbind("<Button-1>", close_menu_binding)
+        
+      close_menu_binding = self.root.bind("<Button-1>", close_menu)
+      menu.post(event.x_root, event.y_root)
 
 # Additional Windows
   def properties_window(self):
@@ -294,6 +374,113 @@ class SGI:
     apply_button.grid(row=4, column=0, columnspan=4, sticky="ew")
     cancel_button.grid(row=5, column=0, columnspan=4, sticky="ew")
 
+  def add_point_window(self):
+    popup = self.popup(0, 200, "Adicionar Ponto")
+    def finish_point_callback():
+      try: point = np.array(list(map(float, point_input.get().strip().split(','))))
+      except ValueError:
+        self.log("Erro: ponto inválido.")
+        return
+      if (self.mode.get() == "2D" and len(point) != 2) or (self.mode.get() == "3D" and len(point) != 3):
+        self.log(f"Erro: insira um ponto {'(x,y)' if self.mode.get() == '2D' else '(x,y,z)'}.")
+        return
+
+      name = name_input.get().strip() if name_input.get().strip() != "" else "Point"
+      try: thickness = int(thickness_input.get())
+      except ValueError: thickness = 1
+      color = color_input.get().strip() if color_input.get().strip() != "" else "#000000"
+      self.viewport.add_point(point, name, color, thickness)
+      popup.destroy()
+    
+    name_label = tk.Label(popup, text="Nome do objeto:")
+    name_input = tk.Entry(popup)
+    name_input.insert(0, "Point")
+    name_label.grid(row=0, column=0, sticky="ew")
+    name_input.grid(row=0, column=1, columnspan=2, sticky="ew")
+
+    point_label = tk.Label(popup, text="Coordenadas do ponto:")
+    point_input = tk.Entry(popup)
+    point_input.insert(0, "0,0,0" if self.mode.get() == "3D" else "0,0")
+    point_label.grid(row=1, column=0, sticky="ew")
+    point_input.grid(row=1, column=1, columnspan=2, sticky="ew")
+
+    color_label = tk.Label(popup, text="Cor do ponto:")
+    color_input = tk.Entry(popup)
+    color_input.insert(0, "#000000")
+    color_button = tk.Button(popup, text="Escolher", command=lambda: (
+      color := colorchooser.askcolor(title="Escolha a cor do ponto"),
+      color_input.delete(0, tk.END),
+      color_input.insert(0, color[1]) if color[1] else None
+    ))
+    color_label.grid(row=4 if self.mode.get() == "3D" else 3, column=0, sticky="ew")
+    color_input.grid(row=4 if self.mode.get() == "3D" else 3, column=1, sticky="ew")
+    color_button.grid(row=4 if self.mode.get() == "3D" else 3, column=2, sticky="ew") 
+    
+    thickness_label = tk.Label(popup, text="Raio do ponto:")
+    thickness_input = tk.Entry(popup)
+    thickness_input.insert(0, "1")
+    thickness_label.grid(row=5 if self.mode.get() == "3D" else 4, column=0, sticky="ew")
+    thickness_input.grid(row=5 if self.mode.get() == "3D" else 4, column=1, columnspan=2, sticky="ew")
+    
+    create_button = tk.Button(popup, text="Criar Ponto", command=finish_point_callback)
+    create_button.grid(row=6 if self.mode.get() == "3D" else 5, column=0, columnspan=3, sticky="ew")
+    cancel_button = tk.Button(popup, text="Cancelar", command=popup.destroy)
+    cancel_button.grid(row=7 if self.mode.get() == "3D" else 6, column=0, columnspan=3, sticky="ew")
+  
+  def add_lines_window(self):
+    popup = self.popup(0, 250, "Adicionar Linha")
+    def finish_lines_callback():
+      points = points_input.get().strip("(").strip(")").replace(" ", "").split("),(")
+      try: points = [list(map(float, p.split(','))) for p in points]
+      except ValueError:
+        self.log("Erro: pontos inválidos.")
+        return
+      if len(points) < 2:
+        self.log("Erro: insira ao menos 2 pontos.")
+        return
+      points = [np.array(p) for p in points]
+
+      name = name_input.get().strip() if name_input.get().strip() != "" else "Line"
+      try: thickness = int(thickness_input.get())
+      except ValueError: thickness = 1
+      color = color_input.get().strip() if color_input.get().strip() != "" else "#000000"
+      self.viewport.add_lines(points, name, color, thickness)
+      popup.destroy()
+    
+    name_label = tk.Label(popup, text="Nome do objeto:")
+    name_input = tk.Entry(popup)
+    name_input.insert(0, "Line")
+    name_label.grid(row=0, column=0, sticky="ew")
+    name_input.grid(row=0, column=1, columnspan=2, sticky="ew")
+
+    points_label = tk.Label(popup, text="Pontos (x0,y0,z0),(x1,y1,z1):" 
+                            if PREFERENCES.mode == "3D" else "Pontos (x0,y0),(x1,y1):")
+    points_input = tk.Entry(popup)
+    points_label.grid(row=1, column=0, sticky="ew")
+    points_input.grid(row=1, column=1, columnspan=2, sticky="ew")
+
+    color_label = tk.Label(popup, text="Cor da linha:")
+    color_input = tk.Entry(popup)
+    color_input.insert(0, "#000000")
+    color_button = tk.Button(popup, text="Escolher", command=lambda: (
+      color := colorchooser.askcolor(title="Escolha a cor da linha"),
+      color_input.delete(0, tk.END),
+      color_input.insert(0, color[1]) if color[1] else None
+    ))
+    color_label.grid(row=2, column=0, sticky="ew")
+    color_input.grid(row=2, column=1, sticky="ew")
+    color_button.grid(row=2, column=2, sticky="ew")
+    thickness_label = tk.Label(popup, text="Espessura da linha:")
+    thickness_input = tk.Entry(popup)
+    thickness_input.insert(0, "1")
+    thickness_label.grid(row=3, column=0, sticky="ew")
+    thickness_input.grid(row=3, column=1, columnspan=2, sticky="ew")
+    create_button = tk.Button(popup, text="Criar Linha", command=finish_lines_callback)
+    create_button.grid(row=4, column=0, columnspan=3, sticky="ew")
+    cancel_button = tk.Button(popup, text="Cancelar", command=popup.destroy)
+    cancel_button.grid(row=5, column=0, columnspan=3, sticky="ew")
+    
+
   def add_polygon_window(self):
     popup = self.popup(0, 300, "Adicionar Polígono")
     def finish_polygon_callback():
@@ -321,7 +508,8 @@ class SGI:
     name_label.grid(row=0, column=0, sticky="ew")
     name_input.grid(row=0, column=1, columnspan=2, sticky="ew")
 
-    points_label = tk.Label(popup, text="Pontos (x0,y0,z0),(x1,y1,z1),...,(xN,yN,zN):")
+    points_label = tk.Label(popup, text="Pontos (x0,y0,z0),(x1,y1,z1),...,(xN,yN,zN):"
+                            if PREFERENCES.mode == "3D" else "Pontos (x0,y0),(x1,y1),...,(xN,yN):")
     points_input = tk.Entry(popup)
     points_label.grid(row=1, column=0, sticky="ew")
     points_input.grid(row=1, column=1, columnspan=2, sticky="ew")
@@ -385,7 +573,8 @@ class SGI:
     name_label.grid(row=0, column=0, sticky="ew")
     name_input.grid(row=0, column=1, columnspan=2, sticky="ew")
 
-    points_label = tk.Label(popup, text="Pontos de controle (x0,y0),(x1,y1),...,(xN,yN):")
+    points_label = tk.Label(popup, text="Pontos de controle (x0,y0),(x1,y1),...,(xN,yN):"
+                            if PREFERENCES.mode == "2D" else "Pontos de controle (x0,y0,z0),(x1,y1,z1),...,(xN,yN,zN):")
     points_input = tk.Entry(popup)
     points_label.grid(row=1, column=0, sticky="ew")
     points_input.grid(row=1, column=1, columnspan=2, sticky="ew")
@@ -439,7 +628,24 @@ class SGI:
       self.viewport.finish_curve()
     else:
       self.add_curve_window()
+      
+  def finish_point(self):
+    if self.viewport.building:
+      self.ui_build_button.config(relief=tk.RAISED)
+      self.viewport.finish_point()
+    else:
+      self.add_point_window()
+
+  def finish_lines(self):
+    if self.viewport.building:
+      self.ui_build_button.config(relief=tk.RAISED)
+      self.viewport.finish_lines()
+    else:
+      self.add_lines_window()
   
+  def create_3d_object(self):
+    pass
+    
   def get_selected_object(self, log=True) -> Wireframe | None:
     selected = self.ui_object_list.selection()
     if not selected:
@@ -452,7 +658,7 @@ class SGI:
       return None
     return target
 
-  def rotate_selected_object(self):
+  def rotate_selected_object(self, axis: str):
     angle = self.ui_degree_input.get()
     # If the angle_input is invalid, rotate 15 degrees by default
     # Otherwise, rotate by the specified angle
@@ -466,13 +672,12 @@ class SGI:
 
     match self.get_selected_object(log=False):
       # If no target is selected, rotate window
-      case None: self.viewport.window.rotate(angle)
+      case None: self.viewport.window.rotate(angle,axis)
       # Rotate selected object
       case target:
         # If no valid point is specified, rotate around object's center
         # Otherwise, rotate around specified point
-        rx = self.ui_point_x_input.get()
-        ry = self.ui_point_y_input.get()
+        rx, ry = self.ui_point_x_y_input.get().split(",") if "," in self.ui_point_x_y_input.get() else (self.ui_point_x_y_input.get(), '1')
         rz = '1'
         try:
           rx = int(rx)
@@ -487,9 +692,14 @@ class SGI:
   def translate_selected_object(self):
     target = self.get_selected_object()
     if target is None: return
-    dx = self.ui_point_x_input.get()
-    dy = self.ui_point_y_input.get()
-    dz = '1'
+    points = self.ui_point_x_y_input.get().strip("(").strip(")").replace(" ", "").split(",")
+    if (self.mode.get() == "2D" and len(points) != 2) or (self.mode.get() == "3D" and len(points) != 3):
+      self.log(f"Erro: insira um ponto de deslocamento {'(dx,dy)' if self.mode.get() == '2D' else '(dx,dy,dz)'}.")
+      return
+    
+    dx, dy = points[0], points[1]
+    dz = points[2] if self.mode.get() == "3D" else '1'
+    
     try: dx = int(dx)
     except ValueError: dx = 0
     try: dy = int(dy)

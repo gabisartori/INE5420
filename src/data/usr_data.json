@@ -11,7 +11,7 @@
       "z": -1
     },
     "window_position": {
-      "x": 0,
+      "x": -1054,
       "y": 0,
       "z": 1
     },
@@ -22,6 +22,7 @@
     "height": 900,
     "width": 1400,
     "zoom": 1,
-    "mode": "2D"
+    "mode": "3D",
+    "max_depth": 1000
   }
 }

@@ -270,10 +270,36 @@ class Viewport:
     self.building_buffer.clear()
     self.building = False
     self.update()
+    
+  def finish_point(self):
+    if self.building:
+      if len(self.building_buffer) < 1:
+        raise Exception("Ponto precisa de ao menos 1 coordenada.")
+      else:
+        for point in self.building_buffer:
+          self.objects.append(PointObject("Ponto", point, id=self.id_counter))
+          self.id_counter += 1
+        self.cancel_building()
+    # Open point insertion window
+    else: return
+
+    self.update()
+    
+  def add_point(
+    self,
+    point: Point,
+    name: str="Point",
+    color: str="#000000",
+    thickness: int=2
+  ):
+    self.objects.append(PointObject(name, point, line_color=color, fill_color=color, thickness=thickness, id=self.id_counter))
+    self.id_counter += 1
+    self.update()
 
   def finish_polygon(self):
     if self.building:
       if len(self.building_buffer) < 3:
+        self.log("Erro: Polígono precisa de ao menos 3 pontos.")
         raise Exception("Polígono precisa de ao menos 3 pontos.")
       else:
         self.objects.append(PolygonObject("Polígono", self.building_buffer.copy(), id=self.id_counter))
@@ -293,6 +319,7 @@ class Viewport:
     thickness: int=1
   ):
     if len(points) < 3:
+      self.log("Erro: Polígono precisa de ao menos 3 pontos.")
       raise Exception("Polígono precisa de ao menos 3 pontos.")
     self.objects.append(PolygonObject(name, points, line_color=line_color, fill_color=fill_color, thickness=thickness, id=self.id_counter))
     self.id_counter += 1
@@ -322,6 +349,7 @@ class Viewport:
     line_color: str="#000000",
   ):
     if len(control_points) < 4:
+      self.log("Erro: Curva precisa de ao menos 4 pontos de controle.")
       raise Exception("Curva precisa de ao menos 4 pontos de controle.")
     new_curve = CurveObject_2D(name, control_points, steps=100, line_color=line_color, thickness=1, id=self.id_counter, curve_type=self.curve_type)
     self.objects.append(new_curve)
@@ -330,8 +358,21 @@ class Viewport:
 
   def finish_curve(self):
     if len(self.building_buffer) < 4: 
+      self.log("Erro: Pelo menos quatro pontos são necessários para formar uma curva de Bézier cúbica.")
       raise Exception("Erro: Pelo menos quatro pontos são necessários para formar uma curva de Bézier cúbica.")
     self.objects.append(CurveObject_2D("Curva", self.building_buffer.copy(), steps=100, id=self.id_counter, curve_type=self.curve_type))
     self.id_counter += 1
     self.cancel_building()
 
+  def remove_selected_object(self, selected_item):
+    if not selected_item:
+      self.log("Erro: Nenhum objeto selecionado para remoção.")
+      return
+    item_id = int(self.object_list.item(selected_item, "tags")[0])
+    self.objects = [obj for obj in self.objects if obj.id != item_id]
+    self.update()
+    
+    
+    
+    
+    

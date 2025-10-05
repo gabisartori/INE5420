@@ -2,6 +2,7 @@ import numpy as np
 
 import config
 from components.my_types import Point
+from data.matrices import rotation_matrix
 
 def normalize(v: Point) -> Point:
   """Normalize a vector."""
@@ -25,6 +26,10 @@ class Window:
     self.padding = 15
     self.curve_coeff = self.preferences.curve_coefficient
 
+    self.vrp = np.array([0, 0, 0])  # View Reference Point
+    self.vpn = np.array([0, 0, -1]) # View Plane Normal
+    self.vup = np.array([0, 1, 0])  # View Up Vector
+    
     UP = np.array([0, 1, 0])
     if np.array_equal(self.normal, UP) or np.array_equal(self.normal, -UP):
       self.right = np.array([1, 0, 0])
@@ -45,17 +50,22 @@ class Window:
 
   def move_above(self): self.position[2] += max(self.speed/self.zoom, 1)
 
-  def rotate(self, angle: int=5):
+  def rotate(self, angle: int=5, axis: str="z", clockwise: bool=True):
     """Rotate the window around the normal vector."""
-    M = np.array([
-      [np.cos(np.radians(angle)), -np.sin(np.radians(angle)), 0],
-      [np.sin(np.radians(angle)),  np.cos(np.radians(angle)), 0],
-      [0, 0, 1]
-    ])
+    M = rotation_matrix(angle if clockwise else -angle, axis)
     self.right = normalize(M @ self.right)
     self.up = normalize(M @ self.up)
     self.normal = normalize(np.cross(self.right, self.up))
-
+    
+    # if PREFERENCES.mode == "2D": 
+    #   self.right = normalize(M @ self.right)
+    #   self.up = normalize(M @ self.up)
+    #   self.normal = normalize(np.cross(self.right, self.up))
+    # else: # 3D
+    #   self.vpn = normalize(M @ self.vpn)
+    #   self.vup = normalize(M @ self.vup)
+    #   self.update_view_matrix()
+    
   def zoom_in(self, x, y):
     if self.zoom <= self.max_zoom: self.zoom *= 1.1
 

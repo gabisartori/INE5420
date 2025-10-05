@@ -208,22 +208,6 @@ class CurveObject_2D(Wireframe):
     if len(self.control_points) < 4:
       raise ValueError("Cubic B-Spline curve requires at least 4 control points.")
 
-    # Algoritmo para Desenho de Curvas Paramétricas usando Forward Differences
-    # DesenhaCurvaFwdDiff( n, x, ∆x, ∆2x, ∆3x,
-    # y, ∆y, ∆2y, ∆3y,
-    # z, ∆z, ∆2z, ∆3z )
-    # início
-    # inteiro i = 0;
-    # mova(x, y, z);/* Move ao início da curva */
-    # enquanto i < n faça
-    # i <- i + 1;
-    # x <- x + ∆x; ∆x <- ∆x + ∆2x; ∆2x <- ∆2x + ∆3x;
-    # y <- y + ∆y; ∆y <- ∆y + ∆2y; ∆2y <- ∆2y + ∆3y;
-    # z <- z + ∆z; ∆z <- ∆z + ∆2z; ∆2z <- ∆2z + ∆3z;
-    # desenheAté(x, y, z); /* Desenha reta */
-    # fim enquanto;
-    # fim DesenhaCurvaFwdDiff;
-
     curve_points = []
     h = 1 / self.steps
 
@@ -276,3 +260,25 @@ class CurveObject_2D(Wireframe):
     vertices_str = '\n'.join(f"v {' '.join(map(str, p))}" for p in self.control_points)
     indices_str = ' '.join(str(i + 1) for i in range(len(self.control_points)))
     return f"o {self.name}\n{vertices_str}\nc {indices_str}"
+
+class Object_3D(Wireframe):
+  def __init__(self, name: str, lines: list[Point], **kwargs):
+    points = [p.copy() for p in lines]
+    self.lines = lines  
+    super().__init__(name, points, **kwargs)
+ 
+  def copy(self) -> 'Object_3D':
+    return Object_3D(
+      self.name,
+      [p.copy() for p in self.lines],
+      id=self.id,
+      thickness=self.thickness,
+      line_color=self.line_color,
+      fill_color=self.fill_color
+    )
+    
+  def __str__(self) -> str:
+    vertices_str = '\n'.join(f"v {' '.join(map(str, p))}" for p in self.lines)
+    indices_str = ' '.join(str(i + 1) for i in range(len(self.lines)))
+    return f"o {self.name}\n{vertices_str}\nl {indices_str}"
+    
