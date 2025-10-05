@@ -6,6 +6,7 @@ from wireframe import *
 from window import *
 from clipping import Clipping, ClippingAlgorithm
 from components.my_types import Point
+from config import PREFERENCES
 
 class Viewport:
   def __init__(
@@ -133,6 +134,7 @@ class Viewport:
     self.update_object_list()
     self.canva.delete("all")
     all_objects = [obj.copy() for obj in self.objects]
+    
     # Add debug objects to the list of objects to be drawn if debug mode is on
     if self.debug:
       self.build_debug_grid()
@@ -143,12 +145,24 @@ class Viewport:
       self.draw_viewport_border()
 
     # Project all objects to the viewport and clip them
-    for obj in all_objects:
-      obj.points = [np.array(self.window.world_to_viewport(point)) for point in obj.points]
+    if PREFERENCES.mode == "2D":
+      for obj in all_objects:
+        obj.points = [np.array(self.window.world_to_viewport(point)) for point in obj.points]
+    else: # 3D
+      for obj in all_objects:
+        obj.points = [self.window.orthographic_projection(point) for point in obj.points]
+    
     all_objects = self.clipper.clip_all(all_objects)
+    
     # Draw all objects
     for obj in all_objects:
       match obj:
+        case Object_3D():
+          for line in obj.lines:
+            p0 = self.window.world_to_viewport(line[0])
+            p1 = self.window.world_to_viewport(line[1])
+            self.canva.create_line(p0[0], p0[1], p1[0], p1[1], fill=obj.line_color, width=obj.thickness)
+        
         case CurveObject_2D():
           if len(obj.points) < 2:
             continue
@@ -296,6 +310,70 @@ class Viewport:
     self.id_counter += 1
     self.update()
 
+  def finish_line(self):
+    if self.building:
+      if len(self.building_buffer) < 2:
+        self.log("Erro: Linha precisa de ao menos 2 pontos.")
+        raise Exception("Linha precisa de ao menos 2 pontos.")
+      else:
+        for i in range(0, len(self.building_buffer)-1, 2):
+          start = self.building_buffer[i]
+          end = self.building_buffer[i+1]
+          self.objects.append(LineObject("Linha", start, end, id=self.id_counter))
+          self.id_counter += 1
+        if len(self.building_buffer) % 2 == 1:
+          self.log("Aviso: Ponto final ignorado por não ter par.")
+        self.cancel_building()
+    # Open line insertion window
+    else: return
+
+    self.update()
+    
+  def add_line(
+    self,
+    start: Point,
+    end: Point,
+    name: str="Line",
+    color: str="#000000",
+    thickness: int=1
+  ):
+    self.objects.append(LineObject(name, start, end, line_color=color, thickness=thickness, id=self.id_counter))
+    self.id_counter += 1
+    self.update()
+    
+    
+  def finish_3d_object(self):
+    if self.building:
+      if len(self.building_buffer) < 6:
+        self.log("Erro: Objeto 3D precisa de ao menos 3 linhas (6 pontos).")
+        raise Exception("Objeto 3D precisa de ao menos 3 linhas (6 pontos).")
+      else:
+        lines = [self.building_buffer[i:i+2] for i in range(0, len(self.building_buffer)-1, 2)]
+        if len(self.building_buffer) % 2 == 1:
+          self.log("Aviso: Ponto final ignorado por não ter par.")
+        self.objects.append(Object_3D("Objeto 3D", lines, id=self.id_counter))
+        self.id_counter += 1
+        self.cancel_building()
+    # Open 3D object insertion window
+    else: return
+    
+    self.update()
+    
+  def add_3d_object(
+    self,
+    lines: list[tuple[Point, Point]],
+    name: str="3D Object",
+    line_color: str="#000000",
+    #fill_color: str="#ffffff",
+    thickness: int=1
+  ):
+    if len(lines) < 3:
+      self.log("Erro: Objeto 3D precisa de ao menos 3 linhas.")
+      raise Exception("Objeto 3D precisa de ao menos 3 linhas.")
+    self.objects.append(Object_3D(name, lines, line_color=line_color, thickness=thickness, id=self.id_counter))
+    self.id_counter += 1
+    self.update()
+    
   def finish_polygon(self):
     if self.building:
       if len(self.building_buffer) < 3:

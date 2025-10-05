@@ -75,11 +75,20 @@ class Wireframe:
     
     Everything that was said about the XY plane in the rotate() method also applies here.
     """
-    self.transform2d(np.array([
-      [1, 0, dx],
-      [0, 1, dy],
-      [0, 0, 1]
-    ]))
+    
+    if dz != 0:
+      self.transform2d(np.array([
+        [1, 0, 0, dx],
+        [0, 1, 0, dy],
+        [0, 0, 1, dz],
+        [0, 0, 0, 1]
+      ]))
+    else:
+      self.transform2d(np.array([
+        [1, 0, dx],
+        [0, 1, dy],
+        [0, 0, 1]
+      ]))
 
   def scale(self, factor: float) -> None:
     """Scale the object in the XY plane."""
@@ -274,7 +283,7 @@ class Object_3D(Wireframe):
       id=self.id,
       thickness=self.thickness,
       line_color=self.line_color,
-      fill_color=self.fill_color
+      #fill_color=self.fill_color
     )
     
   def __str__(self) -> str:

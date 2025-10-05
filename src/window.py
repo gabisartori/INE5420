@@ -80,6 +80,31 @@ class Window:
     self.window_focus = (0, 0)
     self.focus = (self.width // 2, self.height // 2)
 
+  def orthographic_projection(self, point: Point) -> Point:
+    # Passo 1: traduzir o ponto para o sistema com VRP na origem
+    translated = point[:3] - self.position[:3]  # ponto - VRP
+
+    # Passo 2: construir base UVN
+    N = self.vpn / np.linalg.norm(self.vpn)  # z
+    U = np.cross(self.vup, N)
+    U = U / np.linalg.norm(U)  # x
+    V = np.cross(N, U)         # y
+
+    # Matriz de mudança de base (matriz de visualização)
+    M = np.array([
+        [U[0], U[1], U[2]],
+        [V[0], V[1], V[2]],
+        [N[0], N[1], N[2]]
+    ])
+
+    # Passo 3: aplicar rotação (mudança de base)
+    camera_coords = M @ translated
+
+    # Passo 4: projeção ortogonal → descartar z
+    projected = camera_coords[:2]  # x e y
+
+    return projected
+
   def world_to_viewport(self, point: Point) -> tuple[float, float]:
     # Ignore points behind window
     # if np.dot(self.normal, point - self.position) < 0: point = self.position - self.normal

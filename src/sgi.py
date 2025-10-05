@@ -125,7 +125,7 @@ class SGI:
     self.ui_close_polygon_button = tk.Button(self.root, text="Polígono", command=self.finish_polygon)
     
     self.ui_create_curve_button = tk.Button(self.root, text="Curva", command=self.finish_curve)
-    self.ui_create_object_3d_button = tk.Button(self.root, text="Objeto 3D", command=self.create_3d_object)
+    self.ui_create_object_3d_button = tk.Button(self.root, text="Objeto 3D", command=self.finish_3d_object)
     
     self.ui_translate_object_button = tk.Button(self.root, text="Deslocar", command=self.translate_selected_object)
     self.ui_scale_button = tk.Button(self.root, text="Escalar", command=self.scale_selected_object)
@@ -377,7 +377,7 @@ class SGI:
   def add_point_window(self):
     popup = self.popup(0, 200, "Adicionar Ponto")
     def finish_point_callback():
-      try: point = np.array(list(map(float, point_input.get().strip().split(','))))
+      try: point = np.array(list(map(float, point_input.get().strip().strip("()").strip(")").split(','))))
       except ValueError:
         self.log("Erro: ponto inválido.")
         return
@@ -430,7 +430,7 @@ class SGI:
   def add_lines_window(self):
     popup = self.popup(0, 250, "Adicionar Linha")
     def finish_lines_callback():
-      points = points_input.get().strip("(").strip(")").replace(" ", "").split("),(")
+      points = points_input.get().strip().strip("(").strip(")").replace(" ", "").split("),(")
       try: points = [list(map(float, p.split(','))) for p in points]
       except ValueError:
         self.log("Erro: pontos inválidos.")
@@ -485,7 +485,7 @@ class SGI:
     popup = self.popup(0, 300, "Adicionar Polígono")
     def finish_polygon_callback():
       name = name_input.get().strip() if name_input.get().strip() != "" else "Polygon"
-      points = points_input.get().strip("(").strip(")").replace(" ", "").split("),(")
+      points = points_input.get().strip().strip("(").strip(")").replace(" ", "").split("),(")
       try: points = [list(map(float, p.split(','))) for p in points]
       except ValueError:
         self.log("Erro: pontos inválidos.")
@@ -595,7 +595,62 @@ class SGI:
     cancel_button = tk.Button(popup, text="Cancelar", command=popup.destroy)
     create_button.grid(row=3, column=0, columnspan=3, sticky="ew")
     cancel_button.grid(row=4, column=0, columnspan=3, sticky="ew")
+  
+  def add_3d_object_window(self):
+    popup = self.popup(0, 250, "Adicionar Objeto 3D")
 
+    # Variáveis vinculadas aos Entry widgets
+    name_var = tk.StringVar(value="3D Object")
+    points_var = tk.StringVar()
+    line_color_var = tk.StringVar(value="#000000")
+
+    def finish_3d_object_callback():
+        try:
+            # Obtenha os valores das variáveis (não diretamente dos widgets)
+            name = name_var.get().strip()
+            color = line_color_var.get().strip()
+            control_points_str = points_var.get().strip().strip("(").strip(")").replace(" ", "").split("),(")
+
+            control_points = [list(map(float, p.split(','))) for p in control_points_str]
+            control_points = [np.array(p) for p in control_points]
+
+            if len(control_points) < 4:
+                self.log("Erro: insira ao menos 4 pontos de controle.")
+                return
+
+            popup.destroy()
+            self.viewport.add_3d_object(control_points, name, color)
+
+        except ValueError:
+            self.log("Erro: pontos inválidos.")
+        except Exception as e:
+            self.log(f"Erro: {e}")
+
+    name_label = tk.Label(popup, text="Nome do objeto:")
+    name_input = tk.Entry(popup, textvariable=name_var)
+    name_label.grid(row=0, column=0, sticky="ew")
+    name_input.grid(row=0, column=1, columnspan=2, sticky="ew")
+
+    points_label = tk.Label(popup, text="Linhas (x0,y0,z0),(x1,y1,z1),...,(xN,yN,zN):")
+    points_input = tk.Entry(popup, textvariable=points_var)
+    points_label.grid(row=1, column=0, sticky="ew")
+    points_input.grid(row=1, column=1, columnspan=2, sticky="ew")
+
+    line_color_label = tk.Label(popup, text="Cor das linhas:")
+    line_color_input = tk.Entry(popup, textvariable=line_color_var)
+    line_color_button = tk.Button(popup, text="Escolher", command=lambda: (
+        color := colorchooser.askcolor(title="Escolha a cor da linha"),
+        line_color_var.set(color[1]) if color[1] else None
+    ))
+    line_color_label.grid(row=2, column=0, sticky="ew")
+    line_color_input.grid(row=2, column=1, sticky="ew")
+    line_color_button.grid(row=2, column=2, sticky="ew")
+
+    create_button = tk.Button(popup, text="Criar Objeto 3D", command=finish_3d_object_callback)
+    cancel_button = tk.Button(popup, text="Cancelar", command=popup.destroy)
+    create_button.grid(row=3, column=0, columnspan=3, sticky="ew")
+    cancel_button.grid(row=4, column=0, columnspan=3, sticky="ew")
+  
 # Instance attributes control
   def toggle_building(self):
     self.viewport.toggle_building()
@@ -642,10 +697,14 @@ class SGI:
       self.viewport.finish_lines()
     else:
       self.add_lines_window()
-  
-  def create_3d_object(self):
-    pass
-    
+
+  def finish_3d_object(self):
+    if self.viewport.building:
+      self.ui_build_button.config(relief=tk.RAISED)
+      self.viewport.finish_3d_object()
+    else:
+      self.add_3d_object_window()
+
   def get_selected_object(self, log=True) -> Wireframe | None:
     selected = self.ui_object_list.selection()
     if not selected:
