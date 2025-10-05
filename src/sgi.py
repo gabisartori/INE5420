@@ -77,10 +77,30 @@ class SGI:
     self.navbar.add_cascade(label="Configurações", menu=settings_menu)
     self.root.config(menu=self.navbar)
 
+  # TODO: The creation of components is in a completly messy order,
+  # Many elements need to be created upfront so they can be passed to other components
+  # This should be at the very least better organized and hopefully simplified
   def create_components(self):
+    # Object List
+    self.ui_object_list_frame = tk.Frame(self.root)
+    self.ui_object_list_frame.rowconfigure(0, weight=1)
+    self.ui_object_list_frame.columnconfigure(0, weight=1)
+    scrollbar_x = ttk.Scrollbar(self.ui_object_list_frame, orient="horizontal")
+    scrollbar_y = ttk.Scrollbar(self.ui_object_list_frame, orient="vertical")
+
+    self.ui_object_list = ttk.Treeview(
+      self.ui_object_list_frame,
+      columns=("Id", "Points"),
+      show="headings",
+      xscrollcommand=scrollbar_x.set,
+      yscrollcommand=scrollbar_y.set,
+      style="Custom.Treeview"
+    )
     # Canva
     self.canva = tk.Canvas(self.root, background="white", width=self.width*2//3, height=self.height*5//6)
-    self.viewport = Viewport(self.canva, self.clipping_algorithm, self.curve_type, self.log, debug=self.debug)
+    self.viewport = Viewport(self.canva, self.clipping_algorithm, self.curve_type, self.log, self.ui_object_list, debug=self.debug)
+
+
 
     # Log session
     self.ui_log = scrolledtext.ScrolledText(self.root, bg="white", fg="black", state="disabled", font=("Arial", 10), height=9)
@@ -104,22 +124,6 @@ class SGI:
     self.ui_scale_factor_label = tk.Label(self.root, text="Fator:")
     self.ui_scale_factor_var = tk.StringVar(value="Fator")
     self.ui_scale_factor_input = tk.Entry(self.root)
-
-    # Object List
-    self.ui_object_list_frame = tk.Frame(self.root)
-    self.ui_object_list_frame.rowconfigure(0, weight=1)
-    self.ui_object_list_frame.columnconfigure(0, weight=1)
-    scrollbar_x = ttk.Scrollbar(self.ui_object_list_frame, orient="horizontal")
-    scrollbar_y = ttk.Scrollbar(self.ui_object_list_frame, orient="vertical")
-
-    self.ui_object_list = ttk.Treeview(
-      self.ui_object_list_frame,
-      columns=("Id", "Points"),
-      show="headings",
-      xscrollcommand=scrollbar_x.set,
-      yscrollcommand=scrollbar_y.set,
-      style="Custom.Treeview"
-    )
 
     scrollbar_x.config(command=self.ui_object_list.xview)
     scrollbar_y.config(command=self.ui_object_list.yview)

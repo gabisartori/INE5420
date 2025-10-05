@@ -1,4 +1,4 @@
-from tkinter import Canvas, Event, IntVar
+from tkinter import Canvas, Event, IntVar, ttk
 
 from enum import Enum
 
@@ -14,6 +14,7 @@ class Viewport:
       clipping_algorithm: IntVar,
       curve_type: IntVar,
       log_function,
+      object_list: ttk.Treeview,
       debug: bool=False,
       input_file: str | None = None
     ):
@@ -30,8 +31,10 @@ class Viewport:
     self._curve_type: IntVar = curve_type
 
     self.log = log_function
+    self.object_list: ttk.Treeview = object_list
 
     self.update()
+    self.update_object_list()
 
   @property
   def curve_type(self) -> CurveType:
@@ -126,6 +129,8 @@ class Viewport:
     self.update()
 
   def update(self):
+    # TODO: Only update the object list when something changes, not every frame
+    self.update_object_list()
     self.canva.delete("all")
     all_objects = [obj.copy() for obj in self.objects]
     # Add debug objects to the list of objects to be drawn if debug mode is on
@@ -190,6 +195,19 @@ class Viewport:
       self.canva.create_oval(point[0] - 2, point[1] - 2, point[0] + 2, point[1] + 2, fill="red")
       if prev is not None: self.canva.create_line(prev[0], prev[1], point[0], point[1], fill="red")
       prev = point
+
+  def update_object_list(self):
+    for item in self.object_list.get_children(): self.object_list.delete(item)
+    for obj in self.objects: 
+      self.object_list.insert(
+        "",
+        "end",
+        values=(
+          obj.name,
+          ", ".join(f"({', '.join(f'{coord:.2f}' for coord in point)})" for point in obj.points)),
+          tags=(str(obj.id),
+        )
+      )
 
   # TODO: For some goddamn reason rowspan and columnspan are being ignored by most components
   # Must make it so that the components respect the grid layout

@@ -94,8 +94,6 @@ class Viewport:
       self.update() 
           
   def add_object_to_table(self, obj: Wireframe):
-    formatted_coordinates = [f"({', '.join(f'{coord:.2f}' for coord in point)})" for point in obj.points]
-    self.ui_object_list.insert("", "end", values=(obj.name, ", ".join(formatted_coordinates)), tags=(str(obj.id),))
 
     font_style = font.nametofont("TkDefaultFont")
     font_size = font_style.measure("".join(formatted_coordinates)) + 20
