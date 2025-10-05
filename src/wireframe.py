@@ -70,7 +70,7 @@ class Wireframe:
     # Move the object back to its original position.
     self.translate(px, py)
 
-  def translate(self, dx: float, dy: float) -> None:
+  def translate(self, dx: float, dy: float, dz: float=0) -> None:
     """Translate the object in the XY plane.
     
     Everything that was said about the XY plane in the rotate() method also applies here.

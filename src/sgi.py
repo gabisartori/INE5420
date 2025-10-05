@@ -111,9 +111,9 @@ class SGI:
     self.ui_close_polygon_button = tk.Button(self.root, text="Polígono", command=self.finish_polygon)
     self.ui_create_curve_button = tk.Button(self.root, text="Curva", command=self.finish_curve)
     self.ui_object_properties_button = tk.Button(self.root, text="Propriedades", command=self.properties_window) # also on mouse right click on object at table
-    self.ui_rotate_object_button = tk.Button(self.root, text="Girar", command=None)#self.viewport.rotate)
-    self.ui_translate_object_button = tk.Button(self.root, text="Deslocar", command=None)#self.translate)
-    self.ui_scale_button = tk.Button(self.root, text="Escalar", command=None)#self.scale_selected_object)
+    self.ui_rotate_object_button = tk.Button(self.root, text="Girar", command=self.rotate_selected_object)
+    self.ui_translate_object_button = tk.Button(self.root, text="Deslocar", command=self.translate_selected_object)
+    self.ui_scale_button = tk.Button(self.root, text="Escalar", command=self.scale_selected_object)
 
     self.ui_point_label = tk.Label(self.root, text="Ponto (x,y):")
     self.ui_point_x_input = tk.Entry(self.root)
@@ -176,7 +176,7 @@ class SGI:
     self.root.bind("<KeyPress-Escape>", lambda e: self.cancel_building())
     self.root.bind("<Control-z>", lambda e: self.viewport.undo())
 
-    self.ui_object_list.bind("<Button-3>", lambda e: self.object_list_menu(e))
+    self.ui_object_list.bind("<Button-3>", lambda e: self.properties_window())
 
     # This one is not a control. It's used to remove focus from a text input when clicking outside of it
     def focus_clicked_widget(event):
@@ -207,7 +207,6 @@ class SGI:
     popup.title(title)
     popup.minsize(width, height)
     popup.resizable(False, False)
-    popup.grab_set()
     return popup
 
 # Additional Windows
@@ -441,14 +440,77 @@ class SGI:
     else:
       self.add_curve_window()
   
-  def get_selected_object(self) -> Wireframe | None:
+  def get_selected_object(self, log=True) -> Wireframe | None:
     selected = self.ui_object_list.selection()
     if not selected:
-      self.log("Nenhum objeto selecionado.")
+      if log: self.log("Nenhum objeto selecionado.")
       return None
     item_id = int(self.ui_object_list.item(selected[0])['tags'][0])
     target = next((obj for obj in self.viewport.objects if obj.id == item_id), None)
     if target is None:
-      self.log("Objeto não encontrado.")
+      if log: self.log("Objeto não encontrado.")
       return None
     return target
+
+  def rotate_selected_object(self):
+    angle = self.ui_degree_input.get()
+    # If the angle_input is invalid, rotate 15 degrees by default
+    # Otherwise, rotate by the specified angle
+    if angle and angle.strip("-").isnumeric():
+      angle = int(angle)
+    elif not angle:
+      angle = 15
+    else:
+      self.log("Erro: Ângulo inválido. Rotacionando 15° por padrão.")
+      angle = 15
+
+    match self.get_selected_object(log=False):
+      # If no target is selected, rotate window
+      case None: self.viewport.window.rotate(angle)
+      # Rotate selected object
+      case target:
+        # If no valid point is specified, rotate around object's center
+        # Otherwise, rotate around specified point
+        rx = self.ui_point_x_input.get()
+        ry = self.ui_point_y_input.get()
+        rz = '1'
+        try:
+          rx = int(rx)
+          ry = int(ry)
+          rz = int(rz)
+        except ValueError:
+          rx, ry, rz = target.center
+
+        target.rotate(angle, np.array([rx, ry, rz]))
+    self.viewport.update()
+
+  def translate_selected_object(self):
+    target = self.get_selected_object()
+    if target is None: return
+    dx = self.ui_point_x_input.get()
+    dy = self.ui_point_y_input.get()
+    dz = '1'
+    try: dx = int(dx)
+    except ValueError: dx = 0
+    try: dy = int(dy)
+    except ValueError: dy = 0
+    try: dz = int(dz)
+    except ValueError: dz = 0
+
+    if dx == 0 and dy == 0 and dz == 0: return
+
+    target.translate(dx, dy, dz)
+    self.viewport.update()
+
+  def scale_selected_object(self):
+    target = self.get_selected_object()
+    if target is None: return
+    s = self.ui_scale_factor_input.get()
+    if s and s.replace(".", "").replace(",", "").isnumeric():
+      s = float(s.replace(",", "."))
+    else:
+      self.log("Erro: Valores de escala inválidos.")
+      return
+    target.scale(s)
+    self.viewport.update()
+    
