@@ -3,7 +3,14 @@ import my_logging
 import numpy as np
 
 class Preferences:
-  def __init__(self, application_name="INE5420 - SGI", debug=True, input_file="example.obj", output_file="output.obj", mode="3D", height=900, width=1400, zoom=1, window_normal={"x": 0, "y": 0, "z": -1}, window_position={"x": 0, "y": 0, "z": 100}, theme="light", show_onboarding=True, curve_algorithm="bezier", curve_coefficient=100, clipping_algorithm="sutherland-hodgman"):
+  def __init__(self, application_name="INE5420 - SGI", debug=True, 
+               input_file="example.obj", output_file="output.obj", 
+               mode="3D", height=900, width=1400, zoom=1, 
+               window_normal={"x": 0, "y": 0, "z": -1}, 
+               window_position={"x": 0, "y": 0, "z": 100}, 
+               theme="light", show_onboarding=True, 
+               curve_algorithm="bezier", curve_coefficient=100, 
+               clipping_algorithm="sutherland-hodgman", max_depth=1000):
     self.application_name = application_name
     self.debug = debug
     self.input_file = input_file
@@ -19,6 +26,7 @@ class Preferences:
     self.curve_coefficient = curve_coefficient
     self.clipping_algorithm = clipping_algorithm
     self.mode = mode
+    self.max_depth = max_depth
 
   def load_user_preferences(self, path="src/data/usr_data.json"):
     try:
@@ -41,7 +49,8 @@ class Preferences:
         self.width = pref.get("width", 1400)
         self.zoom = pref.get("zoom", 1)
         self.mode = pref.get("mode", "2D")
-
+        self.max_depth = pref.get("max_depth", 1000)
+        
         return Preferences(
           theme=self.theme,
           show_onboarding=self.show_onboarding,
@@ -57,7 +66,8 @@ class Preferences:
           height=self.height,
           width=self.width,
           zoom=self.zoom,
-          mode=self.mode
+          mode=self.mode,
+          max_depth=self.max_depth
         )
         
     except FileNotFoundError:
@@ -85,7 +95,8 @@ class Preferences:
       "height": self.height,
       "width": self.width,
       "zoom": self.zoom,
-      "mode": self.mode
+      "mode": self.mode,
+      "max_depth": self.max_depth
     }
 
     try:

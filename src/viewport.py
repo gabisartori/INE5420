@@ -62,7 +62,7 @@ class Viewport:
     self.ui_rotate_y_button = tk.Button(self.root, text="Girar Y", command=lambda: self.rotate(axis="y"), state=tk.NORMAL if PREFERENCES.mode == "3D" else tk.DISABLED)
     self.ui_rotate_z_button = tk.Button(self.root, text="Girar Z", command=lambda: self.rotate(axis="z"))
 
-    self.ui_point_label = tk.Label(self.root, text="Ponto (x,y):")
+    self.ui_point_label = tk.Label(self.root, text="Ponto (x,y):" if PREFERENCES.mode == "2D" else "Ponto (x,y,z):")
     self.ui_point_x_y_input = tk.Entry(self.root)
     #self.ui_point_y_input = tk.Entry(self.root)
 
@@ -153,7 +153,6 @@ class Viewport:
     self.ui_scale_factor_label.grid(row=18, column=0, rowspan=1, columnspan=2, sticky="nsew")
     self.ui_scale_factor_input.grid(row=18, column=2, rowspan=1, columnspan=1, sticky="nsew")
     self.ui_scale_button.grid(row=18, column=3, rowspan=1, columnspan=1, sticky="nsew")
-
 
     # row 19:
 
@@ -405,6 +404,7 @@ class Viewport:
     PREFERENCES.mode = mode
     self.ui_rotate_x_button.config(state="normal" if mode == "3D" else "disabled")
     self.ui_rotate_y_button.config(state="normal" if mode == "3D" else "disabled")
+    self.ui_point_label.config(text="Ponto (x,y):" if mode == "2D" else "Ponto (x,y,z):")
     self.log(f"Modo alterado para {mode}.")
     self.update()
 
@@ -464,8 +464,11 @@ class Viewport:
     # TODO: Stop object list from unselecting whenever another widget is clicked
     self.root.bind_all("<Button-1>", focus_clicked_widget)
 
-  def is_click_inside_viewport(self, x, y) -> bool:
+  def is_click_inside_viewport(self, x, y, z = None) -> bool:
     x0, y0, x1, y1 = self.window.get_corners()
+    if z is not None:
+      z0, z1 = -PREFERENCES.max_depth, PREFERENCES.max_depth
+      return x0 <= x <= x1 and y0 <= y <= y1 and z0 <= z <= z1
     return x0 <= x <= x1 and y0 <= y <= y1
 
   def canva_click(self, event):
@@ -618,6 +621,10 @@ class Viewport:
     self.cancel_building()
 
   def finish_lines(self):
+    if not self.building and len(self.build) < 1:
+      self.add_line()
+      return
+    
     if len(self.build) == 1:
       self.objects.append(PointObject(f"Point {self.placed_objects_counter}", self.build[0], id=self.placed_objects_counter))
 
@@ -631,13 +638,58 @@ class Viewport:
     self.update()
     
   def finish_point(self):
-    pass
-  
+    if not self.building:
+      self.add_point()
+    
+    else:
+      if len(self.build) < 1: 
+        self.log("Erro: Pelo menos um ponto é necessário para formar um ponto.")
+        return
+      
+      for new_point in self.build:
+        if self.is_click_inside_viewport(new_point[0], new_point[1], new_point[2] if PREFERENCES.mode == "3D" else None):
+          # removes new_point from self.build
+          self.objects.append(new_point)
+          self.placed_objects_counter += 1
+
+      self.cancel_building()
+      
+  def add_point(self, target: PointObject | None=None, prompt_window: tk.Toplevel | None=None):
+    title = "Adicionar Ponto"
+    hint = "Coordenadas do ponto (x,y)" if PREFERENCES.mode == "2D" else "Coordenadas do ponto (x,y,z)"
+    initial_values = target.points[0] if target and target.points else None
+    
+    def obj_constructor(points: list[np.ndarray]) -> PointObject:
+      if len(points) != 1:
+        self.log("Erro: Insira exatamente 1 ponto.")
+        return
+      obj = PointObject(f"Point {self.placed_objects_counter}", points[0], id=self.placed_objects_counter)
+      if target:
+        obj.line_color = target.line_color
+        obj.fill_color = target.fill_color
+        obj.thickness = target.thickness
+      return obj
+    self.add_object_popup(title, hint, prompt_window, [initial_values] if initial_values is not None else None, obj_constructor, target, 1)
+    
   def create_3d_object(self):
     pass
   
-  def finish_lines(self):
-    pass
+  def add_line(self, target: LineObject | None=None, prompt_window: tk.Toplevel | None=None):
+    title = "Adicionar linha"
+    hint = "Pontos da linha (x0,y0;x1,y1)" if PREFERENCES.mode == "2D" else "Pontos da linha (x0,y0,z0;x1,y1,z1)"
+    initial_values = target.points if target else None
+    
+    def obj_constructor(points: list[np.ndarray]) -> LineObject:
+      if len(points) != 2:
+        self.log("Erro: Insira exatamente 2 pontos.")
+        return
+      obj = LineObject(f"Line {self.placed_objects_counter}", points[0], points[1], id=self.placed_objects_counter)
+      if target:
+        obj.line_color = target.line_color
+        obj.fill_color = target.fill_color
+        obj.thickness = target.thickness
+      return obj
+    self.add_object_popup(title, hint, prompt_window, initial_values, obj_constructor, target, 2)  
 
   def update(self):
     self.canva.delete("all")
@@ -668,7 +720,6 @@ class Viewport:
 
     # Draw all objects
     for obj in all_objects:
-      print(obj)
       match obj:
         case CurveObject_2D():
           if len(obj.points) < 2: 
@@ -697,12 +748,13 @@ class Viewport:
 
         case LineObject():
           if len(obj.points) != 2: continue
+          print("creating line", obj.points[0], obj.points[1])
           self.canva.create_line(obj.points[0][0], obj.points[0][1], obj.points[1][0], obj.points[1][1], fill=obj.line_color, width=obj.thickness)
 
         case PointObject():
           p = obj.points[0] if obj.points else None
           if p is None: continue
-          if not self.is_click_inside_viewport(p[0], p[1]): continue
+          if not self.is_click_inside_viewport(p[0], p[1], None): continue
           self.canva.create_oval(p[0]-obj.thickness, p[1]-obj.thickness, p[0]+obj.thickness, p[1]+obj.thickness, fill=obj.fill_color, outline=obj.line_color)
 
         case _: 
@@ -721,6 +773,20 @@ class Viewport:
       self.canva.create_oval(point[0] - 2, point[1] - 2, point[0] + 2, point[1] + 2, fill="red")
       if prev is not None: self.canva.create_line(prev[0], prev[1], point[0], point[1], fill="red")
       prev = point
+      
+    #teste
+    world_point = np.array([100, 200, 50, 1])
+    print("World:", world_point)
+
+    view_point = self.window.view_matrix @ world_point
+    print("View (after view_matrix):", view_point)
+
+    window_point = self.window.world_to_window(world_point[:3])
+    print("Window (world_to_window):", window_point)
+
+    viewport_point = self.window.window_to_viewport(*window_point)
+    print("Viewport (window_to_viewport):", viewport_point)
+        
 
   def run(self) -> list[Wireframe]:
     self.root.mainloop()
@@ -734,7 +800,6 @@ class Viewport:
     return self.objects
 
   def add_object_to_table(self, obj: Wireframe):
-    print(obj)
     formatted_coordinates = [f"({', '.join(f'{coord:.2f}' for coord in point)})" for point in obj.points]
     self.ui_object_list.insert("", "end", values=(obj.name, ", ".join(formatted_coordinates)), tags=(str(obj.id),))
 

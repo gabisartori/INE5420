@@ -51,10 +51,15 @@ class Window:
   def rotate(self, angle: int=5, axis: str="z"):
     """Rotate the window around the normal vector."""
     M = rotation_matrix(angle, axis)
-    self.right = normalize(M @ self.right)
-    self.up = normalize(M @ self.up)
-    self.normal = normalize(np.cross(self.right, self.up))
-
+    if PREFERENCES.mode == "2D": 
+      self.right = normalize(M @ self.right)
+      self.up = normalize(M @ self.up)
+      self.normal = normalize(np.cross(self.right, self.up))
+    else: # 3D
+      self.vpn = normalize(M @ self.vpn)
+      self.vup = normalize(M @ self.vup)
+      self.update_view_matrix()
+      
   def zoom_in(self, x, y):
     if self.zoom <= self.max_zoom: self.zoom *= 1.1
 
@@ -96,6 +101,9 @@ class Window:
 
   def world_to_window(self, point: Point) -> tuple[float, float]:
     # Project the point onto the window view plane
+    if point.shape[0] > 3: 
+      point = np.array(point[:3])
+      
     t = sum(self.normal[i] * (self.position[i] - point[i]) for i in range(len(point)))
     t /= sum(self.normal[i] * self.normal[i] for i in range(len(point)))
     c = np.array([point[i] + t * self.normal[i] for i in range(len(point))])
@@ -138,6 +146,7 @@ class Window:
     return self.padding, self.padding, self.viewport_width - self.padding, self.viewport_height - self.padding
 
   def update_view_matrix(self):
+    
     # Cria a base da câmera
     n = self.vpn / np.linalg.norm(self.vpn)
     u = np.cross(self.vup, n)
