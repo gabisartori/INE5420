@@ -107,7 +107,11 @@ class Viewport:
   def canva_click(self, event: Event):
     if not self.is_click_inside_window(event.x, event.y): return
 
-    world_point = self.window.viewport_to_world(event.x, event.y)
+    if PREFERENCES.mode == "2D":
+      world_point = self.window.viewport_to_world(event.x, event.y)
+    else: # 3D
+      #world_point = self.window.orthographic_projection(event.x, event.y)
+      world_point = self.window.viewport_to_world(event.x, event.y)
     if self.building: self.building_buffer.append(world_point)
     else:
       self.objects.append(PointObject("Clique", world_point, id=self.id_counter))

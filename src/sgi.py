@@ -78,8 +78,8 @@ class SGI:
     curve_coefficient_submenu.add_command(label="Coeficiente para curvas", 
                                           command=lambda: self.set_curve_coefficient())
 
-    mode_submenu.add_radiobutton(label="2D", value="2D", variable=self.mode, command=lambda: self.set_mode())
-    mode_submenu.add_radiobutton(label="3D", value="3D", variable=self.mode, command=lambda: self.set_mode())
+    mode_submenu.add_radiobutton(label="2D", value="2D", variable=self.mode, command=lambda: self.set_mode("2D"))
+    mode_submenu.add_radiobutton(label="3D", value="3D", variable=self.mode, command=lambda: self.set_mode("3D"))
 
     settings_menu.add_cascade(label="Algoritmo de Recorte", menu=clipping_submenu)
     settings_menu.add_cascade(label="Tipo de Curva", menu=curve_submenu)
@@ -171,9 +171,9 @@ class SGI:
     PREFERENCES.curve_algorithm = self.curve_type.get()
     self.log(f"Tipo de curva alterado para {'Bézier' if self.curve_type.get() == 0 else 'B-Spline'}.")
     self.viewport.update()
-    
-  def set_mode(self):
-    PREFERENCES.mode = self.mode.get()
+
+  def set_mode(self, mode: str):
+    PREFERENCES.mode = mode
     self.ui_point_label.config(text="Ponto (x,y):" if PREFERENCES.mode == "2D" else "Ponto (x,y,z):")
     if PREFERENCES.mode == "2D":
       self.ui_rotate_x_button.config(state=tk.DISABLED)
@@ -182,7 +182,6 @@ class SGI:
       self.ui_rotate_x_button.config(state=tk.NORMAL)
       self.ui_rotate_y_button.config(state=tk.NORMAL)
     self.log(f"Modo alterado para {PREFERENCES.mode}.")
-    self.viewport.set_mode(PREFERENCES.mode)
     self.viewport.update()
        
   def position_components(self):

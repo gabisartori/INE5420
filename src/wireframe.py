@@ -1,8 +1,9 @@
 from dataclasses import dataclass
 from components.my_types import Point
 import numpy as np
-
+from config import PREFERENCES 
 from enum import Enum
+from data.matrices import rotation_matrix
 
 class CurveType(Enum):
   BEZIER = 0
@@ -62,11 +63,7 @@ class Wireframe:
     self.translate(-px, -py)
     # TODO: When needing to specify which plane the rotation is in, all that needs to change is which matrix is being used.
     # Apply the rotation matrix.
-    self.transform2d(np.array([
-      [np.cos(np.radians(degrees)), -np.sin(np.radians(degrees)), 0],
-      [np.sin(np.radians(degrees)),  np.cos(np.radians(degrees)), 0],
-      [0, 0, 1]
-    ]))
+    self.transform2d(rotation_matrix(degrees, axis="z"))
     # Move the object back to its original position.
     self.translate(px, py)
 
@@ -76,7 +73,7 @@ class Wireframe:
     Everything that was said about the XY plane in the rotate() method also applies here.
     """
     
-    if dz != 0:
+    if PREFERENCES.mode == "3D":
       self.transform2d(np.array([
         [1, 0, 0, dx],
         [0, 1, 0, dy],
@@ -94,12 +91,21 @@ class Wireframe:
     """Scale the object in the XY plane."""
     px = self.center[0]
     py = self.center[1]
+      
     self.translate(-px, -py)
-    self.transform2d(np.array([
-      [factor, 0, 0],
-      [0, factor, 0],
-      [0, 0, 1]
-    ]))
+    if PREFERENCES.mode == "3D":
+      self.transform2d(np.array([
+        [factor, 0, 0, 0],
+        [0, factor, 0, 0],
+        [0, 0, factor, 0],
+        [0, 0, 0, 1]
+      ]))
+    else: # 2D
+      self.transform2d(np.array([
+        [factor, 0, 0],
+        [0, factor, 0],
+        [0, 0, 1]
+      ]))
     self.translate(px, py)
 
   # TODO: again, decide whether this should modify the original object or return a new one.
