@@ -47,6 +47,7 @@ class SGI:
 # Main window and components setup
   def set_up_root(self, title: str):
     self.root.title(title)
+    # TODO: Remove this
     self.root.geometry(f"{self.width}x{self.height}")
     self.root.resizable(False, False)
     self.root.protocol("WM_DELETE_WINDOW", self.exit)
@@ -109,7 +110,7 @@ class SGI:
     self.ui_build_button = tk.Button(self.root, text="Build", command=self.toggle_building)
     self.ui_close_polygon_button = tk.Button(self.root, text="Polígono", command=self.finish_polygon)
     self.ui_create_curve_button = tk.Button(self.root, text="Curva", command=self.finish_curve)
-    self.ui_object_properties_button = tk.Button(self.root, text="Propriedades", command=None)#self.properties_window) # also on mouse right click on object at table
+    self.ui_object_properties_button = tk.Button(self.root, text="Propriedades", command=self.properties_window) # also on mouse right click on object at table
     self.ui_rotate_object_button = tk.Button(self.root, text="Girar", command=None)#self.viewport.rotate)
     self.ui_translate_object_button = tk.Button(self.root, text="Deslocar", command=None)#self.translate)
     self.ui_scale_button = tk.Button(self.root, text="Escalar", command=None)#self.scale_selected_object)
@@ -137,7 +138,6 @@ class SGI:
     scrollbar_x.grid(row=1, column=0, sticky="ew")
 
   def position_components(self):
-    # TODO: There's a phantom space on the right of the canvas
     self.canva.grid(row=0, column=4, columnspan=8, rowspan=20, sticky="nsew")
     self.ui_log.grid(row=20, column=4, columnspan=12, rowspan=4, sticky="nsew")
 
@@ -201,33 +201,212 @@ class SGI:
     PREFERENCES.save_user_preferences()
     self.root.quit()
 
+  @staticmethod
+  def popup(width: int, height: int, title: str) -> tk.Toplevel:
+    popup = tk.Toplevel()
+    popup.title(title)
+    popup.minsize(width, height)
+    popup.resizable(False, False)
+    popup.grab_set()
+    return popup
+
 # Additional Windows
-  def add_curve(self, prompt_window: tk.Toplevel | None=None):
-    def finish_curve_callback(control_points):
-      control_points = control_points.get().strip("(").strip(")").replace(" ", "")
-      control_points = list(map(float, control_points.split(',')))
-      control_points = [np.array([control_points[i], control_points[i+1], 1]) for i in range(0, len(control_points), 2)]
+  def properties_window(self):
+    target = self.get_selected_object()
+    if target is None: return
+    popup = self.popup(0, 300, "Propriedades do Objeto")
+    def apply_changes(name, fill_color, line_color, thickness):
+      target.name = name.get().strip() if name.get().strip() != "" else target.name
+      target.fill_color = fill_color
+      target.line_color = line_color
+      try: target.thickness = float(thickness.get())
+      except ValueError: pass
+
+      self.viewport.update()
+      popup.destroy()
+
+    match target:
+      case PointObject():
+        thickness_prompt = "Raio do ponto"
+        line_prompt = "Cor do contorno"
+        fill_prompt = "Cor do ponto"
+      case LineObject():
+        thickness_prompt = "Espessura da linha"
+        line_prompt = "Cor da linha"
+        fill_prompt = ""
+      case PolygonObject():
+        thickness_prompt = "Espessura da linha"
+        line_prompt = "Cor do contorno"
+        fill_prompt = "Cor de preenchimento"
+      case CurveObject_2D():
+        thickness_prompt = "Espessura da linha"
+        line_prompt = "Cor da linha"
+        fill_prompt = ""
+      case _:
+        return
+
+    # Name
+    name_label = tk.Label(popup, text="Nome do objeto:")
+    name_input = tk.Entry(popup)
+    name_input.insert(0, target.name)
+    name_label.grid(row=0, column=0, sticky="ew")
+    name_input.grid(row=0, column=1, columnspan=2, sticky="ew")
+
+    # Line Color
+    line_color_label = tk.Label(popup, text=line_prompt)
+    line_color_input = tk.Entry(popup)
+    line_color_input.insert(0, target.line_color)
+    line_color_button = tk.Button(popup, text="Escolher", command=lambda: (
+      color := colorchooser.askcolor(title="Escolha a cor da linha"),
+      line_color_input.delete(0, tk.END),
+      line_color_input.insert(0, color[1]) if color[1] else None
+    ))
+    line_color_label.grid(row=1, column=0, sticky="ew")
+    line_color_input.grid(row=1, column=1, sticky="ew")
+    line_color_button.grid(row=1, column=2, sticky="ew")
+    
+    # Fill Color
+    if fill_prompt:
+      fill_color_label = tk.Label(popup, text=fill_prompt)
+      fill_color_input = tk.Entry(popup)
+      fill_color_input.insert(0, target.fill_color)
+      fill_color_button = tk.Button(popup, text="Escolher", command=lambda: (
+        color := colorchooser.askcolor(title="Escolha a cor de preenchimento"),
+        fill_color_input.delete(0, tk.END),
+        fill_color_input.insert(0, color[1]) if color[1] else None
+      ))
+      fill_color_label.grid(row=2, column=0, sticky="ew")
+      fill_color_input.grid(row=2, column=1, sticky="ew")
+      fill_color_button.grid(row=2, column=2, sticky="ew")
+    else:
+      fill_color_input = tk.StringVar(value=target.fill_color)
+
+    # Thickness
+    thickness_label = tk.Label(popup, text=thickness_prompt)
+    thickness_input = tk.Entry(popup)
+    thickness_input.insert(0, str(target.thickness))
+    thickness_label.grid(row=3, column=0, sticky="ew")
+    thickness_input.grid(row=3, column=1, columnspan=2, sticky="ew")
+  
+
+    # Apply Button
+    apply_button = tk.Button(popup, text="Aplicar", command=lambda: apply_changes(name_input, fill_color_input.get(), line_color_input.get(), thickness_input))
+    cancel_button = tk.Button(popup, text="Cancelar", command=popup.destroy)
+    apply_button.grid(row=4, column=0, columnspan=4, sticky="ew")
+    cancel_button.grid(row=5, column=0, columnspan=4, sticky="ew")
+
+  def add_polygon_window(self):
+    popup = self.popup(0, 300, "Adicionar Polígono")
+    def finish_polygon_callback():
+      name = name_input.get().strip() if name_input.get().strip() != "" else "Polygon"
+      points = points_input.get().strip("(").strip(")").replace(" ", "").split("),(")
+      try: points = [list(map(float, p.split(','))) for p in points]
+      except ValueError:
+        self.log("Erro: pontos inválidos.")
+        return
+      if len(points) < 3:
+        self.log("Erro: insira ao menos 3 pontos.")
+        return
+      points = [np.array(p) for p in points]
+
+      try: thickness = int(thickness_input.get())
+      except ValueError: thickness = 1
+      line_color = line_color_input.get().strip() if line_color_input.get().strip() != "" else "#000000"
+      fill_color = fill_color_input.get().strip() if fill_color_input.get().strip() != "" else "#ffffff"
+      self.viewport.add_polygon(points, name, line_color, fill_color, thickness)
+      popup.destroy()
+    
+    name_label = tk.Label(popup, text="Nome do objeto:")
+    name_input = tk.Entry(popup)
+    name_input.insert(0, "Polygon")
+    name_label.grid(row=0, column=0, sticky="ew")
+    name_input.grid(row=0, column=1, columnspan=2, sticky="ew")
+
+    points_label = tk.Label(popup, text="Pontos (x0,y0,z0),(x1,y1,z1),...,(xN,yN,zN):")
+    points_input = tk.Entry(popup)
+    points_label.grid(row=1, column=0, sticky="ew")
+    points_input.grid(row=1, column=1, columnspan=2, sticky="ew")
+
+    line_color_label = tk.Label(popup, text="Cor de contorno:")
+    line_color_input = tk.Entry(popup)
+    line_color_input.insert(0, "#000000")
+    line_color_button = tk.Button(popup, text="Escolher", command=lambda: (
+      color := colorchooser.askcolor(title="Escolha a cor da linha"),
+      line_color_input.delete(0, tk.END),
+      line_color_input.insert(0, color[1]) if color[1] else None
+    ))
+    line_color_label.grid(row=2, column=0, sticky="ew")
+    line_color_input.grid(row=2, column=1, sticky="ew")
+    line_color_button.grid(row=2, column=2, sticky="ew")
+
+    fill_color_label = tk.Label(popup, text="Cor de preenchimento:")
+    fill_color_input = tk.Entry(popup)
+    fill_color_input.insert(0, "#ffffff")
+    fill_color_button = tk.Button(popup, text="Escolher", command=lambda: (
+      color := colorchooser.askcolor(title="Escolha a cor de preenchimento"),
+      fill_color_input.delete(0, tk.END),
+      fill_color_input.insert(0, color[1]) if color[1] else None
+    ))
+    fill_color_label.grid(row=3, column=0, sticky="ew")
+    fill_color_input.grid(row=3, column=1, sticky="ew")
+    fill_color_button.grid(row=3, column=2, sticky="ew")
+
+    thickness_label = tk.Label(popup, text="Espessura da linha:")
+    thickness_input = tk.Entry(popup)
+    thickness_input.insert(0, "1")
+    thickness_label.grid(row=4, column=0, sticky="ew")
+    thickness_input.grid(row=4, column=1, columnspan=2, sticky="ew")
+
+    create_button = tk.Button(popup, text="Criar Polígono", command=finish_polygon_callback)
+    create_button.grid(row=5, column=0, columnspan=3, sticky="ew")
+
+    cancel_button = tk.Button(popup, text="Cancelar", command=popup.destroy)
+    cancel_button.grid(row=6, column=0, columnspan=3, sticky="ew")
+
+  def add_curve_window(self):
+    popup = self.popup(0, 200, "Adicionar Curva")
+    
+    def finish_curve_callback():
+      control_points = points_input.get().strip("(").strip(")").replace(" ", "").split("),(")
+      try: control_points = [list(map(float, p.split(','))) for p in control_points]
+      except ValueError:
+        self.log("Erro: pontos inválidos.")
+        return
+      control_points = [np.array(p) for p in control_points]
       if len(control_points) < 4:
         self.log("Erro: insira ao menos 4 pontos de controle.")
         return
       popup.destroy()
-      self.viewport.add_curve_from_points(control_points)
-      prompt_window.destroy() if prompt_window else None
+      self.viewport.add_curve(control_points, name_input.get().strip(), line_color_input.get().strip())
+      popup.destroy()
 
-    popup = tk.Toplevel(self.root)
-    title = "Adicionar Curva"
-    popup.title(title)
-    popup.geometry("300x200")
-    popup.resizable(False, False)
-    popup.grab_set()
+    name_label = tk.Label(popup, text="Nome do objeto:")
+    name_input = tk.Entry(popup)
+    name_input.insert(0, "Curve")
+    name_label.grid(row=0, column=0, sticky="ew")
+    name_input.grid(row=0, column=1, columnspan=2, sticky="ew")
 
-    instructions_control_points = tk.Label(popup, text="Pontos de controle (x0,y0,x1,y1,...,xN,yN)")
-    instructions_control_points.pack(pady=10)
-    control_points = tk.Entry(popup, justify="center")
-    control_points.pack(pady=5, padx=10, fill=tk.X, expand=True)
+    points_label = tk.Label(popup, text="Pontos de controle (x0,y0),(x1,y1),...,(xN,yN):")
+    points_input = tk.Entry(popup)
+    points_label.grid(row=1, column=0, sticky="ew")
+    points_input.grid(row=1, column=1, columnspan=2, sticky="ew")
 
-    create_button = tk.Button(popup, text="Criar/Alterar Curva", command=lambda: finish_curve_callback(control_points))
-    create_button.pack(pady=10)
+    line_color_label = tk.Label(popup, text="Cor da linha:")
+    line_color_input = tk.Entry(popup)
+    line_color_input.insert(0, "#000000")
+    line_color_button = tk.Button(popup, text="Escolher", command=lambda: (
+      color := colorchooser.askcolor(title="Escolha a cor da linha"),
+      line_color_input.delete(0, tk.END),
+      line_color_input.insert(0, color[1]) if color[1] else None
+    ))
+    line_color_label.grid(row=2, column=0, sticky="ew")
+    line_color_input.grid(row=2, column=1, sticky="ew")
+    line_color_button.grid(row=2, column=2, sticky="ew")
+
+    create_button = tk.Button(popup, text="Criar Curva", command=lambda: finish_curve_callback)
+    cancel_button = tk.Button(popup, text="Cancelar", command=popup.destroy)
+    create_button.grid(row=3, column=0, columnspan=3, sticky="ew")
+    cancel_button.grid(row=4, column=0, columnspan=3, sticky="ew")
 
 # Instance attributes control
   def toggle_building(self):
@@ -249,9 +428,27 @@ class SGI:
 
 # Wrappers for viewport methods
   def finish_polygon(self):
-    self.ui_build_button.config(relief=tk.RAISED)
-    self.viewport.finish_polygon()
-  
+    if self.viewport.building:
+      self.ui_build_button.config(relief=tk.RAISED)
+      self.viewport.finish_polygon()
+    else:
+      self.add_polygon_window()
+
   def finish_curve(self):
-    self.ui_build_button.config(relief=tk.RAISED)
-    self.viewport.finish_curve()
+    if self.viewport.building:
+      self.ui_build_button.config(relief=tk.RAISED)
+      self.viewport.finish_curve()
+    else:
+      self.add_curve_window()
+  
+  def get_selected_object(self) -> Wireframe | None:
+    selected = self.ui_object_list.selection()
+    if not selected:
+      self.log("Nenhum objeto selecionado.")
+      return None
+    item_id = int(self.ui_object_list.item(selected[0])['tags'][0])
+    target = next((obj for obj in self.viewport.objects if obj.id == item_id), None)
+    if target is None:
+      self.log("Objeto não encontrado.")
+      return None
+    return target

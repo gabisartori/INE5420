@@ -283,7 +283,21 @@ class Viewport:
     else: return
 
     self.update()
-  
+
+  def add_polygon(
+    self,
+    points: list[Point],
+    name: str="Polygon",
+    line_color: str="#000000",
+    fill_color: str="#ffffff",
+    thickness: int=1
+  ):
+    if len(points) < 3:
+      raise Exception("Polígono precisa de ao menos 3 pontos.")
+    self.objects.append(PolygonObject(name, points, line_color=line_color, fill_color=fill_color, thickness=thickness, id=self.id_counter))
+    self.id_counter += 1
+    self.update()
+
   def finish_building(self):
     """Adds the stored points to the viewport
     If a single point is stored, add a point object.
@@ -300,6 +314,19 @@ class Viewport:
 
     # Clear buffer and reset building state
     self.cancel_building()
+
+  def add_curve(
+    self,
+    control_points: list[Point],
+    name: str="Curve",
+    line_color: str="#000000",
+  ):
+    if len(control_points) < 4:
+      raise Exception("Curva precisa de ao menos 4 pontos de controle.")
+    new_curve = CurveObject_2D(name, control_points, steps=100, line_color=line_color, thickness=1, id=self.id_counter, curve_type=self.curve_type)
+    self.objects.append(new_curve)
+    self.id_counter += 1
+    self.update()
 
   def finish_curve(self):
     if len(self.building_buffer) < 4: 
