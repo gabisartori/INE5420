@@ -4,7 +4,7 @@ import numpy as np
 
 # TODO: Turn this into a dataclass and replace json load/save with asdict and fromdict
 class Preferences:
-  def __init__(self, application_name="INE5420 - SGI", debug=True, input_file="example.obj", output_file="output.obj", mode="3D", height=900, width=1400, zoom=1.0, window_normal={"x": 0, "y": 0, "z": -1}, window_position={"x": 0, "y": 0, "z": 100}, theme="light", show_onboarding=True, curve_algorithm=0, curve_coefficient=100, clipping_algorithm=1):
+  def __init__(self, application_name="INE5420 - SGI", debug=True, input_file="example.obj", output_file="output.obj", height=900, width=1400, zoom=1.0, window_normal={"x": 0, "y": 0, "z": -1}, window_position={"x": 0, "y": 0, "z": 100}, theme="light", show_onboarding=True, curve_algorithm=0, curve_coefficient=100, clipping_algorithm=1):
     self.application_name: str = application_name
     self.debug: bool = debug
     self.input_file: str = input_file
@@ -19,7 +19,6 @@ class Preferences:
     self.curve_algorithm: int = curve_algorithm
     self.curve_coefficient: int = curve_coefficient
     self.clipping_algorithm: int = clipping_algorithm
-    self.mode: str = mode
 
   def load_user_preferences(self, path="src/data/usr_data.json") -> 'Preferences':
     try:
@@ -41,7 +40,6 @@ class Preferences:
         self.height = pref.get("height", 900)
         self.width = pref.get("width", 1400)
         self.zoom = pref.get("zoom", 1.0)
-        self.mode = pref.get("mode", "2D")
 
         return Preferences(
           theme=self.theme,
@@ -58,7 +56,6 @@ class Preferences:
           height=self.height,
           width=self.width,
           zoom=self.zoom,
-          mode=self.mode
         )
         
     except FileNotFoundError:
@@ -88,7 +85,6 @@ class Preferences:
         "height": self.height,
         "width": self.width,
         "zoom": self.zoom,
-        "mode": self.mode
       }
     }
 

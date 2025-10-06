@@ -47,11 +47,19 @@ class Window:
 
   def rotate(self, angle: int=5):
     """Rotate the window around the normal vector."""
-    M = np.array([
-      [np.cos(np.radians(angle)), -np.sin(np.radians(angle)), 0],
-      [np.sin(np.radians(angle)),  np.cos(np.radians(angle)), 0],
-      [0, 0, 1]
-    ])
+    # M = np.array([
+    #   [np.cos(np.radians(angle)), -np.sin(np.radians(angle)), 0],
+    #   [np.sin(np.radians(angle)),  np.cos(np.radians(angle)), 0],
+    #   [0, 0, 1]
+    # ])
+    M = np.eye(3)
+    c = np.cos(np.radians(angle))
+    s = np.sin(np.radians(angle))
+    M[0, 0] = c
+    M[0, 2] = -s
+    M[2, 0] = s
+    M[2, 2] = c
+
     self.right = normalize(M @ self.right)
     self.up = normalize(M @ self.up)
     self.normal = normalize(np.cross(self.right, self.up))
@@ -84,6 +92,7 @@ class Window:
     return position
 
   def world_to_window(self, point: Point) -> tuple[float, float]:
+    point = point[:3]  # Ignore the homogeneous coordinate if present
     # Project the point onto the window view plane
     t = sum(self.normal[i] * (self.position[i] - point[i]) for i in range(len(point)))
     t /= sum(self.normal[i] * self.normal[i] for i in range(len(point)))
@@ -97,7 +106,9 @@ class Window:
     # TODO: This creates a point at the exact position of the window
     # It would be more useful if the user could control a distance from the window to which clicks are applied
     # This is quite simple to implement, but it would mess with how zoom is behaving
-    return x*self.right + y*self.up + self.position
+    a = np.append(x*self.right + y*self.up + self.position, 1.0)
+    print(a)
+    return a
 
   def window_to_viewport(self, x: float, y: float) -> tuple[float, float]:
     x = x*self.zoom + self.focus[0]
@@ -113,7 +124,7 @@ class Window:
 
   def viewport_to_world(self, x: float, y: float) -> Point:
     return self.window_to_world(*self.viewport_to_window(x, y))
-
+    
   def click_in_window(self, x: float, y: float) -> bool:
     xmin, ymin, xmax, ymax = self.get_corners()
     return xmin <= x <= xmax and ymin <= y <= ymax

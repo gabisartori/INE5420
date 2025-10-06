@@ -57,7 +57,7 @@ class Viewport:
               current_name = args[0]
               current_points = []
             case "v":
-              vertex = np.array([float(coord) for coord in args])
+              vertex = np.array([float(coord) for coord in args]) + [1.0]
               current_points.append(vertex)
             case "p":
               if len(current_points) == 1:
@@ -256,7 +256,8 @@ class Viewport:
       else: self.cancel_building()
       self.update()
     else:
-      self.undo()
+      self.objects.pop()
+      self.update()
 
   def toggle_building(self):
     self.building = not self.building

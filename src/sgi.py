@@ -6,7 +6,6 @@ from wireframe import *
 from window import *
 from components.my_types import *
 from clipping import *
-from data import preferences
 from config import PREFERENCES
 
 
@@ -19,16 +18,13 @@ class SGI:
     input: str | None, 
     output: str | None, 
     debug: bool
-    #preferences: preferences.Preferences
   ):
     # Config
-    #self.pr = preferences.load_user_preferences()
     self.width: int = PREFERENCES.width
     self.height: int = PREFERENCES.height
-    self.input_file: str | None = input if input is not None else PREFERENCES.input_file
-    self.output_file: str | None = output if output is not None else PREFERENCES.output_file
+    self.input_file: str | None = input
+    self.output_file: str | None = output
     self.debug: bool = debug
-
     # GUI
     self.root = tk.Tk()
     self.set_up_root(PREFERENCES.application_name)
@@ -99,7 +95,7 @@ class SGI:
     )
     # Canva
     self.canva = tk.Canvas(self.root, background="white", width=self.width*2//3, height=self.height*5//6)
-    self.viewport = Viewport(self.canva, self.clipping_algorithm, self.curve_type, self.log, self.ui_object_list, debug=self.debug)
+    self.viewport = Viewport(self.canva, self.clipping_algorithm, self.curve_type, self.log, self.ui_object_list, debug=self.debug, input_file=self.input_file)
 
 
 
@@ -173,6 +169,7 @@ class SGI:
     self.root.bind("<KeyPress-d>", lambda e: self.viewport.window.move_right() or self.viewport.update())
     self.root.bind("<KeyPress-q>", lambda e: self.viewport.window.move_below() or self.viewport.update())
     self.root.bind("<KeyPress-e>", lambda e: self.viewport.window.move_above() or self.viewport.update())
+    self.root.bind("<KeyPress-r>", lambda e: self.viewport.window.rotate() or self.viewport.update())
     self.root.bind("<KeyPress-Escape>", lambda e: self.cancel_building())
     self.root.bind("<Control-z>", lambda e: self.viewport.undo())
 
@@ -306,7 +303,7 @@ class SGI:
       if len(points) < 3:
         self.log("Erro: insira ao menos 3 pontos.")
         return
-      points = [np.array(p) for p in points]
+      points = [np.append(np.array(p), 1.0) for p in points]
 
       try: thickness = int(thickness_input.get())
       except ValueError: thickness = 1
@@ -371,7 +368,8 @@ class SGI:
       except ValueError:
         self.log("Erro: pontos inválidos.")
         return
-      control_points = [np.array(p) for p in control_points]
+      control_points = [np.append(np.array(p), 1.0) for p in control_points]
+
       if len(control_points) < 4:
         self.log("Erro: insira ao menos 4 pontos de controle.")
         return

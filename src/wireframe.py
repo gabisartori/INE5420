@@ -49,52 +49,45 @@ class Wireframe:
     The XY plane is chosen as the default plane for the 2D implementation of the program. This will then be replaced by the specific XY rotation for the 3D implementation.
     """
 
-    # If no point is given, set the rotation center to be the object's center.
-    if point is None:
-      px = self.center[0]
-      py = self.center[1]
-    # Otherwise, use the given point.
-    else:
-      px = point[0]
-      py = point[1]
+    point = point if point is not None else self.center
 
     # Move the object to be centered around the rotation point.
-    self.translate(-px, -py)
+    self.translate(*-point[:3])
     # TODO: When needing to specify which plane the rotation is in, all that needs to change is which matrix is being used.
     # Apply the rotation matrix.
-    self.transform2d(np.array([
-      [np.cos(np.radians(degrees)), -np.sin(np.radians(degrees)), 0],
-      [np.sin(np.radians(degrees)),  np.cos(np.radians(degrees)), 0],
-      [0, 0, 1]
+    self.transform(np.array([
+      [np.cos(np.radians(degrees)), -np.sin(np.radians(degrees)), 0, 0],
+      [np.sin(np.radians(degrees)),  np.cos(np.radians(degrees)), 0, 0],
+      [0, 0, 1, 0],
+      [0, 0, 0, 1]
     ]))
     # Move the object back to its original position.
-    self.translate(px, py)
+    self.translate(*point[:3])
 
-  def translate(self, dx: float, dy: float, dz: float=0) -> None:
+  def translate(self, dx: float, dy: float, dz: float) -> None:
     """Translate the object in the XY plane.
     
     Everything that was said about the XY plane in the rotate() method also applies here.
     """
-    self.transform2d(np.array([
-      [1, 0, dx],
-      [0, 1, dy],
-      [0, 0, 1]
+    self.transform(np.array([
+      [1, 0, 0, dx],
+      [0, 1, 0, dy],
+      [0, 0, 1, dz],
+      [0, 0, 0, 1]
     ]))
 
   def scale(self, factor: float) -> None:
     """Scale the object in the XY plane."""
-    px = self.center[0]
-    py = self.center[1]
-    self.translate(-px, -py)
-    self.transform2d(np.array([
-      [factor, 0, 0],
-      [0, factor, 0],
-      [0, 0, 1]
+    self.translate(*-self.center[:3])
+    self.transform(np.array([
+      [factor, 0, 0, 0],
+      [0, factor, 0, 0],
+      [0, 0, factor, 0],
+      [0, 0, 0, 1]
     ]))
-    self.translate(px, py)
+    self.translate(*self.center[:3])
 
-  # TODO: again, decide whether this should modify the original object or return a new one.
-  def transform2d(self, M: np.ndarray) -> None:
+  def transform(self, M: np.ndarray) -> None:
     """Applies the given matrix to all of the object's points."""
     self.points = [M @ p for p in self.points]
 
@@ -117,7 +110,7 @@ class PointObject(Wireframe):
     )
 
   def __str__(self) -> str:
-    return f"o {self.name}\nv {' '.join(map(str, self.points[0]))}\np 1"
+    return f"o {self.name}\nv {' '.join(map(str, self.points[0][:-1]))}\np 1"
 
 class LineObject(Wireframe):
   def __init__(self, name: str, start: Point, end: Point, **kwargs):
@@ -135,7 +128,7 @@ class LineObject(Wireframe):
     )
 
   def __str__(self) -> str:
-    return f"o {self.name}\nv {' '.join(map(str, self.points[0]))}\nv {' '.join(map(str, self.points[1]))}\nl 1 2"
+    return f"o {self.name}\nv {' '.join(map(str, self.points[0][:-1]))}\nv {' '.join(map(str, self.points[1][:-1]))}\nl 1 2"
 
 class PolygonObject(Wireframe):
   def __init__(self, name: str, points: list[Point], **kwargs):
@@ -152,7 +145,7 @@ class PolygonObject(Wireframe):
     )
 
   def __str__(self) -> str:
-    vertices_str = '\n'.join(f"v {' '.join(map(str, p))}" for p in self.points)
+    vertices_str = '\n'.join(f"v {' '.join(map(str, p[:-1]))}" for p in self.points)
     indices_str = ' '.join(str(i + 1) for i in range(len(self.points)))
     return f"o {self.name}\n{vertices_str}\nl {indices_str}"
 
@@ -178,12 +171,13 @@ class CurveObject_2D(Wireframe):
     )
     return new_obj
 
-  def bezier_algorithm(self, t, P0, P1, P2, P3) -> Point:
+  # TODO: Generalize for n-dimensional curves.
+  @staticmethod
+  def bezier_algorithm(t, P0, P1, P2, P3) -> Point:
     """Calculate points on a cubic Bezier curve defined by four control points."""
     x = (1 - t)**3 * P0[0] + 3 * (1 - t)**2 * t * P1[0] + 3 * (1 - t) * t**2 * P2[0] + t**3 * P3[0]
     y = (1 - t)**3 * P0[1] + 3 * (1 - t)**2 * t * P1[1] + 3 * (1 - t) * t**2 * P2[1] + t**3 * P3[1]
-    new_point = np.array([x, y, 1])
-    return new_point
+    return np.array([x, y, 1])
 
   def generate_bezier_points(self) -> list[Point]:
     """Generate points on the Bezier curve defined by the control points."""
@@ -273,6 +267,38 @@ class CurveObject_2D(Wireframe):
     return curve_points
 
   def __str__(self) -> str:
-    vertices_str = '\n'.join(f"v {' '.join(map(str, p))}" for p in self.control_points)
+    vertices_str = '\n'.join(f"v {' '.join(map(str, p[:-1]))}" for p in self.control_points)
     indices_str = ' '.join(str(i + 1) for i in range(len(self.control_points)))
     return f"o {self.name}\n{vertices_str}\nc {indices_str}"
+
+class PolyhedronObject(Wireframe):
+  """The polyhedron is built from a list of edges, each defined by a pair of points.
+  The attribute *points* is then derived from these edges, containing the polyhedron's vertices.
+
+  The vertices will still be useful to calculate the object's center
+  """
+  def __init__(self, name: str, edges: list[tuple[Point, Point]], **kwargs):
+    points = set()
+    self.edges = edges
+    for start, end in edges:
+      points.add(start)
+      points.add(end)
+    super().__init__(name, list(points), **kwargs)
+  
+  def copy(self) -> 'PolyhedronObject':
+    new_obj = PolyhedronObject(
+      self.name,
+      [(start.copy(), end.copy()) for start, end in self.edges],
+      id=self.id,
+      thickness=self.thickness,
+      line_color=self.line_color,
+      fill_color=self.fill_color
+    )
+
+    return new_obj
+  
+  # TODO: Write this properly, copilot did it and I haven't read it at all.
+  def __str__(self) -> str:
+    vertices_str = '\n'.join(f"v {' '.join(map(str, p[:-1]))}" for p in self.points)
+    edges_str = '\n'.join(f"l {self.points.index(start) + 1} {self.points.index(end) + 1}" for start, end in self.edges)
+    return f"o {self.name}\n{vertices_str}\n{edges_str}"

@@ -13,7 +13,7 @@
     "window_position": {
       "x": 0,
       "y": 0,
-      "z": 1
+      "z": 75
     },
     "application_name": "INE5420 - SGI",
     "debug": true,
@@ -21,7 +21,6 @@
     "output_file": "output.obj",
     "height": 900,
     "width": 1400,
-    "zoom": 1,
-    "mode": "2D"
+    "zoom": 1.0
   }
 }
