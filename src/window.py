@@ -72,7 +72,7 @@ class Window:
 
   # TODO: Add a way for the user to call this function
   def recenter(self):
-    self.position = np.array([0, 0, 100])
+    self.position = np.array([0, 0, 0])
     self.normal = np.array([0, 0, -1])
     self.zoom = 1.0
     self.window_focus = (0, 0)
