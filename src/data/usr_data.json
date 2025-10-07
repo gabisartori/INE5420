@@ -5,17 +5,6 @@
   "debug": true,
   "height": 750,
   "width": 1000,
-  "zoom": 1.0,
-  "window_normal": [
-    0,
-    0,
-    -1
-  ],
-  "window_position": [
-    0,
-    0,
-    0
-  ],
   "curve_algorithm": 1,
   "curve_coefficient": 100,
   "clipping_algorithm": 0

@@ -74,6 +74,8 @@ class Window:
   def recenter(self):
     self.position = np.array([0, 0, 0])
     self.normal = np.array([0, 0, -1])
+    self.right = np.array([1, 0, 0])
+    self.up = np.array([0, 1, 0])
     self.zoom = 1.0
     self.window_focus = (0, 0)
     self.focus = (self.width // 2, self.height // 2)
@@ -106,9 +108,7 @@ class Window:
     # TODO: This creates a point at the exact position of the window
     # It would be more useful if the user could control a distance from the window to which clicks are applied
     # This is quite simple to implement, but it would mess with how zoom is behaving
-    a = np.append(x*self.right + y*self.up + self.position, 1.0)
-    print(a)
-    return a
+    return np.append(x*self.right + y*self.up + self.position, 1.0)
 
   def window_to_viewport(self, x: float, y: float) -> tuple[float, float]:
     x = x*self.zoom + self.focus[0]
