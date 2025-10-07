@@ -105,13 +105,17 @@ class SGI:
     self.ui_close_polygon_button = tk.Button(self.root, text="Polígono", command=self.finish_polygon)
     self.ui_create_curve_button = tk.Button(self.root, text="Curva", command=self.finish_curve)
     self.ui_object_properties_button = tk.Button(self.root, text="Propriedades", command=self.properties_window) # also on mouse right click on object at table
-    self.ui_rotate_object_button = tk.Button(self.root, text="Girar", command=self.rotate_selected_object)
+    self.ui_rotate_x_button = tk.Button(self.root, text="Girar X", command=lambda:self.rotate_selected_object(a1=1, a2=2))
+    self.ui_rotate_y_button = tk.Button(self.root, text="Girar Y", command=lambda:self.rotate_selected_object(a1=0, a2=2))
+    self.ui_rotate_z_button = tk.Button(self.root, text="Girar Z", command=lambda:self.rotate_selected_object(a1=0, a2=1))
+
     self.ui_translate_object_button = tk.Button(self.root, text="Deslocar", command=self.translate_selected_object)
     self.ui_scale_button = tk.Button(self.root, text="Escalar", command=self.scale_selected_object)
 
     self.ui_point_label = tk.Label(self.root, text="Ponto (x,y):")
-    self.ui_point_x_input = tk.Entry(self.root)
-    self.ui_point_y_input = tk.Entry(self.root)
+    self.ui_point_x_input = tk.Entry(self.root, width=10)
+    self.ui_point_y_input = tk.Entry(self.root, width=10)
+    self.ui_point_z_input = tk.Entry(self.root, width=10)
 
     self.ui_degree_label = tk.Label(self.root, text="Ângulo:")
     self.ui_degree_var = tk.StringVar(value="Ângulo")
@@ -141,15 +145,21 @@ class SGI:
     self.ui_close_polygon_button.grid(row=12, column=2, rowspan=1, columnspan=1, sticky="nsew")
     self.ui_create_curve_button.grid(row=12, column=3, rowspan=1, columnspan=1, sticky="nsew")
 
-    self.ui_rotate_object_button.grid(row=13, column=0, rowspan=1, columnspan=2, sticky="nsew")
-    self.ui_translate_object_button.grid(row=13, column=2, rowspan=1, columnspan=1, sticky="nsew")
+
+    self.ui_translate_object_button.grid(row=13, column=0, rowspan=1, columnspan=3, sticky="nsew")
     self.ui_scale_button.grid(row=13, column=3, rowspan=1, columnspan=1, sticky="nsew")
 
-    self.ui_object_properties_button.grid(row=14, column=0, rowspan=1, columnspan=4, sticky="nsew")
+    self.ui_rotate_x_button.grid(row=14, column=0, rowspan=1, columnspan=1, sticky="nsew")
+    self.ui_rotate_y_button.grid(row=14, column=1, rowspan=1, columnspan=2, sticky="nsew")
+    self.ui_rotate_z_button.grid(row=14, column=3, rowspan=1, columnspan=1, sticky="nsew")
+    
+    self.ui_object_properties_button.grid(row=18, column=0, rowspan=1, columnspan=4, sticky="nsew")
 
-    self.ui_point_label.grid(row=15, column=0, rowspan=1, columnspan=2, sticky="nsew")
-    self.ui_point_x_input.grid(row=15, column=2, rowspan=1, columnspan=1, sticky="nsew")
-    self.ui_point_y_input.grid(row=15, column=3, rowspan=1, columnspan=1, sticky="nsew")
+    self.ui_point_label.grid(row=15, column=0, rowspan=1, columnspan=1, sticky="nsew")
+    self.ui_point_x_input.grid(row=15, column=1, rowspan=1, columnspan=1, sticky="nsew")
+    self.ui_point_y_input.grid(row=15, column=2, rowspan=1, columnspan=1, sticky="nsew")
+    self.ui_point_z_input.grid(row=15, column=3, rowspan=1, columnspan=1, sticky="nsew")
+
     self.ui_degree_label.grid(row=16, column=0, rowspan=1, columnspan=2, sticky="nsew")
     self.ui_degree_input.grid(row=16, column=2, rowspan=1, columnspan=2, sticky="nsew")
     self.ui_scale_factor_label.grid(row=17, column=0, rowspan=1, columnspan=2, sticky="nsew")
@@ -448,7 +458,7 @@ class SGI:
       return None
     return target
 
-  def rotate_selected_object(self):
+  def rotate_selected_object(self, a1: int=0, a2: int=1):
     angle = self.ui_degree_input.get()
     # If the angle_input is invalid, rotate 15 degrees by default
     # Otherwise, rotate by the specified angle
@@ -462,22 +472,23 @@ class SGI:
 
     match self.get_selected_object(log=False):
       # If no target is selected, rotate window
-      case None: self.viewport.window.rotate(angle)
+      case None: self.viewport.window.rotate(angle, a1, a2)
       # Rotate selected object
       case target:
         # If no valid point is specified, rotate around object's center
         # Otherwise, rotate around specified point
         rx = self.ui_point_x_input.get()
         ry = self.ui_point_y_input.get()
-        rz = '1'
+        rz = self.ui_point_z_input.get()
         try:
-          rx = int(rx)
-          ry = int(ry)
-          rz = int(rz)
+          rx = float(rx)
+          ry = float(ry)
+          rz = float(rz)
+          point = np.array([rx, ry, rz, 1.0])
+          target.rotate(angle, point, a1, a2)
         except ValueError:
-          rx, ry, rz = target.center
+          target.rotate(angle, None, a1, a2)
 
-        target.rotate(angle, np.array([rx, ry, rz]))
     self.viewport.update()
 
   def translate_selected_object(self):
@@ -485,7 +496,7 @@ class SGI:
     if target is None: return
     dx = self.ui_point_x_input.get()
     dy = self.ui_point_y_input.get()
-    dz = '1'
+    dz = self.ui_point_z_input.get()
     try: dx = int(dx)
     except ValueError: dx = 0
     try: dy = int(dy)

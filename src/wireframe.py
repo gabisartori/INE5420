@@ -42,7 +42,7 @@ class Wireframe:
 
   # TODO: For 3D objects, there must be three different rotations, one for each axis.
   # TODO: Decide whether this function should alter the original object or return a new one with the new coordinates.
-  def rotate(self, degrees: int=5, point: Point | None=None) -> None:
+  def rotate(self, degrees: int=5, point: Point | None=None, a1: int=0, a2: int=1) -> None:
     """Rotates the object around a given point in the XY plane.
     If no point is given, rotate around the center of the object.
 
@@ -55,12 +55,12 @@ class Wireframe:
     self.translate(*-point[:3])
     # TODO: When needing to specify which plane the rotation is in, all that needs to change is which matrix is being used.
     # Apply the rotation matrix.
-    self.transform(np.array([
-      [np.cos(np.radians(degrees)), -np.sin(np.radians(degrees)), 0, 0],
-      [np.sin(np.radians(degrees)),  np.cos(np.radians(degrees)), 0, 0],
-      [0, 0, 1, 0],
-      [0, 0, 0, 1]
-    ]))
+    M = np.eye(4)
+    M[a1, a1] = np.cos(np.radians(degrees))
+    M[a1, a2] = -np.sin(np.radians(degrees))
+    M[a2, a1] = np.sin(np.radians(degrees))
+    M[a2, a2] = np.cos(np.radians(degrees))
+    self.transform(M)
     # Move the object back to its original position.
     self.translate(*point[:3])
 
@@ -149,6 +149,7 @@ class PolygonObject(Wireframe):
     indices_str = ' '.join(str(i + 1) for i in range(len(self.points)))
     return f"o {self.name}\n{vertices_str}\nl {indices_str}"
 
+# TODO: Implement 3D curves.
 class CurveObject_2D(Wireframe):
   def __init__(self, name: str, control_points: list[Point], steps: int, curve_type: CurveType = CurveType.BEZIER, **kwargs):
     self.steps = steps

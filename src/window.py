@@ -45,7 +45,7 @@ class Window:
 
   def move_above(self): self.position[2] += max(self.speed/self.zoom, 1)
 
-  def rotate(self, angle: int=5):
+  def rotate(self, angle: int=5, a1: int=0, a2: int=1):
     """Rotate the window around the normal vector."""
     # M = np.array([
     #   [np.cos(np.radians(angle)), -np.sin(np.radians(angle)), 0],
@@ -55,10 +55,10 @@ class Window:
     M = np.eye(3)
     c = np.cos(np.radians(angle))
     s = np.sin(np.radians(angle))
-    M[0, 0] = c
-    M[0, 2] = -s
-    M[2, 0] = s
-    M[2, 2] = c
+    M[a1, a1] = c
+    M[a1, a2] = -s
+    M[a2, a1] = s
+    M[a2, a2] = c
 
     self.right = normalize(M @ self.right)
     self.up = normalize(M @ self.up)
