@@ -1,10 +1,10 @@
 {
-  "input_file": "./a.obj",
-  "output_file": "./b.obj",
+  "input_file": "a.obj",
+  "output_file": "b.obj",
   "application_name": "INE5420 - SGI",
   "debug": true,
-  "height": 900,
-  "width": 1400,
+  "height": 750,
+  "width": 1000,
   "zoom": 1.0,
   "window_normal": [
     0,

@@ -16,8 +16,8 @@ class Window:
     self.position: Point = self.preferences.window_position
     self.speed: int = 5
     self.zoom: float = self.preferences.zoom
-    self.width: int = self.preferences.width*2//3
-    self.height: int = self.preferences.height*5//6
+    self.width: int = self.preferences.width
+    self.height: int = self.preferences.height
     self.focus: tuple[float, float] = (self.width // 2, self.height // 2)
     self.window_focus: tuple[float, float] = (0, 0)
     self.max_zoom = 100.0

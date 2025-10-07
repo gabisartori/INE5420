@@ -43,8 +43,6 @@ class SGI:
 # Main window and components setup
   def set_up_root(self, title: str):
     self.root.title(title)
-    # TODO: Remove this
-    self.root.geometry(f"{self.width}x{self.height}")
     self.root.resizable(False, False)
     self.root.protocol("WM_DELETE_WINDOW", self.exit)
 
@@ -94,7 +92,7 @@ class SGI:
       style="Custom.Treeview"
     )
     # Canva
-    self.canva = tk.Canvas(self.root, background="white", width=self.width*2//3, height=self.height*5//6)
+    self.canva = tk.Canvas(self.root, background="white", width=self.width, height=self.height)
     self.viewport = Viewport(self.canva, self.clipping_algorithm, self.curve_type, self.log, self.ui_object_list, debug=self.debug, input_file=self.input_file)
 
 

@@ -28,7 +28,9 @@ class Preferences:
   @classmethod
   def load_user_preferences(cls, path="src/data/usr_data.json") -> 'Preferences':
     pref = json.load(open(path))
-    return Preferences(input_file="./a.obj", output_file="./b.obj", **pref)
+    pref["input_file"] = "a.obj"
+    pref["output_file"] = "b.obj"
+    return Preferences(**pref)
 
   def save_user_preferences(self, path="src/data/usr_data.json"):
     try:
