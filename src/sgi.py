@@ -129,6 +129,7 @@ class SGI:
     )
 
     # Log session
+    # TODO: This needs to be created before the viewport so that the viewport can use the log function
     self.ui_log = scrolledtext.ScrolledText(self.root, bg="white", fg="black", state="disabled", font=("Arial", 10), height=9)
 
     # Control buttons and input fields

@@ -115,10 +115,10 @@ class Viewport:
 
       return len(objects), objects
     except FileNotFoundError:
-      self.log(f"Arquivo {filepath} não encontrado.")
+      print(f"Arquivo {filepath} não encontrado.")
       return 0, []
     except Exception as e:
-      self.log(f"Erro: Erro ao carregar objetos: {e}")
+      print(f"Erro: Erro ao carregar objetos: {e}")
       return 0, []
 
   def save_objects(self, path: str):
