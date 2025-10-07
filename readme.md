@@ -17,7 +17,14 @@ Retorna a lista de funcionalidades do programa
 ## Controles
 As utilidades do SGI são acessíveis por meio das seguintes entradas de instruções:
 - **Display file:** O SGI recebe como argumentos caminhos para arquivos que podem ser usados para carregar objetos já existentes ou para armazenar os objetos criados durante a execução. Detalhes em [#Execução] .
-- **Navegação:** `a,w,s,d` para se mover para esquerda, cima, baixo e direita respectivamente. Além disso, clicar com o botão direito do mouse na tela irá centralizar a posição da janela no ponto clicado.
+- **Navegação:** 
+  - Eixo X: `(a, d)`
+  - Eixo Y: `(w,s)`
+  - Eixo Z: `(q,e)`
+- **Girar câmera:**
+  - Eixo X: `(r, t)`
+  - Eixo Y: `(f, g)`
+  - Eixo Z: `(v, b)`
 - **Zoom:** Scroll do mouse para cima para aumentar e baixo para diminuir.
 - **Inserir objetos:**
   - **Ponto:** Cada clique no canva por padrão irá inserir um ponto;

@@ -95,8 +95,6 @@ class SGI:
     self.canva = tk.Canvas(self.root, background="white", width=self.width, height=self.height)
     self.viewport = Viewport(self.canva, self.clipping_algorithm, self.curve_type, self.log, self.ui_object_list, debug=self.debug, input_file=self.input_file)
 
-
-
     # Log session
     self.ui_log = scrolledtext.ScrolledText(self.root, bg="white", fg="black", state="disabled", font=("Arial", 10), height=9)
 
@@ -171,13 +169,22 @@ class SGI:
     self.root.bind("<Button-2>", lambda e: self.viewport.toggle_debug())
     self.root.bind("<Button-4>", lambda e: self.viewport.window.zoom_in(e.x, e.y) or self.viewport.update())
     self.root.bind("<Button-5>", lambda e: self.viewport.window.zoom_out(e.x, e.y) or self.viewport.update())
+    # Camera navegation
     self.root.bind("<KeyPress-w>", lambda e: self.viewport.window.move_up() or self.viewport.update())
     self.root.bind("<KeyPress-s>", lambda e: self.viewport.window.move_down() or self.viewport.update())
     self.root.bind("<KeyPress-a>", lambda e: self.viewport.window.move_left() or self.viewport.update())
     self.root.bind("<KeyPress-d>", lambda e: self.viewport.window.move_right() or self.viewport.update())
     self.root.bind("<KeyPress-q>", lambda e: self.viewport.window.move_below() or self.viewport.update())
     self.root.bind("<KeyPress-e>", lambda e: self.viewport.window.move_above() or self.viewport.update())
-    self.root.bind("<KeyPress-r>", lambda e: self.viewport.window.rotate() or self.viewport.update())
+    # Camera rotation
+    self.root.bind("<KeyPress-r>", lambda e: self.viewport.window.rotate(angle=5 , a1=1, a2=2) or self.viewport.update())
+    self.root.bind("<KeyPress-t>", lambda e: self.viewport.window.rotate(angle=-5, a1=1, a2=2) or self.viewport.update())
+    self.root.bind("<KeyPress-f>", lambda e: self.viewport.window.rotate(angle=5 , a1=0, a2=2) or self.viewport.update())
+    self.root.bind("<KeyPress-g>", lambda e: self.viewport.window.rotate(angle=-5, a1=0, a2=2) or self.viewport.update())
+    self.root.bind("<KeyPress-v>", lambda e: self.viewport.window.rotate(angle=5 , a1=0, a2=1) or self.viewport.update())
+    self.root.bind("<KeyPress-b>", lambda e: self.viewport.window.rotate(angle=-5, a1=0, a2=1) or self.viewport.update())
+    
+    # Extras
     self.root.bind("<KeyPress-Escape>", lambda e: self.cancel_building())
     self.root.bind("<Control-z>", lambda e: self.viewport.undo())
 
