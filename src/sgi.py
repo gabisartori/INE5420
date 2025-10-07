@@ -32,7 +32,6 @@ class SGI:
     self.input_file: str | None = input_file
     self.output_file: str | None = output_file
     self.debug: bool = debug
-    self.curve_coefficient: int = curve_coefficient
     self.window_position: list[float] = window_position
     self.window_normal: list[float] = window_normal
     self.window_up: list[float] = window_up
@@ -49,6 +48,7 @@ class SGI:
     ## This means that changing them here will change them in the Viewport class too
     self.line_clipping_algorithm = tk.IntVar(value=line_clipping_algorithm)
     self.curve_type = tk.IntVar(value=curve_type)
+    self.curve_coefficient = tk.IntVar(value=curve_coefficient)
 
     self.create_components()
     self.create_navbar()
@@ -78,9 +78,20 @@ class SGI:
     clipping_submenu.add_radiobutton(label="Liang-Barsky", value=1, variable=self.line_clipping_algorithm)
     curve_submenu.add_radiobutton(label="Bézier", value=0, variable=self.curve_type)
     curve_submenu.add_radiobutton(label="B-Spline", value=1, variable=self.curve_type)
+    curve_submenu.add_command(label="Grau de continuidade", command=lambda: (
+      popup := self.popup(250, 100, "Grau de continuidade"),
+      tk.Label(popup, text="Grau de continuidade:").pack(),
+      input := tk.Entry(popup),
+      input.insert(0, str(self.curve_coefficient.get())),
+      input.pack(),
+      tk.Button(popup, text="Aplicar", command=lambda: (
+        self.curve_coefficient.set(int(input.get())) if input.get().isnumeric() and int(input.get()) > 0 else None,
+        popup.destroy()
+      )).pack(),
+    ))
 
     settings_menu.add_cascade(label="Algoritmo de Recorte", menu=clipping_submenu)
-    settings_menu.add_cascade(label="Tipo de Curva", menu=curve_submenu)
+    settings_menu.add_cascade(label="Curvas", menu=curve_submenu)
 
     self.navbar.add_cascade(label="Arquivo", menu=file_menu)
     self.navbar.add_cascade(label="Configurações", menu=settings_menu)
@@ -244,8 +255,8 @@ class SGI:
         "window_zoom": self.viewport.window.zoom,
         "line_clipping_algorithm": self.line_clipping_algorithm.get(),
         "curve_type": self.curve_type.get(),
-        "curve_coefficient": self.curve_coefficient,
-        "debug": self.debug,
+        "curve_coefficient": self.curve_coefficient.get(),
+        "debug": self.viewport.debug,
       }, f, indent=2)
 
     # Save objects to output file if specified

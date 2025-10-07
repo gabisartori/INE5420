@@ -18,8 +18,7 @@ class Viewport:
     width: int,
     height: int,
     curve_type: IntVar,
-    # TODO: change curve_coefficient to IntVar too
-    curve_coefficient: int,
+    curve_coefficient: IntVar,
     debug: bool,
     window_position: list[float],
     window_normal: list[float],
@@ -47,6 +46,7 @@ class Viewport:
       window_padding,
       line_clipping_algorithm,
     )
+    self.curve_coefficient = curve_coefficient
 
     self.id_counter: int
     self.objects: list[Wireframe]
@@ -100,7 +100,7 @@ class Viewport:
               control_points = [current_points[i] for i in indices if 0 <= i < len(current_points)]
               if len(control_points) >= 2:
                 # TODO: get the chosen steps number from idk where
-                new_curve = CurveObject_2D(current_name, control_points, steps=100, id=len(objects))
+                new_curve = CurveObject_2D(current_name, control_points, steps=self.curve_coefficient.get(), id=len(objects))
                 if curve_type == 1:
                   new_curve.generate_b_spline_points()
                 else:
@@ -350,7 +350,7 @@ class Viewport:
   ):
     if len(control_points) < 4:
       raise Exception("Curva precisa de ao menos 4 pontos de controle.")
-    new_curve = CurveObject_2D(name, control_points, steps=100, line_color=line_color, thickness=1, id=self.id_counter, curve_type=self.curve_type)
+    new_curve = CurveObject_2D(name, control_points, steps=self.curve_coefficient.get(), line_color=line_color, thickness=1, id=self.id_counter, curve_type=self.curve_type)
     self.objects.append(new_curve)
     self.id_counter += 1
     self.update()
@@ -358,6 +358,6 @@ class Viewport:
   def finish_curve(self):
     if len(self.building_buffer) < 4: 
       raise Exception("Erro: Pelo menos quatro pontos são necessários para formar uma curva de Bézier cúbica.")
-    self.objects.append(CurveObject_2D("Curva", self.building_buffer.copy(), steps=100, id=self.id_counter, curve_type=self.curve_type))
+    self.objects.append(CurveObject_2D("Curva", self.building_buffer.copy(), steps=self.curve_coefficient.get(), id=self.id_counter, curve_type=self.curve_type))
     self.id_counter += 1
     self.cancel_building()
