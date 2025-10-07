@@ -4,7 +4,7 @@ from tkinter import ttk, colorchooser, scrolledtext
 import json
 
 from viewport import *
-import my_logging
+from logger import logging
 from config import USER_PREFERENCES_PATH
 
 class SGI:
@@ -252,7 +252,7 @@ class SGI:
       try:
         self.viewport.save_objects(self.output_file)
       except Exception as e:
-        my_logging.default_log(f"Erro ao salvar objetos: {e}")
+          logging.error(f"Erro ao salvar objetos: {e}")
     return self.viewport.objects
 
   @staticmethod

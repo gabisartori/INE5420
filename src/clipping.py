@@ -3,7 +3,8 @@ from tkinter import IntVar
 from enum import Enum
 import numpy as np
 from wireframe import *
-import my_logging
+
+from logger import logging
 
 class Code(Enum):
   INSIDE  = 0b0000
@@ -215,7 +216,7 @@ class Clipping:
 
     if len(new_points) == 0: return None
     elif len(new_points) < 3:
-      my_logging.default_log("How tf'd u get here")
+      logging.warning(f"This point should not be reachable. {new_points=}")
       return None
     current_points = new_points.copy()
     new_points = []
@@ -245,8 +246,8 @@ class Clipping:
         new_points.append(curr)
     if len(new_points) == 0: return None
     elif len(new_points) < 3:
-      my_logging.default_log("How tf'd u get here")
-      return None    
+      logging.warning(f"This point should not be reachable. {new_points=}")
+      return None
     current_points = new_points.copy()
     new_points = []
 
@@ -275,7 +276,7 @@ class Clipping:
         new_points.append(curr)
     if len(new_points) == 0: return None
     elif len(new_points) < 3:
-      my_logging.default_log("How tf'd u get here")
+      logging.warning(f"This point should not be reachable. {new_points=}")
       return None
     current_points = new_points.copy()
     new_points = []
@@ -305,7 +306,7 @@ class Clipping:
         new_points.append(curr)
     if len(new_points) == 0: return None
     elif len(new_points) < 3:
-      my_logging.default_log("How tf'd u get here")
+      logging.warning(f"This point should note be reachable. {new_points=}")
       return None
     return new_points
 
