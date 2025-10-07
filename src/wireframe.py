@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from components.my_types import Point
+from my_types import Point
 import numpy as np
 
 from enum import Enum

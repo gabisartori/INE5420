@@ -1,39 +1,54 @@
 import tkinter as tk
-from tkinter import ttk, font, colorchooser, simpledialog, scrolledtext
+from tkinter import ttk, colorchooser, scrolledtext
+
+import json
 
 from viewport import *
-from wireframe import *
-from window import *
-from components.my_types import *
-from clipping import *
-from config import PREFERENCES
-
+import my_logging
+from config import USER_PREFERENCES_PATH
 
 class SGI:
   def __init__(
     self,
-    # width: int=config.WIDTH, 
-    # height: int=config.HEIGHT, 
-    # title: str=config.APPLICATION_NAME, 
-    input: str | None, 
-    output: str | None, 
-    debug: bool
+    title: str,
+    input_file: str,
+    output_file: str,
+    width: int,
+    height: int,
+    curve_type: int,
+    curve_coefficient: int,
+    debug: bool,
+    window_zoom: float,
+    window_position: list[float],
+    window_normal: list[float],
+    window_up: list[float],
+    window_movement_speed: int,
+    window_rotation_speed: int,
+    window_padding: int,
+    line_clipping_algorithm: int,
   ):
-    # Config
-    self.width: int = PREFERENCES.width
-    self.height: int = PREFERENCES.height
-    self.input_file: str | None = input
-    self.output_file: str | None = output
+    self.width: int = width
+    self.height: int = height
+    self.input_file: str | None = input_file
+    self.output_file: str | None = output_file
     self.debug: bool = debug
+    self.curve_coefficient: int = curve_coefficient
+    self.window_position: list[float] = window_position
+    self.window_normal: list[float] = window_normal
+    self.window_up: list[float] = window_up
+    self.window_movement_speed: int = window_movement_speed
+    self.window_rotation_speed: int = window_rotation_speed
+    self.window_padding: int = window_padding
+    self.window_zoom: float = window_zoom
+
     # GUI
     self.root = tk.Tk()
-    self.set_up_root(PREFERENCES.application_name)
+    self.set_up_root(title)
 
-    ## The *clipping_algorithm* and *curve_type* variables will be also passed to the Viewport class
-    ## Hopefully, this means that changing them here will change them in the Viewport class too
-    ## TODO: There's probably a better place to initialize these variables
-    self.clipping_algorithm = tk.IntVar(value=PREFERENCES.clipping_algorithm)
-    self.curve_type = tk.IntVar(value=PREFERENCES.curve_algorithm)
+    ## The *line_clipping_algorithm* and *curve_type* variables will be also passed to the Viewport class
+    ## This means that changing them here will change them in the Viewport class too
+    self.line_clipping_algorithm = tk.IntVar(value=line_clipping_algorithm)
+    self.curve_type = tk.IntVar(value=curve_type)
 
     self.create_components()
     self.create_navbar()
@@ -44,7 +59,6 @@ class SGI:
   def set_up_root(self, title: str):
     self.root.title(title)
     self.root.resizable(False, False)
-    self.root.protocol("WM_DELETE_WINDOW", self.exit)
 
   def create_navbar(self):
     self.navbar = tk.Menu(self.root)
@@ -53,15 +67,15 @@ class SGI:
     file_menu = tk.Menu(self.navbar, tearoff=0)
     file_menu.add_command(label="Limpar tela", command=self.viewport.clear)
     file_menu.add_command(label="Recentralizar", command=self.viewport.recenter)
-    file_menu.add_command(label="Sair", command=self.exit)
+    file_menu.add_command(label="Sair", command=self.root.quit)
 
     # Configurações menu
     settings_menu = tk.Menu(self.navbar, tearoff=0)
     clipping_submenu = tk.Menu(settings_menu, tearoff=0)
     curve_submenu = tk.Menu(settings_menu, tearoff=0)
 
-    clipping_submenu.add_radiobutton(label="Cohen-Sutherland", value=0, variable=self.clipping_algorithm)
-    clipping_submenu.add_radiobutton(label="Liang-Barsky", value=1, variable=self.clipping_algorithm)
+    clipping_submenu.add_radiobutton(label="Cohen-Sutherland", value=0, variable=self.line_clipping_algorithm)
+    clipping_submenu.add_radiobutton(label="Liang-Barsky", value=1, variable=self.line_clipping_algorithm)
     curve_submenu.add_radiobutton(label="Bézier", value=0, variable=self.curve_type)
     curve_submenu.add_radiobutton(label="B-Spline", value=1, variable=self.curve_type)
 
@@ -93,7 +107,26 @@ class SGI:
     )
     # Canva
     self.canva = tk.Canvas(self.root, background="white", width=self.width, height=self.height)
-    self.viewport = Viewport(self.canva, self.clipping_algorithm, self.curve_type, self.log, self.ui_object_list, debug=self.debug, input_file=self.input_file)
+    self.viewport = Viewport(
+      self.canva,
+      self.log,
+      self.ui_object_list,
+      self.input_file,
+      self.output_file,
+      self.width,
+      self.height,
+      self.curve_type,
+      self.curve_coefficient,
+      self.debug,
+      self.window_position,
+      self.window_normal,
+      self.window_up,
+      self.window_movement_speed,
+      self.window_rotation_speed,
+      self.window_padding,
+      self.window_zoom,
+      self.line_clipping_algorithm,
+    )
 
     # Log session
     self.ui_log = scrolledtext.ScrolledText(self.root, bg="white", fg="black", state="disabled", font=("Arial", 10), height=9)
@@ -201,17 +234,26 @@ class SGI:
 # Main loop and exit
   def run(self) -> list[Wireframe]:
     self.root.mainloop()
+    # Save current state
+    with open(USER_PREFERENCES_PATH, "w") as f:
+      json.dump({
+        "window_position": self.viewport.window.position.tolist(),
+        "window_normal": self.viewport.window.normal.tolist(),
+        "window_up": self.viewport.window.up.tolist(),
+        "window_zoom": self.viewport.window.zoom,
+        "line_clipping_algorithm": self.line_clipping_algorithm.get(),
+        "curve_type": self.curve_type.get(),
+        "curve_coefficient": self.curve_coefficient,
+        "debug": self.debug,
+      }, f, indent=2)
+
+    # Save objects to output file if specified
     if self.output_file:
       try:
         self.viewport.save_objects(self.output_file)
       except Exception as e:
-        self.log(f"Erro ao salvar objetos: {e}")
+        my_logging.default_log(f"Erro ao salvar objetos: {e}")
     return self.viewport.objects
-
-  def exit(self):
-    # TODO: Save user preferences and current objects to output file
-    self.root.quit()
-    PREFERENCES.save_user_preferences()
 
   @staticmethod
   def popup(width: int, height: int, title: str) -> tk.Toplevel:

@@ -1,57 +1,61 @@
 import numpy as np
+from my_types import Point
 
-import config
-from components.my_types import Point
 
-def normalize(v: Point) -> Point:
+def normalize(v: Point | list[float]) -> Point:
   """Normalize a vector."""
+  v = np.array(v)
   norm = np.linalg.norm(v)
   return v / norm if norm != 0 else v
 
 class Window:
-  #def __init__(self, normal: Point=config.WINDOW_NORMAL, position: Point=config.WINDOW_POSITION, width: int=config.WIDTH, height: int=config.HEIGHT, zoom: float=config.ZOOM):
-  def __init__(self):
-    self.preferences = config.PREFERENCES 
-    self.normal: Point = normalize(self.preferences.window_normal)
-    self.position: Point = self.preferences.window_position
-    self.speed: int = 5
-    self.zoom: float = self.preferences.zoom
-    self.width: int = self.preferences.width
-    self.height: int = self.preferences.height
+  def __init__(
+    self,
+    width: int,
+    height: int,
+    position: list[float],
+    normal: list[float],
+    up: list[float],
+    movement_speed: int,
+    rotation_speed: int,
+    zoom: float,
+  ):
+    self.normal: Point = normalize(normal)
+    self.position: Point = normalize(position)
+    self.movement_speed: int = movement_speed
+    self.rotation_speed: int = rotation_speed
+    self.zoom: float = zoom
+    self.width: int = width
+    self.height: int = height
     self.focus: tuple[float, float] = (self.width // 2, self.height // 2)
     self.window_focus: tuple[float, float] = (0, 0)
     self.max_zoom = 100.0
     self.min_zoom = 0.1
     self.padding = 15
-    self.curve_coeff = self.preferences.curve_coefficient
 
-    UP = np.array([0, 1, 0])
-    if np.array_equal(self.normal, UP) or np.array_equal(self.normal, -UP):
+    # Calculate the right and up vectors based on the normal vector and the given up vector
+    if np.array_equal(self.normal, up) or np.array_equal(self.normal, -normalize(up)):
       self.right = np.array([1, 0, 0])
       self.up = np.array([0, 0, 1])
     else:
-      self.right = normalize(np.cross(self.normal, UP))
+      self.right = normalize(np.cross(self.normal, up))
       self.up = normalize(np.cross(self.right, self.normal))
 
-  def move_up(self): self.position[1] += max(self.speed/self.zoom, 1)
+  def move_up(self): self.position[1] += max(self.movement_speed/self.zoom, 1)
 
-  def move_down(self): self.position[1] -= max(self.speed/self.zoom, 1)
+  def move_down(self): self.position[1] -= max(self.movement_speed/self.zoom, 1)
 
-  def move_left(self): self.position[0] -= max(self.speed/self.zoom, 1)
+  def move_left(self): self.position[0] -= max(self.movement_speed/self.zoom, 1)
 
-  def move_right(self): self.position[0] += max(self.speed/self.zoom, 1)
+  def move_right(self): self.position[0] += max(self.movement_speed/self.zoom, 1)
 
-  def move_below(self): self.position[2] -= max(self.speed/self.zoom, 1)
+  def move_below(self): self.position[2] -= max(self.movement_speed/self.zoom, 1)
 
-  def move_above(self): self.position[2] += max(self.speed/self.zoom, 1)
+  def move_above(self): self.position[2] += max(self.movement_speed/self.zoom, 1)
 
-  def rotate(self, angle: int=5, a1: int=0, a2: int=1):
+  def rotate(self, angle: int | None = None, a1: int=0, a2: int=1):
     """Rotate the window around the normal vector."""
-    # M = np.array([
-    #   [np.cos(np.radians(angle)), -np.sin(np.radians(angle)), 0],
-    #   [np.sin(np.radians(angle)),  np.cos(np.radians(angle)), 0],
-    #   [0, 0, 1]
-    # ])
+    angle = angle if angle is not None else self.rotation_speed
     M = np.eye(3)
     c = np.cos(np.radians(angle))
     s = np.sin(np.radians(angle))
@@ -70,7 +74,6 @@ class Window:
   def zoom_out(self, x, y):
     if self.zoom >= self.min_zoom: self.zoom /= 1.1
 
-  # TODO: Add a way for the user to call this function
   def recenter(self):
     self.position = np.array([0, 0, 0])
     self.normal = np.array([0, 0, -1])
@@ -81,8 +84,6 @@ class Window:
     self.focus = (self.width // 2, self.height // 2)
 
   def world_to_viewport(self, point: Point) -> tuple[float, float]:
-    # Ignore points behind window
-    # if np.dot(self.normal, point - self.position) < 0: point = self.position - self.normal
     x, y = self.world_to_window(point)
 
     # Convert the window view plane coordinates to viewport coordinates

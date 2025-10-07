@@ -1,3 +1,9 @@
-from data import preferences
-
-PREFERENCES = preferences.Preferences.load_user_preferences()
+WIDTH = 1000
+HEIGHT = 750
+TITLE = "INE5420 - SGI"
+DATA_PATH = "data"
+USER_PREFERENCES_PATH = f"{DATA_PATH}/usr_data.json"
+LOG_PATH = f"{DATA_PATH}/log.txt"
+WINDOW_PADDING = 15
+WINDOW_MOVEMENT_SPEED = 5
+WINDOW_ROTATION_SPEED = 15

@@ -1,26 +1,52 @@
-from tkinter import Canvas, Event, IntVar, ttk
+from typing import Callable
 
-from enum import Enum
+from tkinter import Canvas, Event, IntVar, ttk
 
 from wireframe import *
 from window import *
-from clipping import Clipping, ClippingAlgorithm
-from components.my_types import Point
+from clipping import Clipping
+from my_types import Point
 
 class Viewport:
   def __init__(
-      self,
-      canva: Canvas,
-      clipping_algorithm: IntVar,
-      curve_type: IntVar,
-      log_function,
-      object_list: ttk.Treeview,
-      debug: bool=False,
-      input_file: str | None = None
-    ):
+    self,
+    canva: Canvas,
+    log_function: Callable[[str], None],
+    object_list: ttk.Treeview,
+    input_file: str | None,
+    output_file: str | None,
+    width: int,
+    height: int,
+    curve_type: IntVar,
+    # TODO: change curve_coefficient to IntVar too
+    curve_coefficient: int,
+    debug: bool,
+    window_position: list[float],
+    window_normal: list[float],
+    window_up: list[float],
+    window_movement_speed: int,
+    window_rotation_speed: int,
+    window_padding: int,
+    window_zoom: float,
+    line_clipping_algorithm: IntVar,
+  ):
     self.canva = canva
-    self.window = Window()
-    self.clipper = Clipping(clipping_algorithm, self.window.padding, self.window.padding, self.window.width-self.window.padding, self.window.height-self.window.padding)
+    self.window = Window(
+      width,
+      height,
+      window_position,
+      window_normal,
+      window_up,
+      window_movement_speed,
+      window_rotation_speed,
+      window_zoom,
+    )
+    self.clipper = Clipping(
+      width,
+      height,
+      window_padding,
+      line_clipping_algorithm,
+    )
 
     self.id_counter: int
     self.objects: list[Wireframe]
@@ -335,4 +361,3 @@ class Viewport:
     self.objects.append(CurveObject_2D("Curva", self.building_buffer.copy(), steps=100, id=self.id_counter, curve_type=self.curve_type))
     self.id_counter += 1
     self.cancel_building()
-

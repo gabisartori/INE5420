@@ -1,7 +1,8 @@
 from datetime import datetime
+from config import LOG_PATH
 
 # TODO: Either replace this with a proper logging library or decide where this would better fit in the code.
-def default_log(message: str, filename="DEFAULT_LOG_FILE.txt"):
+def default_log(message: str, filename=LOG_PATH):
   """Writes the message to the specified log file with a timestamp.
 
   It also prints the message to the console for immediate feedback.

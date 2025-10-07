@@ -1,5 +1,7 @@
 import argparse
-from data import preferences
+import config
+import json
+
 from sgi import SGI
 
 # Command-line argument parsing
@@ -8,8 +10,25 @@ from sgi import SGI
 parser = argparse.ArgumentParser()
 parser.add_argument("-i", "--input", help="Path to the input file", type=str, default=None, dest="input_file")
 parser.add_argument("-o", "--output", help="Path to the output file", type=str, default=None, dest="output_file")
-args = parser.parse_args()
 
-# Initialize and run the viewport with the fixed dimensions of 1400x900 pixels (the default values in the config file)
-sgi = SGI(input=args.input_file, output=args.output_file, debug=True)
+# Make sure that all output files are saved inside the data folder
+args = parser.parse_args()
+if args.output_file is not None and not args.output_file.strip().startswith(config.DATA_PATH):
+  args.output_file = f"{config.DATA_PATH}/{args.output_file.strip()}"
+
+preferences = json.load(open(config.USER_PREFERENCES_PATH))
+
+sgi = SGI(
+  # Application configuration
+  width=config.WIDTH,
+  height=config.HEIGHT,
+  title=config.TITLE,
+  window_padding=config.WINDOW_PADDING,
+  window_movement_speed=config.WINDOW_MOVEMENT_SPEED,
+  window_rotation_speed=config.WINDOW_ROTATION_SPEED,
+  # User data, storing the current state of the application
+  **preferences,
+  # Arguments passed by the user in the command line
+  **args.__dict__
+)
 sgi.run()

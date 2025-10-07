@@ -1,8 +1,5 @@
 from tkinter import IntVar
 
-import sys
-sys.path.append("..")
-
 from enum import Enum
 import numpy as np
 from wireframe import *
@@ -40,12 +37,12 @@ class Clipping:
   - Cubic Bezier curve clipping by approximating it with line segments and clipping each segment
   """
 
-  def __init__(self, line_clipping_algorithm, xmin, ymin, xmax, ymax):
+  def __init__(self, width: int, height: int, padding: int, line_clipping_algorithm: IntVar):
     self._line_clipping_algorithm: IntVar = line_clipping_algorithm
-    self.xmin = xmin
-    self.ymin = ymin
-    self.xmax = xmax
-    self.ymax = ymax
+    self.xmin: int = padding
+    self.ymin: int = padding
+    self.xmax: int = width - padding
+    self.ymax: int = height - padding
 
   @property
   def line_clipping_algorithm(self) -> ClippingAlgorithm:
