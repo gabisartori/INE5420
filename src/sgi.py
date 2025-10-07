@@ -195,8 +195,8 @@ class SGI:
 
   def exit(self):
     # TODO: Save user preferences and current objects to output file
-    PREFERENCES.save_user_preferences()
     self.root.quit()
+    PREFERENCES.save_user_preferences()
 
   @staticmethod
   def popup(width: int, height: int, title: str) -> tk.Toplevel:
