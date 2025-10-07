@@ -172,13 +172,12 @@ class CurveObject_2D(Wireframe):
     )
     return new_obj
 
-  # TODO: Generalize for n-dimensional curves.
   @staticmethod
   def bezier_algorithm(t, P0, P1, P2, P3) -> Point:
     """Calculate points on a cubic Bezier curve defined by four control points."""
-    x = (1 - t)**3 * P0[0] + 3 * (1 - t)**2 * t * P1[0] + 3 * (1 - t) * t**2 * P2[0] + t**3 * P3[0]
-    y = (1 - t)**3 * P0[1] + 3 * (1 - t)**2 * t * P1[1] + 3 * (1 - t) * t**2 * P2[1] + t**3 * P3[1]
-    return np.array([x, y, 1])
+    t = np.array([(1 - t)**3, 3 * (1 - t)**2 * t, 3 * (1 - t) * t**2, t**3])
+    return np.dot(t, np.array([P0, P1, P2, P3]))
+
 
   def generate_bezier_points(self) -> list[Point]:
     """Generate points on the Bezier curve defined by the control points."""
