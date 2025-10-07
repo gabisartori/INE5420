@@ -232,27 +232,33 @@ class CurveObject_2D(Wireframe):
       P0, P1, P2, P3 = self.control_points[i:i+4]
       Gx = np.array([P0[0], P1[0], P2[0], P3[0]])
       Gy = np.array([P0[1], P1[1], P2[1], P3[1]])
+      Gz = np.array([P0[2], P1[2], P2[2], P3[2]])
 
       # Coeficientes da curva
       Cx = M @ Gx
       Cy = M @ Gy
+      Cz = M @ Gz
 
       # Valores iniciais
       x = Cx[3]
       y = Cy[3]
+      z = Cz[3]
 
       # Primeiras diferenças
       dx = Cx[2] * h + Cx[1] * h**2 + Cx[0] * h**3
       dy = Cy[2] * h + Cy[1] * h**2 + Cy[0] * h**3
+      dz = Cz[2] * h + Cz[1] * h**2 + Cz[0] * h**3
       # Segundas diferenças
       d2x = 2 * Cx[1] * h**2 + 6 * Cx[0] * h**3
       d2y = 2 * Cy[1] * h**2 + 6 * Cy[0] * h**3
+      d2z = 2 * Cz[1] * h**2 + 6 * Cz[0] * h**3
       # Terceiras diferenças
       d3x = 6 * Cx[0] * h**3
       d3y = 6 * Cy[0] * h**3
-      
+      d3z = 6 * Cz[0] * h**3
+
       for _ in range(self.steps + 1):
-        new_point = np.array([x, y, 1])
+        new_point = np.array([x, y, z, 1])
         curve_points.append(new_point)
 
         x += dx
@@ -262,6 +268,10 @@ class CurveObject_2D(Wireframe):
         y += dy
         dy += d2y
         d2y += d3y
+
+        z += dz
+        dz += d2z
+        d2z += d3z
 
     self.points = curve_points
     return curve_points
