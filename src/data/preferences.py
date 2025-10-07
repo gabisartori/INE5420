@@ -2,95 +2,38 @@ import json
 import my_logging
 import numpy as np
 
+from dataclasses import dataclass, field
+
 # TODO: Turn this into a dataclass and replace json load/save with asdict and fromdict
+@dataclass
 class Preferences:
-  def __init__(self, application_name="INE5420 - SGI", debug=True, input_file="example.obj", output_file="output.obj", height=900, width=1400, zoom=1.0, window_normal={"x": 0, "y": 0, "z": -1}, window_position={"x": 0, "y": 0, "z": 100}, theme="light", show_onboarding=True, curve_algorithm=0, curve_coefficient=100, clipping_algorithm=1):
-    self.application_name: str = application_name
-    self.debug: bool = debug
-    self.input_file: str = input_file
-    self.output_file: str = output_file
-    self.height: int = height
-    self.width: int = width
-    self.zoom: float = zoom
-    self.window_normal: np.ndarray = window_normal
-    self.window_position: np.ndarray = window_position
-    self.theme: str = theme
-    self.show_onboarding: bool = show_onboarding
-    self.curve_algorithm: int = curve_algorithm
-    self.curve_coefficient: int = curve_coefficient
-    self.clipping_algorithm: int = clipping_algorithm
+  # Application data
+  input_file: str
+  output_file: str
+  application_name: str = "INE5420 - SGI"
+  debug: bool = True
+  height: int = 900
+  width: int = 1400
+  zoom: float = 1.0
 
-  def load_user_preferences(self, path="src/data/usr_data.json") -> 'Preferences':
-    try:
-      with open(path, "r") as file:
-        data = json.load(file)
-        pref = data.get("user_preferences", {})
-        # Set default values if keys are missing
-        self.theme = pref.get("theme", "light")
-        self.show_onboarding = pref.get("show_onboarding", True)
-        self.curve_algorithm = pref.get("curve_algorithm", "bezier")
-        self.curve_coefficient = pref.get("curve_coefficient", 100)
-        self.clipping_algorithm = pref.get("clipping_algorithm", "sutherland_hodgman")
-        self.window_normal = np.array([pref.get("window_normal", {}).get("x", 0), pref.get("window_normal", {}).get("y", 0), pref.get("window_normal", {}).get("z", -1)])
-        self.window_position = np.array([pref.get("window_position", {}).get("x", 0), pref.get("window_position", {}).get("y", 0), pref.get("window_position", {}).get("z", 100)])
-        self.application_name = pref.get("application_name", "INE5420 - SGI")
-        self.debug = pref.get("debug", True)
-        self.input_file = pref.get("input_file", "example.obj")
-        self.output_file = pref.get("output_file", "output.obj")
-        self.height = pref.get("height", 900)
-        self.width = pref.get("width", 1400)
-        self.zoom = pref.get("zoom", 1.0)
+  # Viewport data
+  window_normal: np.ndarray = field(default_factory=lambda: np.array([0, 0, -1]))
+  window_position: np.ndarray = field(default_factory=lambda: np.array([0, 0, 0]))
 
-        return Preferences(
-          theme=self.theme,
-          show_onboarding=self.show_onboarding,
-          curve_algorithm=self.curve_algorithm,
-          curve_coefficient=self.curve_coefficient,
-          clipping_algorithm=self.clipping_algorithm,
-          window_normal=self.window_normal,
-          window_position=self.window_position,
-          application_name=self.application_name,
-          debug=self.debug,
-          input_file=self.input_file,
-          output_file=self.output_file,
-          height=self.height,
-          width=self.width,
-          zoom=self.zoom,
-        )
-        
-    except FileNotFoundError:
-      my_logging.default_log("User preferences file not found")
-      return Preferences()
-    except json.JSONDecodeError:
-      my_logging.default_log("Error decoding JSON")
-      return Preferences()
-    except Exception as e:
-      my_logging.default_log(f"Unexpected error: {e}")
-      return Preferences()
+  # User preferences
+  curve_algorithm: int = 0  # 0: Bezier, 1: B-Spline
+  curve_coefficient: int = 100  # Percentage of curve smoothness
+  clipping_algorithm: int = 1  # 0: Cohen-Sutherland, 1
+  
+  @classmethod
+  def load_user_preferences(cls, path="src/data/usr_data.json") -> 'Preferences':
+    pref = json.load(open(path))
+    return Preferences(input_file="./a.obj", output_file="./b.obj", **pref)
 
   def save_user_preferences(self, path="src/data/usr_data.json"):
-    data = {
-      "user_preferences": {
-        "theme": self.theme,
-        "show_onboarding": self.show_onboarding,
-        "curve_algorithm": self.curve_algorithm,
-        "curve_coefficient": self.curve_coefficient,
-        "clipping_algorithm": self.clipping_algorithm,
-        "window_normal": {"x": int(self.window_normal[0]), "y": int(self.window_normal[1]), "z": int(self.window_normal[2])},
-        "window_position": {"x": int(self.window_position[0]), "y": int(self.window_position[1]), "z": int(self.window_position[2])},
-        "application_name": self.application_name,
-        "debug": self.debug,
-        "input_file": self.input_file,
-        "output_file": self.output_file,
-        "height": self.height,
-        "width": self.width,
-        "zoom": self.zoom,
-      }
-    }
-
     try:
       with open(path, "w") as file:
-        json.dump(data, file, indent=2)
+        json.dump(self.__dict__, file, indent=2)
     except IOError:
       my_logging.default_log("Error writing to user preferences file")
     
