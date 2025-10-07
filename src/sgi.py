@@ -110,7 +110,7 @@ class SGI:
     self.ui_translate_object_button = tk.Button(self.root, text="Deslocar", command=self.translate_selected_object)
     self.ui_scale_button = tk.Button(self.root, text="Escalar", command=self.scale_selected_object)
 
-    self.ui_point_label = tk.Label(self.root, text="Ponto (x,y):")
+    self.ui_point_label = tk.Label(self.root, text="Ponto (x,y,z):")
     self.ui_point_x_input = tk.Entry(self.root, width=10)
     self.ui_point_y_input = tk.Entry(self.root, width=10)
     self.ui_point_z_input = tk.Entry(self.root, width=10)
