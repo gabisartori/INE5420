@@ -1,8 +1,10 @@
 import numpy as np
-from my_types import Point
+from my_types import WorldPoint, WindowPoint
+
+from wireframe import Wireframe, WindowObject
 
 
-def normalize(v: Point | list[float]) -> Point:
+def normalize(v: WorldPoint | list[float]) -> WorldPoint:
   """Normalize a vector."""
   v = np.array(v)
   norm = np.linalg.norm(v)
@@ -20,15 +22,15 @@ class Window:
     rotation_speed: int,
     zoom: float,
   ):
-    self.normal: Point = normalize(normal)
-    self.position: Point = normalize(position)
+    self.normal: WorldPoint = normalize(normal)
+    self.position: WorldPoint = normalize(position)
     self.movement_speed: int = movement_speed
     self.rotation_speed: int = rotation_speed
     self.zoom: float = zoom
     self.width: int = width
     self.height: int = height
-    self.focus: tuple[float, float] = (self.width // 2, self.height // 2)
-    self.window_focus: tuple[float, float] = (0, 0)
+    self.focus: WindowPoint = WindowPoint(self.width // 2, self.height // 2)
+    self.window_focus: WindowPoint = WindowPoint(0, 0)
     self.max_zoom = 100.0
     self.min_zoom = 0.1
     self.padding = 15
@@ -80,21 +82,23 @@ class Window:
     self.right = np.array([1, 0, 0])
     self.up = np.array([0, 1, 0])
     self.zoom = 1.0
-    self.window_focus = (0, 0)
-    self.focus = (self.width // 2, self.height // 2)
+    self.window_focus = WindowPoint(0, 0)
+    self.focus = WindowPoint(self.width // 2, self.height // 2)
 
-  def world_to_viewport(self, point: Point) -> tuple[float, float]:
-    x, y = self.world_to_window(point)
+  def project(self, object: Wireframe) -> list[WindowObject]:
+    object.projected_vertices = [self.world_to_viewport(v) for v in object.vertices]
+    return object.window_objects
+
+  def world_to_viewport(self, point: WorldPoint) -> WindowPoint:
+    window_point = self.world_to_window(point)
 
     # Convert the window view plane coordinates to viewport coordinates
     # - Centering the window plane origin at the center of the viewport
     # - Scaling the coordinates by the zoom factor
     # - Adjusting the y-coordinate to match the canvas coordinate system
-    position = self.window_to_viewport(x, y)
+    return self.window_to_viewport(window_point)
 
-    return position
-
-  def world_to_window(self, point: Point) -> tuple[float, float]:
+  def world_to_window(self, point: WorldPoint) -> WindowPoint:
     point = point[:3]  # Ignore the homogeneous coordinate if present
     # Project the point onto the window view plane
     t = sum(self.normal[i] * (self.position[i] - point[i]) for i in range(len(point)))
@@ -102,28 +106,27 @@ class Window:
     c = np.array([point[i] + t * self.normal[i] for i in range(len(point))])
 
     v = c - self.position
-    return np.dot(v, self.right), np.dot(v, self.up)
+    return WindowPoint(np.dot(v, self.right), np.dot(v, self.up))
 
-  def window_to_world(self, x: float, y: float) -> Point:
+  def window_to_world(self, x: float, y: float) -> WorldPoint:
     # Return a 3D point based on the window's position and orientation
     # TODO: This creates a point at the exact position of the window
     # It would be more useful if the user could control a distance from the window to which clicks are applied
     # This is quite simple to implement, but it would mess with how zoom is behaving
     return np.append(x*self.right + y*self.up + self.position, 1.0)
 
-  def window_to_viewport(self, x: float, y: float) -> tuple[float, float]:
-    x = x*self.zoom + self.focus[0]
-    y = y*self.zoom + self.focus[1]
-    y = self.height - y
-    return x, y
+  def window_to_viewport(self, point: WindowPoint) -> WindowPoint:
+    point = point*self.zoom + self.focus
+    point.y = self.height - point.y
+    return point
 
   def viewport_to_window(self, x: float, y: float) -> tuple[float, float]:
     y = self.height - y
-    x = (x-self.focus[0])/self.zoom
-    y = (y-self.focus[1])/self.zoom
+    x = (x-self.focus.x)/self.zoom
+    y = (y-self.focus.y)/self.zoom
     return x, y
 
-  def viewport_to_world(self, x: float, y: float) -> Point:
+  def viewport_to_world(self, x: float, y: float) -> WorldPoint:
     return self.window_to_world(*self.viewport_to_window(x, y))
     
   def click_in_window(self, x: float, y: float) -> bool:
