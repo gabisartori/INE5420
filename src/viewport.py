@@ -50,7 +50,8 @@ class Viewport:
 
     self.id_counter: int
     self.objects: list[Wireframe]
-    self.id_counter, self.objects = 0, []
+    self.objects = Wireframe.load_file(input_file)
+    self.id_counter = len(self.objects)
     self.building_buffer: list[WorldPoint] = []
     self.building: bool = False
     self.debug: bool = debug

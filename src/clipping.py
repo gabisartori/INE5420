@@ -72,8 +72,11 @@ class Clipping:
           return object
 
       case WindowPolygonObject():
-        object.points = self.sutherland_hodgman_clip(object.points) or []
-        return object
+        new_points = self.sutherland_hodgman_clip(object.points)
+        if new_points is not None and len(new_points) >= 3:
+          object.points = new_points
+          return object
+        else: return None
 
       case _:
         logging.error(f"Unknown object type: {type(object)}")
@@ -295,4 +298,4 @@ class Clipping:
       logging.warning(f"This point should note be reachable. {new_points=}")
       return None
 
-    return new_points
+    return new_points if len(new_points) >= 3 else None

@@ -31,8 +31,7 @@ class WindowPolygonObject(WindowObject):
 
   def draw(self, canva: Canvas, color: str="black") -> None:
     coords = []
-    for point in self.points:
-      coords.extend([point.x, point.y])
+    for p in self.points: coords.extend([p.x, p.y])
     canva.create_polygon(*coords, outline="black", fill=self.texture if self.texture else "")
 
 class CurveType(Enum):
@@ -199,9 +198,12 @@ class Wireframe:
   
   def __str__(self) -> str:
     vertices_str = '\n'.join(f"v {' '.join(map(str, v[:-1]))}" for v in self.vertices)
-    edges_str = '\n'.join(f"l {start} {end}" for start, end in self.edges)
-    faces_str = '\n'.join(f"f {' '.join(str(idx) for idx in face[0])}" + (f" {face[1]}" if face[1] else "") for face in self.faces)
-    curves_str = '\n'.join(f"c {' '.join(str(idx) for idx in curve.control_points)} {curve.steps} {curve.curve_type.name.lower()}" for curve in self.curves)
+    edges_str = '\n'.join(f"l {start+1} {end+1}" for start, end in self.edges)
+    faces_str = ""
+    for face in self.faces:
+      if face[1]: faces_str += f"usemtl {face[1]}\n"
+      faces_str += f"f {' '.join(str(idx+1) for idx in face[0])}\n"
+    curves_str = '\n'.join(f"c {' '.join(str(idx+1) for idx in curve.control_points)} {curve.steps} {curve.curve_type.name.lower()}" for curve in self.curves)
     return f"o {self.name}\n{vertices_str}\n{edges_str}\n{faces_str}\n{curves_str}"
 
   @property
@@ -219,7 +221,79 @@ class Wireframe:
     return objects
 
   @classmethod
-  def load_file(cls, file_path: str, wireframe_id: int) -> list['Wireframe']: return []
+  def load_file(cls, filepath: str | None) -> list['Wireframe']:
+    if filepath is None: return []
+    objects: list[Wireframe] = []
+    current_vertices: list[WorldPoint] = []
+    current_edges: list[tuple[int, int]] = []
+    current_faces: list[tuple[list[int], str | None]] = []
+    current_curves: list[Curve] = []
+    current_surfaces: list[Surface] = []
+
+    current_name: str = ""
+    current_texture: str | None = None
+    with open(filepath, 'r') as f:
+      while line := f.readline():
+        if line.startswith('#') or line.strip() == '': continue  # Skip comments and empty lines
+        header, *body = line.split()
+
+        match header:
+          case 'o' | 'g':
+            # Save previous object if it exists
+            if current_name:
+              objects.append(Wireframe(
+                wireframe_id=len(objects),
+                name=current_name,
+                vertices=current_vertices,
+                edges=current_edges,
+                faces=current_faces,
+                curves=current_curves,
+                surfaces=current_surfaces
+              ))
+            # Reset building variables for new object
+            current_name = body[0]
+            current_vertices = []
+            current_edges = []
+            current_faces = []
+            current_curves = []
+            current_surfaces = []
+
+          case 'v':
+            if len(body) < 3: raise ValueError(f"Invalid vertex line: {line.strip()}")
+            x, y, z = map(float, body[:3])
+            current_vertices.append(np.array([x, y, z, 1.0]))
+          
+          case 'l':
+            if len(body) < 2: raise ValueError(f"Invalid line (edge) line: {line.strip()}")
+            body = [int(i)-1 for i in body]
+            for start, end in zip(body, body[1:]): current_edges.append((start, end))
+
+          # TODO: Currently it follows the format "usemtl <color>" where color is any string accepted by tkinter
+          # Real wavefront shoul define a material library and reference it here, where it material is in rgb format
+          case 'usemtl':
+            if len(body) < 1: raise ValueError(f"Invalid usemtl line: {line.strip()}")
+            current_texture = body[0]
+
+          case 'f':
+            if len(body) < 3: raise ValueError(f"Invalid face line: {line.strip()}")
+            vertices = [int(x)-1 for x in body]
+            current_faces.append((
+              vertices,
+              current_texture
+            ))
+            current_texture = None
+
+    # Append last object since it won't be appended in the loop
+    objects.append(Wireframe(
+      wireframe_id=len(objects),
+      name=current_name,
+      vertices=current_vertices,
+      edges=current_edges,
+      faces=current_faces,
+      curves=current_curves,
+      surfaces=current_surfaces
+    ))
+    return objects
 
   def rotate(self, degrees: int=5, point: WorldPoint | None=None, a1: int=0, a2: int=1) -> None:
     """Rotates the object around a given point in the XY plane.
@@ -273,28 +347,3 @@ class Wireframe:
   @property
   def center(self) -> WorldPoint:
     return np.mean(self.vertices, axis=0).astype(int)
-
-@dataclass
-class PastWireframe:
-  """Parent class for all PastWireframe objects.
-  Each subclass will implement its own way of manipulating the *points* attribute.
-
-  Attributes:
-  - name: Name of the object, to be displayed in object lists.
-  TODO: the definition of *points* may not match what's actually built in the code.
-  - points: List of points that define the object. Each point is a numpy array of 3 or 4 elements, which will be treated as 2D (x, y, 1) or 3D (x, y, z, 1) homogeneous coordinates.
-  - fill_color: Color used to fill the object when rendering (if applicable).
-  - line_color: Color used to draw the object's edges.
-  - thickness: Thickness of the lines used to draw the object.
-  - id: Unique identifier for the object. The main program class will keep count of the last used ID and assign a new one when creating a new object.
-  """
-  name: str
-  points: list[WorldPoint]
-  fill_color: str = "white"
-  line_color: str = "black"
-  thickness: float = 1
-  id: int = 0
-
-  def copy(self) -> 'PastWireframe': raise NotImplementedError("Subclasses should implement this method")
-
-  def __str__(self) -> str: raise NotImplementedError("Subclasses should implement this method")
