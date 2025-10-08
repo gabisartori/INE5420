@@ -37,3 +37,7 @@ class WindowPoint:
       case WindowPoint():
         return WindowPoint(self.x * other.x, self.y * other.y)
     raise TypeError(f"Unsupported type for multiplication: {type(other)}")
+
+  def __radd__(self, other: 'int') -> 'WindowPoint': return self + other
+  def __rsub__(self, other: 'int') -> 'WindowPoint': return WindowPoint(other - self.x, other - self.y)
+  def __rmul__(self, other: 'int | float') -> 'WindowPoint': return self * other

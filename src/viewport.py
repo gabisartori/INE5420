@@ -119,12 +119,12 @@ class Viewport:
 
     # Redraw the building lines if in building mode
     # TODO: Clip these lines too
-    # prev = None
-    # for point in self.building_buffer:
-    #   point = self.window.world_to_viewport(point)
-    #   self.canva.create_oval(point[0] - 2, point[1] - 2, point[0] + 2, point[1] + 2, fill="red")
-    #   if prev is not None: self.canva.create_line(prev[0], prev[1], point[0], point[1], fill="red")
-    #   prev = point
+    prev = None
+    for point in self.building_buffer:
+      point = self.window.world_to_viewport(point)
+      self.canva.create_oval(point.x - 2, point.y - 2, point.x + 2, point.y + 2, fill="red")
+      if prev is not None: self.canva.create_line(prev.x, prev.y, point.x, point.y, fill="red")
+      prev = point
 
   def update_object_list(self):
     for item in self.object_list.get_children(): self.object_list.delete(item)
@@ -213,7 +213,7 @@ class Viewport:
           "Polígono",
           vertices=self.building_buffer.copy(),
           edges=[(i, (i+1) % len(self.building_buffer)) for i in range(len(self.building_buffer))],
-          faces=[([i], None) for i in range(len(self.building_buffer))]
+          faces=[([i for i in range(len(self.building_buffer))], None)]
         ))
         self.id_counter += 1
         self.cancel_building()
@@ -277,8 +277,13 @@ class Viewport:
   ):
     if len(control_points) < 4:
       raise Exception("Curva precisa de ao menos 4 pontos de controle.")
-    return
-    new_curve = CurveObject_2D(name, control_points, steps=self.curve_coefficient.get(), line_color=line_color, thickness=1, id=self.id_counter, curve_type=self.curve_type)
+
+    new_curve = Wireframe(
+      self.id_counter,
+      name,
+      vertices=control_points,
+      curves=[Curve(self.curve_type, list(range(len(control_points))), self.curve_coefficient.get())]
+    )
     self.objects.append(new_curve)
     self.id_counter += 1
     self.update()
@@ -286,7 +291,13 @@ class Viewport:
   def finish_curve(self):
     if len(self.building_buffer) < 4: 
       raise Exception("Erro: Pelo menos quatro pontos são necessários para formar uma curva de Bézier cúbica.")
-    return
-    self.objects.append(CurveObject_2D("Curva", self.building_buffer.copy(), steps=self.curve_coefficient.get(), id=self.id_counter, curve_type=self.curve_type))
+    self.objects.append(Wireframe(
+      self.id_counter,
+      "Curva",
+      vertices=self.building_buffer.copy(),
+      curves=[
+        Curve(self.curve_type, list(range(len(self.building_buffer))), self.curve_coefficient.get())
+      ]
+    ))
     self.id_counter += 1
     self.cancel_building()

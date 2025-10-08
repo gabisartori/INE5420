@@ -280,35 +280,13 @@ class SGI:
     target = self.get_selected_object()
     if target is None: return
     popup = self.popup(0, 300, "Propriedades do Objeto")
-    def apply_changes(name, fill_color, line_color, thickness):
+    def apply_changes(name, texture):
       target.name = name.get().strip() if name.get().strip() != "" else target.name
-      target.fill_color = fill_color
-      target.line_color = line_color
-      try: target.thickness = float(thickness.get())
-      except ValueError: pass
+      for i, face in enumerate(target.faces):
+        target.faces[i] = (face[0], texture.strip() if texture.strip() != "" else face[1])
 
       self.viewport.update()
       popup.destroy()
-
-    match target:
-      case PointObject():
-        thickness_prompt = "Raio do ponto"
-        line_prompt = "Cor do contorno"
-        fill_prompt = "Cor do ponto"
-      case LineObject():
-        thickness_prompt = "Espessura da linha"
-        line_prompt = "Cor da linha"
-        fill_prompt = ""
-      case PolygonObject():
-        thickness_prompt = "Espessura da linha"
-        line_prompt = "Cor do contorno"
-        fill_prompt = "Cor de preenchimento"
-      case CurveObject_2D():
-        thickness_prompt = "Espessura da linha"
-        line_prompt = "Cor da linha"
-        fill_prompt = ""
-      case _:
-        return
 
     # Name
     name_label = tk.Label(popup, text="Nome do objeto:")
@@ -317,45 +295,23 @@ class SGI:
     name_label.grid(row=0, column=0, sticky="ew")
     name_input.grid(row=0, column=1, columnspan=2, sticky="ew")
 
-    # Line Color
-    line_color_label = tk.Label(popup, text=line_prompt)
-    line_color_input = tk.Entry(popup)
-    line_color_input.insert(0, target.line_color)
-    line_color_button = tk.Button(popup, text="Escolher", command=lambda: (
-      color := colorchooser.askcolor(title="Escolha a cor da linha"),
-      line_color_input.delete(0, tk.END),
-      line_color_input.insert(0, color[1]) if color[1] else None
-    ))
-    line_color_label.grid(row=1, column=0, sticky="ew")
-    line_color_input.grid(row=1, column=1, sticky="ew")
-    line_color_button.grid(row=1, column=2, sticky="ew")
     
     # Fill Color
-    if fill_prompt:
-      fill_color_label = tk.Label(popup, text=fill_prompt)
-      fill_color_input = tk.Entry(popup)
-      fill_color_input.insert(0, target.fill_color)
-      fill_color_button = tk.Button(popup, text="Escolher", command=lambda: (
-        color := colorchooser.askcolor(title="Escolha a cor de preenchimento"),
-        fill_color_input.delete(0, tk.END),
-        fill_color_input.insert(0, color[1]) if color[1] else None
-      ))
-      fill_color_label.grid(row=2, column=0, sticky="ew")
-      fill_color_input.grid(row=2, column=1, sticky="ew")
-      fill_color_button.grid(row=2, column=2, sticky="ew")
-    else:
-      fill_color_input = tk.StringVar(value=target.fill_color)
-
-    # Thickness
-    thickness_label = tk.Label(popup, text=thickness_prompt)
-    thickness_input = tk.Entry(popup)
-    thickness_input.insert(0, str(target.thickness))
-    thickness_label.grid(row=3, column=0, sticky="ew")
-    thickness_input.grid(row=3, column=1, columnspan=2, sticky="ew")
+    texture_label = tk.Label(popup, text="Cor das faces:")
+    texture_input = tk.Entry(popup)
+    texture_input.insert(0, target.faces[0][1] if len(target.faces) > 0 and target.faces[0][1] else "")
+    texture_button = tk.Button(popup, text="Escolher", command=lambda: (
+      color := colorchooser.askcolor(title="Escolha a cor de preenchimento"),
+      texture_input.delete(0, tk.END),
+      texture_input.insert(0, color[1]) if color[1] else None
+    ))
+    texture_label.grid(row=2, column=0, sticky="ew")
+    texture_input.grid(row=2, column=1, sticky="ew")
+    texture_button.grid(row=2, column=2, sticky="ew")
   
 
     # Apply Button
-    apply_button = tk.Button(popup, text="Aplicar", command=lambda: apply_changes(name_input, fill_color_input.get(), line_color_input.get(), thickness_input))
+    apply_button = tk.Button(popup, text="Aplicar", command=lambda: apply_changes(name_input, texture_input.get()))
     cancel_button = tk.Button(popup, text="Cancelar", command=popup.destroy)
     apply_button.grid(row=4, column=0, columnspan=4, sticky="ew")
     cancel_button.grid(row=5, column=0, columnspan=4, sticky="ew")
@@ -377,8 +333,8 @@ class SGI:
       try: thickness = int(thickness_input.get())
       except ValueError: thickness = 1
       line_color = line_color_input.get().strip() if line_color_input.get().strip() != "" else "#000000"
-      fill_color = fill_color_input.get().strip() if fill_color_input.get().strip() != "" else "#ffffff"
-      self.viewport.add_polygon(points, name, line_color, fill_color, thickness)
+      texture = texture_input.get().strip() if texture_input.get().strip() != "" else "#ffffff"
+      self.viewport.add_polygon(points, name, line_color, texture, thickness)
       popup.destroy()
     
     name_label = tk.Label(popup, text="Nome do objeto:")
@@ -404,17 +360,17 @@ class SGI:
     line_color_input.grid(row=2, column=1, sticky="ew")
     line_color_button.grid(row=2, column=2, sticky="ew")
 
-    fill_color_label = tk.Label(popup, text="Cor de preenchimento:")
-    fill_color_input = tk.Entry(popup)
-    fill_color_input.insert(0, "#ffffff")
-    fill_color_button = tk.Button(popup, text="Escolher", command=lambda: (
+    texture_label = tk.Label(popup, text="Cor de preenchimento:")
+    texture_input = tk.Entry(popup)
+    texture_input.insert(0, "#ffffff")
+    texture_button = tk.Button(popup, text="Escolher", command=lambda: (
       color := colorchooser.askcolor(title="Escolha a cor de preenchimento"),
-      fill_color_input.delete(0, tk.END),
-      fill_color_input.insert(0, color[1]) if color[1] else None
+      texture_input.delete(0, tk.END),
+      texture_input.insert(0, color[1]) if color[1] else None
     ))
-    fill_color_label.grid(row=3, column=0, sticky="ew")
-    fill_color_input.grid(row=3, column=1, sticky="ew")
-    fill_color_button.grid(row=3, column=2, sticky="ew")
+    texture_label.grid(row=3, column=0, sticky="ew")
+    texture_input.grid(row=3, column=1, sticky="ew")
+    texture_button.grid(row=3, column=2, sticky="ew")
 
     thickness_label = tk.Label(popup, text="Espessura da linha:")
     thickness_input = tk.Entry(popup)
@@ -442,8 +398,8 @@ class SGI:
       if len(control_points) < 4:
         self.log("Erro: insira ao menos 4 pontos de controle.")
         return
-      popup.destroy()
-      self.viewport.add_curve(control_points, name_input.get().strip(), line_color_input.get().strip())
+
+      self.viewport.add_curve(control_points, name_input.get(), line_color_input.get().strip())
       popup.destroy()
 
     name_label = tk.Label(popup, text="Nome do objeto:")
@@ -469,7 +425,7 @@ class SGI:
     line_color_input.grid(row=2, column=1, sticky="ew")
     line_color_button.grid(row=2, column=2, sticky="ew")
 
-    create_button = tk.Button(popup, text="Criar Curva", command=lambda: finish_curve_callback)
+    create_button = tk.Button(popup, text="Criar Curva", command=finish_curve_callback)
     cancel_button = tk.Button(popup, text="Cancelar", command=popup.destroy)
     create_button.grid(row=3, column=0, columnspan=3, sticky="ew")
     cancel_button.grid(row=4, column=0, columnspan=3, sticky="ew")
@@ -513,7 +469,7 @@ class SGI:
       if log: self.log("Nenhum objeto selecionado.")
       return None
     item_id = int(self.ui_object_list.item(selected[0])['tags'][0])
-    target = next((obj for obj in self.viewport.objects if obj.id == item_id), None)
+    target = next((obj for obj in self.viewport.objects if obj.wireframe_id == item_id), None)
     if target is None:
       if log: self.log("Objeto não encontrado.")
       return None
