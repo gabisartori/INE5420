@@ -173,7 +173,6 @@ class Clipping:
     y1_clip = y0 + t_exit * dy
     return x0_clip, y0_clip, x1_clip, y1_clip
 
-  # TODO: This returns a list of points instead of altering the object directly like the other algorithms. Fix this inconsistency.
   def sutherland_hodgman_clip(self, current_points: list[WindowPoint]) -> list[WindowPoint] | None:
     """Sutherland-Hodgman polygon clipping algorithm for polygons"""
     new_points = []

@@ -7,29 +7,29 @@ from tkinter import Canvas
 from my_types import WorldPoint, WindowPoint
 
 class WindowObject:
-  def draw(self, canva: Canvas) -> None: pass
+  def draw(self, canva: Canvas, color: str="black") -> None: pass
 
 @dataclass
 class WindowPointObject(WindowObject):
   p: WindowPoint
 
-  def draw(self, canva: Canvas) -> None:
-    canva.create_oval(self.x.x-2, self.x.y-2, self.x.x+2, self.x.y+2, fill="black")
+  def draw(self, canva: Canvas, color: str="black") -> None:
+    canva.create_oval(self.p.x-2, self.p.y-2, self.p.x+2, self.p.y+2, fill=color)
 
 @dataclass
 class WindowLineObject(WindowObject):
   start: WindowPoint
   end: WindowPoint
 
-  def draw(self, canva: Canvas) -> None:
-    canva.create_line(self.start.x, self.start.y, self.end.x, self.end.y, fill="black")
+  def draw(self, canva: Canvas, color: str="black") -> None:
+    canva.create_line(self.start.x, self.start.y, self.end.x, self.end.y, fill=color)
 
 @dataclass
 class WindowPolygonObject(WindowObject):
   points: list[WindowPoint]
   texture: str | None = None
 
-  def draw(self, canva: Canvas) -> None:
+  def draw(self, canva: Canvas, color: str="black") -> None:
     coords = []
     for point in self.points:
       coords.extend([point.x, point.y])

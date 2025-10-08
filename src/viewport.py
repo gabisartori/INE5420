@@ -118,12 +118,14 @@ class Viewport:
         if clipped is not None: clipped.draw(self.canva)
 
     # Redraw the building lines if in building mode
-    # TODO: Clip these lines too
     prev = None
     for point in self.building_buffer:
       point = self.window.world_to_viewport(point)
-      self.canva.create_oval(point.x - 2, point.y - 2, point.x + 2, point.y + 2, fill="red")
-      if prev is not None: self.canva.create_line(prev.x, prev.y, point.x, point.y, fill="red")
+      clipped_point = self.clipper.clip(WindowPointObject(point))
+      if clipped_point: clipped_point.draw(self.canva, 'red')
+      if prev is not None:
+        line = self.clipper.clip(WindowLineObject(prev, point))
+        if line: line.draw(self.canva, 'red')
       prev = point
 
   def update_object_list(self):
@@ -139,8 +141,7 @@ class Viewport:
         )
       )
 
-  # TODO: For some goddamn reason rowspan and columnspan are being ignored by most components
-  # Must make it so that the components respect the grid layout
+  # TODO: Optimize this function to only draw lines instead of creating world elements to be the lines
   def build_debug_grid(self):
     return
     step = 75
