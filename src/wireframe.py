@@ -11,7 +11,7 @@ class WindowObject:
 
 @dataclass
 class WindowPointObject(WindowObject):
-  x: WindowPoint
+  p: WindowPoint
 
   def draw(self, canva: Canvas) -> None:
     canva.create_oval(self.x.x-2, self.x.y-2, self.x.x+2, self.x.y+2, fill="black")

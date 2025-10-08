@@ -49,46 +49,34 @@ class Clipping:
   def line_clipping_algorithm(self) -> ClippingAlgorithm:
     return ClippingAlgorithm(self._line_clipping_algorithm.get())
 
-  def clip_all(self, all_objects: list[Wireframe]) -> list[Wireframe]:
-    """Clip all wireframe objects using the designated algorithm."""
-    return [clipped for obj in all_objects if (clipped := self.clip(obj)) is not None]
-
-  def clip(self, object: Wireframe) -> Wireframe | None:
+  def clip(self, object: WindowObject) -> WindowObject | None:
     """Clips an wirefreame, altering its points accordingly. If the object is completely outside the clipping window, returns None.
     
     "Line" is the only type of object that can be clipped by more than one algorithm. So the algorithm parameter is used to select which one to use for lines. Curves will also be affected, since they're approximated with lines for clipping.
     """
     match object:
-      case CurveObject_2D():
-        object.points = self.pre_clip_curve(object, self.line_clipping_algorithm) or []
-        return object if len(object.points) >= 2 else None
+      case WindowPointObject():
+        if self.point_in_window(object.p.x, object.p.y): return object
+        else: return None
 
-      case PolygonObject():
-        object.points = self.sutherland_hodgman_clip(object) or []
-        return object if len(object.points) >= 3 else None
+      case WindowLineObject():
+        p1, p2 = object.start, object.end
+        if self.line_clipping_algorithm == ClippingAlgorithm.COHEN_SUTHERLAND: clipped = self.cohen_sutherland_clip(p1.x, p1.y, p2.x, p2.y)
+        elif self.line_clipping_algorithm == ClippingAlgorithm.LIANG_BARSKY: clipped = self.liang_barsky_clip(p1.x, p1.y, p2.x, p2.y)
+        else: return None
 
-      case LineObject():
-        p1, p2 = object.points
-        if self.line_clipping_algorithm == ClippingAlgorithm.COHEN_SUTHERLAND:
-          clipped = self.cohen_sutherland_clip(p1[0], p1[1], p2[0], p2[1])
-        elif self.line_clipping_algorithm == ClippingAlgorithm.LIANG_BARSKY:
-          clipped = self.liang_barsky_clip(p1[0], p1[1], p2[0], p2[1])
-        else:
-          return None
         if clipped is not None:
           x0, y0, x1, y1 = clipped
-          object.points = [np.array([x0, y0]), np.array([x1, y1])]
+          object.start = WindowPoint(x0, y0)
+          object.end = WindowPoint(x1, y1)
           return object
-        else:
-          return None
 
-      # TODO: Add circle clipping by radius since points are actually circles with any radius although defaulted to 1
-      case PointObject():
-        p = object.points[0]
-        if self.point_in_window(p[0], p[1]):
-          return object
+      case WindowPolygonObject():
+        object.points = self.sutherland_hodgman_clip(object.points) or []
+        return object
 
       case _:
+        logging.error(f"Unknown object type: {type(object)}")
         return None
 
   def compute_out_code(self, x: float, y: float) -> int:
@@ -186,32 +174,31 @@ class Clipping:
     return x0_clip, y0_clip, x1_clip, y1_clip
 
   # TODO: This returns a list of points instead of altering the object directly like the other algorithms. Fix this inconsistency.
-  def sutherland_hodgman_clip(self, polygon: PolygonObject) -> list[np.ndarray] | None:
+  def sutherland_hodgman_clip(self, current_points: list[WindowPoint]) -> list[WindowPoint] | None:
     """Sutherland-Hodgman polygon clipping algorithm for polygons"""
     new_points = []
-    current_points = polygon.points.copy()
     # Left clipping
     for i in range(0, len(current_points)+1):
       prev = current_points[i - 1]
       curr = current_points[i % len(current_points)]
 
       # Edge completely to the left, ignore it
-      if prev[0] < self.xmin and curr[0] < self.xmin:
+      if prev.x < self.xmin and curr.x < self.xmin:
         pass
       # Edge completely to the right, add it to the output
-      elif prev[0] >= self.xmin and curr[0] >= self.xmin:
+      elif prev.x >= self.xmin and curr.x >= self.xmin:
         new_points.append(prev)
       # Edge going out to the left, clip it
-      elif prev[0] >= self.xmin and curr[0] < self.xmin:
+      elif prev.x >= self.xmin and curr.x < self.xmin:
         x = self.xmin
-        y = prev[1] + (curr[1] - prev[1]) * (self.xmin - prev[0]) / (curr[0] - prev[0])
+        y = prev.y + (curr.y - prev.y) * (self.xmin - prev.x) / (curr.x - prev.x)
         new_points.append(prev)
-        new_points.append(np.array([x, y]))
+        new_points.append(WindowPoint(x, y))
       # Edge coming in from the left, clip it and add the current point
-      elif prev[0] < self.xmin and curr[0] >= self.xmin:
+      elif prev.x < self.xmin and curr.x >= self.xmin:
         x = self.xmin
-        y = prev[1] + (curr[1] - prev[1]) * (self.xmin - prev[0]) / (curr[0] - prev[0])
-        new_points.append(np.array([x, y]))
+        y = prev.y + (curr.y - prev.y) * (self.xmin - prev.x) / (curr.x - prev.x)
+        new_points.append(WindowPoint(x, y))
         new_points.append(curr)
 
     if len(new_points) == 0: return None
@@ -227,22 +214,22 @@ class Clipping:
       curr = current_points[i % len(current_points)]
 
       # Edge completely above, ignore it
-      if prev[1] > self.ymax and curr[1] > self.ymax:
+      if prev.y > self.ymax and curr.y > self.ymax:
         pass
       # Edge completely below, add it to the output
-      elif prev[1] <= self.ymax and curr[1] <= self.ymax:
+      elif prev.y <= self.ymax and curr.y <= self.ymax:
         new_points.append(prev)
       # Edge going out above, clip it
-      elif prev[1] <= self.ymax and curr[1] > self.ymax:
+      elif prev.y <= self.ymax and curr.y > self.ymax:
         y = self.ymax
-        x = prev[0] + (curr[0] - prev[0]) * (self.ymax - prev[1]) / (curr[1] - prev[1])
+        x = prev.x + (curr.x - prev.x) * (self.ymax - prev.y) / (curr.y - prev.y)
         new_points.append(prev)
-        new_points.append(np.array([x, y]))
+        new_points.append(WindowPoint(x, y))
       # Edge coming in from above, clip it and add the current point
-      elif prev[1] > self.ymax and curr[1] <= self.ymax:
+      elif prev.y > self.ymax and curr.y <= self.ymax:
         y = self.ymax
-        x = prev[0] + (curr[0] - prev[0]) * (self.ymax - prev[1]) / (curr[1] - prev[1])
-        new_points.append(np.array([x, y]))
+        x = prev.x + (curr.x - prev.x) * (self.ymax - prev.y) / (curr.y - prev.y)
+        new_points.append(WindowPoint(x, y))
         new_points.append(curr)
     if len(new_points) == 0: return None
     elif len(new_points) < 3:
@@ -257,22 +244,22 @@ class Clipping:
       curr = current_points[i % len(current_points)]
 
       # Edge completely to the right, ignore it
-      if prev[0] > self.xmax and curr[0] > self.xmax:
+      if prev.x > self.xmax and curr.x > self.xmax:
         pass
       # Edge completely to the left, add it to the output
-      elif prev[0] <= self.xmax and curr[0] <= self.xmax:
+      elif prev.x <= self.xmax and curr.x <= self.xmax:
         new_points.append(prev)
       # Edge going out to the right, clip it
-      elif prev[0] <= self.xmax and curr[0] > self.xmax:
+      elif prev.x <= self.xmax and curr.x > self.xmax:
         x = self.xmax
-        y = prev[1] + (curr[1] - prev[1]) * (self.xmax - prev[0]) / (curr[0] - prev[0])
+        y = prev.y + (curr.y - prev.y) * (self.xmax - prev.x) / (curr.x - prev.x)
         new_points.append(prev)
-        new_points.append(np.array([x, y]))
+        new_points.append(WindowPoint(x, y))
       # Edge coming in from the right, clip it and add the current point
-      elif prev[0] > self.xmax and curr[0] <= self.xmax:
+      elif prev.x > self.xmax and curr.x <= self.xmax:
         x = self.xmax
-        y = prev[1] + (curr[1] - prev[1]) * (self.xmax - prev[0]) / (curr[0] - prev[0])
-        new_points.append(np.array([x, y]))
+        y = prev.y + (curr.y - prev.y) * (self.xmax - prev.x) / (curr.x - prev.x)
+        new_points.append(WindowPoint(x, y))
         new_points.append(curr)
     if len(new_points) == 0: return None
     elif len(new_points) < 3:
@@ -287,53 +274,26 @@ class Clipping:
       curr = current_points[i % len(current_points)]
 
       # Edge completely below, ignore it
-      if prev[1] < self.ymin and curr[1] < self.ymin:
+      if prev.y < self.ymin and curr.y < self.ymin:
         pass
       # Edge completely above, add it to the output
-      elif prev[1] >= self.ymin and curr[1] >= self.ymin:
+      elif prev.y >= self.ymin and curr.y >= self.ymin:
         new_points.append(prev)
       # Edge going out below, clip it
-      elif prev[1] >= self.ymin and curr[1] < self.ymin:
+      elif prev.y >= self.ymin and curr.y < self.ymin:
         y = self.ymin
-        x = prev[0] + (curr[0] - prev[0]) * (self.ymin - prev[1]) / (curr[1] - prev[1])
+        x = prev.x + (curr.x - prev.x) * (self.ymin - prev.y) / (curr.y - prev.y)
         new_points.append(prev)
-        new_points.append(np.array([x, y]))
+        new_points.append(WindowPoint(x, y))
       # Edge coming in from below, clip it and add the current point
-      elif prev[1] < self.ymin and curr[1] >= self.ymin:
+      elif prev.y < self.ymin and curr.y >= self.ymin:
         y = self.ymin
-        x = prev[0] + (curr[0] - prev[0]) * (self.ymin - prev[1]) / (curr[1] - prev[1])
-        new_points.append(np.array([x, y]))
+        x = prev.x + (curr.x - prev.x) * (self.ymin - prev.y) / (curr.y - prev.y)
+        new_points.append(WindowPoint(x, y))
         new_points.append(curr)
     if len(new_points) == 0: return None
     elif len(new_points) < 3:
       logging.warning(f"This point should note be reachable. {new_points=}")
       return None
+
     return new_points
-
-  def pre_clip_curve(self, curve: CurveObject_2D, algorithm: ClippingAlgorithm) -> list[np.ndarray] | None:
-    """Clip a cubic Bezier curve by approximating it with line segments and clipping each segment."""
-    clipped_points = []
-    if len(curve.points) < 2:  return None
-
-    if algorithm == ClippingAlgorithm.COHEN_SUTHERLAND:
-      clip_func = self.cohen_sutherland_clip
-    elif algorithm == ClippingAlgorithm.LIANG_BARSKY:
-      clip_func = self.liang_barsky_clip
-    else:
-      return None
-
-    for i in range(1, len(curve.points)):
-      p1 = curve.points[i - 1]
-      p2 = curve.points[i]
-      clipped_segment = clip_func(p1[0], p1[1], p2[0], p2[1])
-
-      if clipped_segment is not None:
-        x0, y0, x1, y1 = clipped_segment
-        point0 = np.array([int(x0), int(y0)])
-        point1 = np.array([int(x1), int(y1)])
-
-        if len(clipped_points) == 0 or not np.array_equal(clipped_points[-1], point0):
-          clipped_points.append(point0)
-        clipped_points.append(point1)
-
-    return clipped_points if clipped_points else None

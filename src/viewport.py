@@ -4,7 +4,7 @@ from tkinter import Canvas, Event, IntVar, ttk
 
 from wireframe import *
 from window import *
-# from clipping import Clipping
+from clipping import Clipping
 from my_types import WorldPoint
 
 class Viewport:
@@ -40,13 +40,12 @@ class Viewport:
       window_rotation_speed,
       window_zoom,
     )
-    # self.clipper = Clipping(
-    #   width,
-    #   height,
-    #   window_padding,
-    #   line_clipping_algorithm,
-    # )
-    self.clipper = None
+    self.clipper = Clipping(
+      width,
+      height,
+      window_padding,
+      line_clipping_algorithm,
+    )
     self.curve_coefficient = curve_coefficient
 
     self.id_counter: int
@@ -115,7 +114,8 @@ class Viewport:
 
     for object in all_objects:
       for window_object in self.window.project(object):
-        window_object.draw(self.canva)
+        clipped = self.clipper.clip(window_object)
+        if clipped is not None: clipped.draw(self.canva)
 
     # Redraw the building lines if in building mode
     # TODO: Clip these lines too

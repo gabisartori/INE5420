@@ -6,8 +6,8 @@ WorldPoint: TypeAlias = np.ndarray
 
 @dataclass
 class WindowPoint:
-  x: int
-  y: int
+  x: int | float
+  y: int | float
 
   def copy(self) -> 'WindowPoint':
     return WindowPoint(self.x, self.y)
@@ -33,7 +33,7 @@ class WindowPoint:
       case int():
         return WindowPoint(self.x * other, self.y * other)
       case float():
-        return WindowPoint(int(self.x * other), int(self.y * other))
+        return WindowPoint(self.x * other, self.y * other)
       case WindowPoint():
         return WindowPoint(self.x * other.x, self.y * other.y)
     raise TypeError(f"Unsupported type for multiplication: {type(other)}")
