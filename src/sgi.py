@@ -221,12 +221,12 @@ class SGI:
     self.root.bind("<Button-4>", lambda e: self.viewport.window.zoom_in(e.x, e.y) or self.viewport.update())
     self.root.bind("<Button-5>", lambda e: self.viewport.window.zoom_out(e.x, e.y) or self.viewport.update())
     # Camera navegation
-    self.root.bind("<KeyPress-w>", lambda e: self.viewport.window.move_up() or self.viewport.update())
-    self.root.bind("<KeyPress-s>", lambda e: self.viewport.window.move_down() or self.viewport.update())
-    self.root.bind("<KeyPress-a>", lambda e: self.viewport.window.move_left() or self.viewport.update())
-    self.root.bind("<KeyPress-d>", lambda e: self.viewport.window.move_right() or self.viewport.update())
-    self.root.bind("<KeyPress-q>", lambda e: self.viewport.window.move_below() or self.viewport.update())
-    self.root.bind("<KeyPress-e>", lambda e: self.viewport.window.move_above() or self.viewport.update())
+    self.root.bind("<KeyPress-w>", lambda e: self.viewport.window.move_upward() or self.viewport.update())
+    self.root.bind("<KeyPress-s>", lambda e: self.viewport.window.move_downward() or self.viewport.update())
+    self.root.bind("<KeyPress-a>", lambda e: self.viewport.window.move_sideways_right() or self.viewport.update())
+    self.root.bind("<KeyPress-d>", lambda e: self.viewport.window.move_sideways_left() or self.viewport.update())
+    self.root.bind("<KeyPress-q>", lambda e: self.viewport.window.move_forward() or self.viewport.update())
+    self.root.bind("<KeyPress-e>", lambda e: self.viewport.window.move_backward() or self.viewport.update())
     # Camera rotation
     self.root.bind("<KeyPress-r>", lambda e: self.viewport.window.rotate(a1=1, a2=2, angle=self.window_rotation_speed) or self.viewport.update())
     self.root.bind("<KeyPress-t>", lambda e: self.viewport.window.rotate(a1=1, a2=2, angle=-self.window_rotation_speed) or self.viewport.update())

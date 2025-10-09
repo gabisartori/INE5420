@@ -6,7 +6,7 @@ from wireframe import Wireframe, WindowObject
 
 def normalize(v: WorldPoint | list[float]) -> WorldPoint:
   """Normalize a vector."""
-  v = np.array(v)
+  v = np.array(v, dtype=float)
   norm = np.linalg.norm(v)
   return v / norm if norm != 0 else v
 
@@ -24,9 +24,9 @@ class Window:
     zoom: float,
     projection_type: int,
   ):
-    self.position: WorldPoint = np.array(position)
+    self.position: WorldPoint = np.array(position, dtype=float)
     self.normal: WorldPoint = normalize(normal)
-    self.focus: WorldPoint = np.array(focus)
+    self.focus: WorldPoint = np.array(focus, dtype=float)
     self.movement_speed: int = movement_speed
     self.rotation_speed: int = rotation_speed
     self.zoom: float = zoom
@@ -43,22 +43,34 @@ class Window:
     # Calculate the right and up vectors based on the normal vector and the given up vector
     if np.array_equal(self.normal, up) or np.array_equal(self.normal, -normalize(up)):
       self.right = np.array([1, 0, 0])
-      self.up = np.array([0, 0, 1])
+      self.up = np.array([0, 1, 0])
     else:
       self.right = normalize(np.cross(self.normal, up))
       self.up = normalize(np.cross(self.right, self.normal))
 
-  def move_up(self): self.position[1] += max(self.movement_speed/self.zoom, 1)
+  def move_up(self): self.position[1] += max(self.movement_speed/self.zoom, 1.0)
 
-  def move_down(self): self.position[1] -= max(self.movement_speed/self.zoom, 1)
+  def move_down(self): self.position[1] -= max(self.movement_speed/self.zoom, 1.0)
 
-  def move_left(self): self.position[0] -= max(self.movement_speed/self.zoom, 1)
+  def move_left(self): self.position[0] -= max(self.movement_speed/self.zoom, 1.0)
 
-  def move_right(self): self.position[0] += max(self.movement_speed/self.zoom, 1)
+  def move_right(self): self.position[0] += max(self.movement_speed/self.zoom, 1.0)
 
-  def move_below(self): self.position[2] -= max(self.movement_speed/self.zoom, 1)
+  def move_below(self): self.position[2] -= max(self.movement_speed/self.zoom, 1.0)
 
-  def move_above(self): self.position[2] += max(self.movement_speed/self.zoom, 1)
+  def move_above(self): self.position[2] += max(self.movement_speed/self.zoom, 1.0)
+
+  def move_forward(self): self.position += self.normal * self.movement_speed
+
+  def move_backward(self): self.position -= self.normal * self.movement_speed
+
+  def move_sideways_right(self): self.position += self.right * self.movement_speed
+
+  def move_sideways_left(self): self.position -= self.right * self.movement_speed
+
+  def move_upward(self): self.position += self.up * self.movement_speed
+
+  def move_downward(self): self.position -= self.up * self.movement_speed
 
   def rotate(self, angle: int | None = None, a1: int=0, a2: int=1):
     """Rotate the window around the normal vector."""
@@ -82,11 +94,11 @@ class Window:
     if self.zoom >= self.min_zoom: self.zoom /= 1.1
 
   def recenter(self):
-    self.position = np.array([0, 0, 100])
-    self.normal = np.array([0, 0, -1])
-    self.focus = self.position + self.normal*100
-    self.right = np.array([1, 0, 0])
-    self.up = np.array([0, 1, 0])
+    self.position = np.array([0, 0, 100], dtype=float)
+    self.normal = np.array([0, 0, -1], dtype=float)
+    self.focus = self.position + self.normal
+    self.right = np.array([1, 0, 0], dtype=float)
+    self.up = np.array([0, 1, 0], dtype=float)
     self.zoom = 1.0
     self.window_focus = WindowPoint(0, 0)
     self.window_focus_1 = WindowPoint(self.width // 2, self.height // 2)
@@ -108,7 +120,13 @@ class Window:
     return self.chosen_projection(point)
 
   def perspective_projection(self, point: WorldPoint) -> WindowPoint:
-    return WindowPoint(0, 0)
+    # Not working
+    d = self.focus - self.position
+    d = -np.dot(d, self.normal)
+    d = -d*self.normal
+    d = np.linalg.norm(d)
+
+    return WindowPoint(point[0]*d/point[2]+self.position[0], point[1]*d/point[2]+self.position[1])
 
   def _perspective_projection(self, point: WorldPoint) -> WindowPoint:
     point = point[:3]  # Ignore the homogeneous coordinate if present
