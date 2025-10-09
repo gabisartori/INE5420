@@ -402,8 +402,8 @@ class SGI:
         return
       control_points = [np.append(np.array(p), 1.0) for p in control_points]
 
-      if len(control_points) < 2:
-        self.log("Erro: insira ao menos 2 pontos de controle.")
+      if len(control_points) < 4:
+        self.log("Erro: insira ao menos 4 pontos de controle.")
         return
 
       self.viewport.add_curve(control_points, name_input.get(), line_color_input.get().strip())

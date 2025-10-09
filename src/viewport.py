@@ -281,8 +281,8 @@ class Viewport:
     name: str="Curve",
     line_color: str="#000000",
   ):
-    if len(control_points) < 2:
-      raise Exception("Curva precisa de ao menos 2 pontos de controle.")
+    if len(control_points) < 4:
+      raise Exception("Curva precisa de ao menos 4 pontos de controle.")
 
     new_curve = Wireframe(
       self.id_counter,
@@ -295,8 +295,8 @@ class Viewport:
     self.update()
 
   def finish_curve(self):
-    if len(self.building_buffer) < 2: 
-      raise Exception("Erro: Pelo menos dois pontos são necessários para formar uma curva de Bézier.")
+    if len(self.building_buffer) < 4: 
+      raise Exception("Erro: Pelo menos quatro pontos são necessários para formar uma curva de Bézier.")
     elif len(self.building_buffer) == 2:
       self.log("Apenas dois pontos foram inseridos. Adicionando uma linha ao invés de uma curva.")
       start, end = self.building_buffer
