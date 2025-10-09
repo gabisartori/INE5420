@@ -26,6 +26,7 @@ sgi = SGI(
   window_padding=config.WINDOW_PADDING,
   window_movement_speed=config.WINDOW_MOVEMENT_SPEED,
   window_rotation_speed=config.WINDOW_ROTATION_SPEED,
+  projection_type=config.PROJECTION_TYPE,
   # User data, storing the current state of the application
   **preferences,
   # Arguments passed by the user in the command line

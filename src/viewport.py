@@ -22,12 +22,14 @@ class Viewport:
     debug: bool,
     window_position: list[float],
     window_normal: list[float],
+    window_focus: list[float],
     window_up: list[float],
     window_movement_speed: int,
     window_rotation_speed: int,
     window_padding: int,
     window_zoom: float,
     line_clipping_algorithm: IntVar,
+    projection_type: int,
   ):
     self.canva = canva
     self.window = Window(
@@ -35,10 +37,12 @@ class Viewport:
       height,
       window_position,
       window_normal,
+      window_focus,
       window_up,
       window_movement_speed,
       window_rotation_speed,
       window_zoom,
+      projection_type
     )
     self.clipper = Clipping(
       width,
@@ -112,8 +116,9 @@ class Viewport:
       self.canva.create_line(x0, (y1+self.window.padding)/2, x1, (y1+self.window.padding)/2, fill="blue")
       self.canva.create_line((x1+self.window.padding)/2, y0, (x1+self.window.padding)/2, y1, fill="blue")
       self.draw_viewport_border()
+      self.canva.create_text(x1 - 100, y1 - 10, fill="black", font=("Arial", 10, "bold"), text=str(self.window.position))
 
-    for object in all_objects:
+    for object in sorted(all_objects, key=lambda obj: obj.distance(self.window.position), reverse=True):
       for window_object in self.window.project(object):
         clipped = self.clipper.clip(window_object)
         if clipped is not None: clipped.draw(self.canva)

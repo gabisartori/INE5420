@@ -21,11 +21,13 @@ class SGI:
     window_zoom: float,
     window_position: list[float],
     window_normal: list[float],
+    window_focus: list[float],
     window_up: list[float],
     window_movement_speed: int,
     window_rotation_speed: int,
     window_padding: int,
     line_clipping_algorithm: int,
+    projection_type: int
   ):
     self.width: int = width
     self.height: int = height
@@ -34,6 +36,8 @@ class SGI:
     self.debug: bool = debug
     self.window_position: list[float] = window_position
     self.window_normal: list[float] = window_normal
+    self.window_focus: list[float] = window_focus
+    self.projection_type: int = projection_type
     self.window_up: list[float] = window_up
     self.window_movement_speed: int = window_movement_speed
     self.window_rotation_speed: int = window_rotation_speed
@@ -131,12 +135,14 @@ class SGI:
       self.debug,
       self.window_position,
       self.window_normal,
+      self.window_focus,
       self.window_up,
       self.window_movement_speed,
       self.window_rotation_speed,
       self.window_padding,
       self.window_zoom,
       self.line_clipping_algorithm,
+      self.projection_type
     )
 
     # Log session
@@ -222,12 +228,12 @@ class SGI:
     self.root.bind("<KeyPress-q>", lambda e: self.viewport.window.move_below() or self.viewport.update())
     self.root.bind("<KeyPress-e>", lambda e: self.viewport.window.move_above() or self.viewport.update())
     # Camera rotation
-    self.root.bind("<KeyPress-r>", lambda e: self.viewport.window.rotate(angle=5 , a1=1, a2=2) or self.viewport.update())
-    self.root.bind("<KeyPress-t>", lambda e: self.viewport.window.rotate(angle=-5, a1=1, a2=2) or self.viewport.update())
-    self.root.bind("<KeyPress-f>", lambda e: self.viewport.window.rotate(angle=5 , a1=0, a2=2) or self.viewport.update())
-    self.root.bind("<KeyPress-g>", lambda e: self.viewport.window.rotate(angle=-5, a1=0, a2=2) or self.viewport.update())
-    self.root.bind("<KeyPress-v>", lambda e: self.viewport.window.rotate(angle=5 , a1=0, a2=1) or self.viewport.update())
-    self.root.bind("<KeyPress-b>", lambda e: self.viewport.window.rotate(angle=-5, a1=0, a2=1) or self.viewport.update())
+    self.root.bind("<KeyPress-r>", lambda e: self.viewport.window.rotate(a1=1, a2=2, angle=self.window_rotation_speed) or self.viewport.update())
+    self.root.bind("<KeyPress-t>", lambda e: self.viewport.window.rotate(a1=1, a2=2, angle=-self.window_rotation_speed) or self.viewport.update())
+    self.root.bind("<KeyPress-f>", lambda e: self.viewport.window.rotate(a1=0, a2=2, angle=self.window_rotation_speed) or self.viewport.update())
+    self.root.bind("<KeyPress-g>", lambda e: self.viewport.window.rotate(a1=0, a2=2, angle=-self.window_rotation_speed) or self.viewport.update())
+    self.root.bind("<KeyPress-v>", lambda e: self.viewport.window.rotate(a1=0, a2=1, angle=self.window_rotation_speed) or self.viewport.update())
+    self.root.bind("<KeyPress-b>", lambda e: self.viewport.window.rotate(a1=0, a2=1, angle=-self.window_rotation_speed) or self.viewport.update())
     
     # Extras
     self.root.bind("<KeyPress-Escape>", lambda e: self.cancel_building())
@@ -251,6 +257,7 @@ class SGI:
       json.dump({
         "window_position": self.viewport.window.position.tolist(),
         "window_normal": self.viewport.window.normal.tolist(),
+        "window_focus": self.viewport.window.focus.tolist(),
         "window_up": self.viewport.window.up.tolist(),
         "window_zoom": self.viewport.window.zoom,
         "line_clipping_algorithm": self.line_clipping_algorithm.get(),

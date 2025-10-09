@@ -206,6 +206,12 @@ class Wireframe:
     curves_str = '\n'.join(f"c {' '.join(str(idx+1) for idx in curve.control_points)} {curve.steps} {curve.curve_type.name.lower()}" for curve in self.curves)
     return f"o {self.name}\n{vertices_str}\n{edges_str}\n{faces_str}\n{curves_str}"
 
+  def distance(self, window: np.ndarray) -> float:
+    """Calculate the distance from the object's center to the window's position."""
+    center = self.center[:3]
+    window_pos = window[:3]
+    return np.linalg.norm(center - window_pos).astype(float)
+
   @property
   def window_objects(self) -> list[WindowObject]:
     objects: list[WindowObject] = []
@@ -346,4 +352,4 @@ class Wireframe:
 
   @property
   def center(self) -> WorldPoint:
-    return np.mean(self.vertices, axis=0).astype(int)
+    return np.mean(self.vertices, axis=0).astype(float)
