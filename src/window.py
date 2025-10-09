@@ -162,28 +162,20 @@ class Window:
 
   def paralel_projection(self, point: WorldPoint) -> WindowPoint:
     point = point[:3]  # Ignore the homogeneous coordinate if present
-    point -= self.position
-    z = self.normal
-    x = np.cross(self.up, z)
-    y = np.cross(z, x)
-    M = np.array([
-      [x[0], y[0], z[0], 0],
-      [x[1], y[1], z[1], 0],
-      [x[2], y[2], z[2], 0],
-      [-np.dot(x, self.focus), -np.dot(y, self.focus), -np.dot(z, self.focus), 1.0]
-    ])
+    # Project the point onto the window view plane
+    t = sum(self.normal[i] * (self.position[i] - point[i]) for i in range(len(point)))
+    t /= sum(self.normal[i] * self.normal[i] for i in range(len(point)))
+    c = np.array([point[i] + t * self.normal[i] for i in range(len(point))])
 
-    point_h = np.append(point[:3], 1.0)  # Ensure the point is in homogeneous coordinates
-    transformed_point = M @ point_h
-
-    return WindowPoint(transformed_point[0], transformed_point[1])
+    v = c - self.position
+    return WindowPoint(np.dot(v, self.right), np.dot(v, self.up))
 
   def window_to_world(self, x: float, y: float) -> WorldPoint:
     # Return a 3D point based on the window's position and orientation
     # TODO: This creates a point at the exact position of the window
     # It would be more useful if the user could control a distance from the window to which clicks are applied
     # This is quite simple to implement, but it would mess with how zoom is behaving
-    return np.append(-x*self.right + y*self.up + self.position, 1.0)
+    return np.append(x*self.right + y*self.up + self.position, 1.0)
 
   def window_to_viewport(self, point: WindowPoint) -> WindowPoint:
     point = point*self.zoom + self.window_focus_1
