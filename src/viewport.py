@@ -281,29 +281,40 @@ class Viewport:
     name: str="Curve",
     line_color: str="#000000",
   ):
-    if len(control_points) < 4:
-      raise Exception("Curva precisa de ao menos 4 pontos de controle.")
+    if len(control_points) < 2:
+      raise Exception("Curva precisa de ao menos 2 pontos de controle.")
 
     new_curve = Wireframe(
       self.id_counter,
       name,
       vertices=control_points,
-      curves=[Curve(self.curve_type, list(range(len(control_points))), self.curve_coefficient.get())]
+      curves=[Curve(self.curve_type, list(range(len(control_points))), self.curve_coefficient.get(), degree=min(4, len(control_points)))],
     )
     self.objects.append(new_curve)
     self.id_counter += 1
     self.update()
 
   def finish_curve(self):
-    if len(self.building_buffer) < 4: 
-      raise Exception("Erro: Pelo menos quatro pontos são necessários para formar uma curva de Bézier cúbica.")
-    self.objects.append(Wireframe(
-      self.id_counter,
-      "Curva",
-      vertices=self.building_buffer.copy(),
-      curves=[
-        Curve(self.curve_type, list(range(len(self.building_buffer))), self.curve_coefficient.get())
-      ]
-    ))
+    if len(self.building_buffer) < 2: 
+      raise Exception("Erro: Pelo menos dois pontos são necessários para formar uma curva de Bézier.")
+    elif len(self.building_buffer) == 2:
+      self.log("Apenas dois pontos foram inseridos. Adicionando uma linha ao invés de uma curva.")
+      start, end = self.building_buffer
+      self.objects.append(Wireframe(
+        self.id_counter,
+        "Linha",
+        vertices=[start, end],
+        edges=[(0, 1)],
+      ))
+    else:
+      if len(self.building_buffer) == 3: self.log("Apenas três pontos foram inseridos. Adicionando uma curva quadrática ao invés de uma cúbica.")
+      self.objects.append(Wireframe(
+        self.id_counter,
+        "Curva",
+        vertices=self.building_buffer.copy(),
+        curves=[
+          Curve(self.curve_type, list(range(len(self.building_buffer))), self.curve_coefficient.get(), degree=min(4, len(self.building_buffer)))
+        ]
+      ))
     self.id_counter += 1
     self.cancel_building()

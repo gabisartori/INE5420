@@ -9,6 +9,9 @@ class WindowPoint:
   x: int | float
   y: int | float
 
+  def __array__(self) -> np.ndarray:
+    return np.array([self.x, self.y])
+
   def copy(self) -> 'WindowPoint':
     return WindowPoint(self.x, self.y)
 

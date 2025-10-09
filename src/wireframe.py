@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 import numpy as np
+import math
 from tkinter import Canvas
 
 from my_types import WorldPoint, WindowPoint
@@ -38,6 +39,18 @@ class CurveType(Enum):
   BEZIER = 0
   B_SPLINE = 1
 
+  @classmethod
+  def from_obj_name(cls, name: str) -> 'CurveType | None':
+    name = name.lower()
+    if name == "bezier": return CurveType.BEZIER
+    elif name == "bspline": return CurveType.B_SPLINE
+    return None
+
+  def obj_name(self) -> str:
+    if self == CurveType.BEZIER: return "bezier"
+    elif self == CurveType.B_SPLINE: return "bspline"
+    return "unknown"
+
   def __str__(self) -> str:
     if self == CurveType.BEZIER: return "Bézier"
     elif self == CurveType.B_SPLINE: return "B-Spline"
@@ -51,22 +64,20 @@ class Curve:
   # This should be fixed, either by making the curve store the actual points, or something else
   control_points: list[int]
   steps: int
+  degree: int = 4
 
   @staticmethod
-  def bezier_algorithm(t, P0: WindowPoint, P1: WindowPoint, P2: WindowPoint, P3: WindowPoint) -> WindowPoint:
+  def bezier_algorithm(t, *points: WindowPoint) -> WindowPoint:
     """Calculate points on a cubic Bezier curve defined by four control points."""
-    t = np.array([(1 - t)**3, 3 * (1 - t)**2 * t, 3 * (1 - t) * t**2, t**3])
-    return np.dot(t, np.array([P0, P1, P2, P3]))
+    n = len(points)
+    tv = np.array([(1-t)**(n-1-i) * t**i * math.comb(n-1, i) for i in range(n)], dtype=float)
+    return WindowPoint(*(np.dot(tv, np.array(points))[:2]))
 
   def generate_bezier_points(self, control_points: list[WindowPoint]) -> list[WindowPoint]:
     """Generate points on the Bezier curve defined by the control points."""
-    if len(control_points) < 4:
-      raise ValueError("Cubic Bezier curve requires at least 4 control points.")
-
     curve_points = []
-    for i in range(0, len(control_points) - 3, 3):
-      P0, P1, P2, P3 = control_points[i:i+4]
-      curve_segment = [self.bezier_algorithm(step / self.steps, P0, P1, P2, P3) for step in range(self.steps + 1)]
+    for points in zip(*(control_points[i::self.degree-1] for i in range(self.degree))):
+      curve_segment = [self.bezier_algorithm(step / self.steps, *points) for step in range(self.steps + 1)]
 
       # Avoid duplicating points at segment joins
       if curve_points:
@@ -168,10 +179,22 @@ class Curve:
   def line_objects(self, control_points: list[WindowPoint]) -> list[WindowLineObject]:
     return [WindowLineObject(line[0], line[1]) for line in self.get_lines(control_points)]
 
+  def __str__(self) -> str:
+    output = f"cstype {self.curve_type.obj_name()}\n"
+    output += f"deg {self.steps}\n"
+    output += "curv "+ " ".join(str(idx+1) for idx in self.control_points) + "\n"
+    output += "parm u 0 1"
+    return output
+
+  def copy(self) -> 'Curve':
+    return Curve(self.curve_type, self.control_points[:], self.steps, self.degree)
+
 @dataclass
 class Surface:
   @property
   def window_objects(self) -> list[WindowObject]: return []
+
+  def copy(self) -> 'Surface': return Surface()
 
 @dataclass 
 class Wireframe:
@@ -192,19 +215,30 @@ class Wireframe:
       [v.copy() for v in self.projected_vertices],
       [edge[:] for edge in self.edges],
       [(face[0][:], face[1]) for face in self.faces],
-      [Curve(c.curve_type, c.control_points[:], c.steps) for c in self.curves],
-      []
+      [c.copy() for c in self.curves],
+      [s.copy() for s in self.surfaces]
     )
   
   def __str__(self) -> str:
     vertices_str = '\n'.join(f"v {' '.join(map(str, v[:-1]))}" for v in self.vertices)
     edges_str = '\n'.join(f"l {start+1} {end+1}" for start, end in self.edges)
-    faces_str = ""
-    for face in self.faces:
-      if face[1]: faces_str += f"usemtl {face[1]}\n"
-      faces_str += f"f {' '.join(str(idx+1) for idx in face[0])}\n"
-    curves_str = '\n'.join(f"c {' '.join(str(idx+1) for idx in curve.control_points)} {curve.steps} {curve.curve_type.name.lower()}" for curve in self.curves)
-    return f"o {self.name}\n{vertices_str}\n{edges_str}\n{faces_str}\n{curves_str}"
+    faces_str = "\n".join([self.polygon_str(face) for face in self.faces])
+    curves_str = "\n".join([str(curve) for curve in self.curves])
+    surfaces_str = "\n".join([str(surface) for surface in self.surfaces])
+    
+    parts = [f"o {self.name}"]
+    if vertices_str: parts.append(vertices_str)
+    if edges_str: parts.append(edges_str)
+    if faces_str: parts.append(faces_str)
+    if curves_str: parts.append(curves_str)
+    if surfaces_str: parts.append(surfaces_str)
+    return "\n\n".join(parts) + "\n"
+
+  @staticmethod
+  def polygon_str(face: tuple[list[int], str | None]) -> str:
+    vertices, texture = face
+    texture_str = f"usemtl {texture}\n" if texture else ""
+    return f"{texture_str}f {' '.join(str(idx+1) for idx in vertices)}"
 
   def distance(self, window: np.ndarray) -> float:
     """Calculate the distance from the object's center to the window's position."""
@@ -288,6 +322,25 @@ class Wireframe:
               current_texture
             ))
             current_texture = None
+          
+          case 'cstype':
+            if len(body) < 1: raise ValueError(f"Invalid cstype line: {line.strip()}")
+            curve_type = CurveType.from_obj_name(body[0])
+            if curve_type is None: raise ValueError(f"Unknown curve type: {body[0]}")
+            deg_header, *deg_values = f.readline().split()
+            if deg_header != 'deg' or len(deg_values) < 1: raise ValueError(f"Invalid deg line: {' '.join([deg_header]+deg_values)}")
+            # Curve
+            if len(deg_values) == 1:
+              pass
+            # Surface
+            elif len(deg_values) == 2:
+              pass
+            else:
+              raise ValueError(f"Invalid deg line: {' '.join([deg_header]+deg_values)}")
+            
+            points_header, *points_values = f.readline().split()
+            if (points_header not in ('curv', 'surf')) or len(points_values) < 1: raise ValueError(f"Invalid points line: {' '.join([points_header]+points_values)}")
+            points = [int(x)-1 for x in points_values]
 
     # Append last object since it won't be appended in the loop
     objects.append(Wireframe(
