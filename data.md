@@ -1,3 +1,4 @@
+# THIS IS NOT UP TO DATE!!
 # Legenda
 **CapsLock:** Constante, definição da aplicação
 **Asterisco:** Argumentos, definidos pelo usuário mas constante durante a execução
@@ -19,6 +20,7 @@
   - movement speed
   - rotation speed
 - zoom
+- projection type
 #### Clipping
 - WIDTH
 - HEIGHT

@@ -105,7 +105,6 @@ class Viewport:
     self.update()
 
   def update(self):
-    # TODO: Only update the object list when something changes, not every frame
     self.update_object_list()
     self.canva.delete("all")
     all_objects = [obj.copy() for obj in self.objects]

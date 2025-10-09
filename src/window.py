@@ -70,11 +70,9 @@ class Window:
     M[a1, a2] = -s
     M[a2, a1] = s
     M[a2, a2] = c
-
-    self.right = normalize(M @ self.right)
-    self.up = normalize(M @ self.up)
-    self.normal = normalize(np.cross(self.right, self.up))
-
+    self.right = M @ self.right
+    self.up = M @ self.up
+    self.normal = np.cross(self.up, self.right)
     # self.focus = M @ self.focus
 
   def zoom_in(self, x, y):
@@ -167,7 +165,7 @@ class Window:
     # TODO: This creates a point at the exact position of the window
     # It would be more useful if the user could control a distance from the window to which clicks are applied
     # This is quite simple to implement, but it would mess with how zoom is behaving
-    return np.append(x*self.right + y*self.up + self.position, 1.0)
+    return np.append(-x*self.right + y*self.up + self.position, 1.0)
 
   def window_to_viewport(self, point: WindowPoint) -> WindowPoint:
     point = point*self.zoom + self.window_focus_1
