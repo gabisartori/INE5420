@@ -3,6 +3,8 @@
 **CapsLock:** Constante, definição da aplicação
 **Asterisco:** Argumentos, definidos pelo usuário mas constante durante a execução
 **Hífen:** Atributos da aplicação, definidos pelo usuário e podem ser alterados durante a execução, devendo ter os novos valores armazenados ao final da execução.
+
+
 # SGI
 - APPLICATION NAME
 ## Viewport
@@ -16,6 +18,7 @@
   - position
   - normal
   - up
+  - focus
   - right
   - movement speed
   - rotation speed

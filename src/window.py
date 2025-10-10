@@ -64,9 +64,9 @@ class Window:
 
   def move_backward(self): self.position -= self.normal * self.movement_speed
 
-  def move_sideways_right(self): self.position += self.right * self.movement_speed
+  def move_sideways_right(self): self.position -= self.right * self.movement_speed
 
-  def move_sideways_left(self): self.position -= self.right * self.movement_speed
+  def move_sideways_left(self): self.position += self.right * self.movement_speed
 
   def move_upward(self): self.position += self.up * self.movement_speed
 
@@ -96,7 +96,7 @@ class Window:
   def recenter(self):
     self.position = np.array([0, 0, 100], dtype=float)
     self.normal = np.array([0, 0, -1], dtype=float)
-    self.focus = self.position + self.normal
+    self.focus = self.position - 100*self.normal
     self.right = np.array([1, 0, 0], dtype=float)
     self.up = np.array([0, 1, 0], dtype=float)
     self.zoom = 1.0
@@ -120,13 +120,16 @@ class Window:
     return self.chosen_projection(point)
 
   def perspective_projection(self, point: WorldPoint) -> WindowPoint:
-    # Not working
-    d = self.focus - self.position
-    d = -np.dot(d, self.normal)
-    d = -d*self.normal
-    d = np.linalg.norm(d)
+    point = point[:3]  # Ignore the homogeneous coordinate if present
+    m = np.array([self.right, self.up, point - self.focus]).T
+    r = self.focus - self.position
 
-    return WindowPoint(point[0]*d/point[2]+self.position[0], point[1]*d/point[2]+self.position[1])
+    if np.linalg.det(m) == 0 or np.dot(self.normal, r) == 0:
+      return WindowPoint(float('inf'), float('inf'))
+    
+    x, y, z = np.linalg.solve(m, r)
+    # if z == 0: return WindowPoint(float('inf'), float('inf'))
+    return WindowPoint(x, y)
 
   def _perspective_projection(self, point: WorldPoint) -> WindowPoint:
     point = point[:3]  # Ignore the homogeneous coordinate if present
