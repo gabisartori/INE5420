@@ -88,7 +88,7 @@ class Window:
     self.right = M @ self.right
     self.up = M @ self.up
     self.normal = np.cross(self.up, self.right)
-    self.focus = self.position - 100*self.normal
+    self.focus = self.position - 1000*self.normal
 
   def zoom_in(self, x, y):
     if self.zoom <= self.max_zoom: self.zoom *= 1.1
@@ -99,7 +99,7 @@ class Window:
   def recenter(self):
     self.position = np.array([0, 0, 100], dtype=float)
     self.normal = np.array([0, 0, -1], dtype=float)
-    self.focus = self.position - 100*self.normal
+    self.focus = self.position - 1000*self.normal
     self.right = np.array([1, 0, 0], dtype=float)
     self.up = np.array([0, 1, 0], dtype=float)
     self.zoom = 1.0
