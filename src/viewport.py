@@ -118,7 +118,8 @@ class Viewport:
       self.canva.create_text(x1 - 100, y1 - 10, fill="black", font=("Arial", 10, "bold"), text=str(self.window.position))
 
     for object in sorted(all_objects, key=lambda obj: obj.distance(self.window.position), reverse=True):
-      for window_object in self.window.project(object):
+      object.projected_vertices = self.window.project(object.vertices)
+      for window_object in object.window_objects(self.curve_coefficient.get()):
         clipped = self.clipper.clip(window_object)
         if clipped is not None: clipped.draw(self.canva)
 
@@ -288,7 +289,7 @@ class Viewport:
       self.id_counter,
       name,
       vertices=control_points,
-      curves=[Curve(self.curve_type, list(range(len(control_points))), self.curve_coefficient.get(), degree=min(4, len(control_points)))],
+      curves=[Curve(self.curve_type, list(range(len(control_points))), degree=min(4, len(control_points)))],
     )
     self.objects.append(new_curve)
     self.id_counter += 1

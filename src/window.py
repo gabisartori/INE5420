@@ -103,9 +103,8 @@ class Window:
     self.window_focus = WindowPoint(0, 0)
     self.window_focus_1 = WindowPoint(self.width // 2, self.height // 2)
 
-  def project(self, object: Wireframe) -> list[WindowObject]:
-    object.projected_vertices = [self.world_to_viewport(v) for v in object.vertices]
-    return object.window_objects
+  def project(self, points: list[WorldPoint]) -> list[WindowPoint]:
+    return [self.world_to_viewport(point) for point in points]
 
   def world_to_viewport(self, point: WorldPoint) -> WindowPoint:
     window_point = self.world_to_window(point)

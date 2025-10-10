@@ -90,7 +90,8 @@ class SGI:
       input.pack(),
       tk.Button(popup, text="Aplicar", command=lambda: (
         self.curve_coefficient.set(int(input.get())) if input.get().isnumeric() and int(input.get()) > 0 else None,
-        popup.destroy()
+        popup.destroy(),
+        self.viewport.update()
       )).pack(),
     ))
 
