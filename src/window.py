@@ -1,8 +1,6 @@
 import numpy as np
 from my_types import WorldPoint, WindowPoint
 
-from wireframe import Wireframe, WindowObject
-
 
 def normalize(v: WorldPoint | list[float]) -> WorldPoint:
   """Normalize a vector."""
@@ -11,6 +9,11 @@ def normalize(v: WorldPoint | list[float]) -> WorldPoint:
   return v / norm if norm != 0 else v
 
 class Window:
+  '''Representa uma janela de visualização num espaço de n dimensões.
+  Por meio de seus atributos de posição e orientação, é possível calcular a posição relativa de pontos no espaço 3D e projetá-los na janela.
+
+  A janela também interage com a tela de exibição (viewport), convertendo coordenadas entre os dois sistemas.
+  '''
   def __init__(
     self,
     width: int,

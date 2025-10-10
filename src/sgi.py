@@ -8,6 +8,14 @@ from logger import logging
 from config import USER_PREFERENCES_PATH
 
 class SGI:
+  '''Raiz do programa, responsável pela interface gráfica e interação com o usuário
+  
+  Esta classe instancia todos os componentes da interface e do gerenciador de objetos 3d.
+
+  A Viewport será responsável por gerenciar os objetos criados, armazenando-os, desenhando-os e manipulando-os.
+
+  Além da criação da Viewport, esta classe não faz muito além de oferecer uma interface gráfica para as funcionalidades da Viewport.
+  '''
   def __init__(
     self,
     title: str,

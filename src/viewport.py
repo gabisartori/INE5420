@@ -8,6 +8,12 @@ from clipping import Clipping
 from my_types import WorldPoint
 
 class Viewport:
+  '''Gerencia a janela de visualização de objetos 3D, incluindo a renderização, manipulação e interação com o usuário.
+
+  Esta classe mantém uma lista de objetos criados e uma lista de pontos de criação temporários.
+
+  Esses objetos são então projetados por meio de uma instância da classe Window, que lida com a projeção 3D para 2D. E então, os objetos projetados são recortados usando uma instância da classe Clipping, que aplica algoritmos de recorte de linha e polígonos antes de desenhá-los na tela.
+  '''
   def __init__(
     self,
     canva: Canvas,
@@ -80,6 +86,11 @@ class Viewport:
     return self.window.click_in_window(x, y)
 
   def canva_click(self, event: Event):
+    '''Registra o clique do usuário na tela.
+
+    Caso o usuário esteja em modo de construção, adiciona o ponto clicado ao buffer de construção.
+    Caso contrário, cria um novo objeto ponto na posição clicada.
+    '''
     if not self.is_click_inside_window(event.x, event.y): return
 
     world_point = self.window.viewport_to_world(event.x, event.y)
@@ -108,7 +119,7 @@ class Viewport:
     self.update_object_list()
     self.canva.delete("all")
     all_objects = [obj.copy() for obj in self.objects]
-    # Add debug objects to the list of objects to be drawn if debug mode is on
+    # Se o modo debug estiver ativado, desenha elementos auxiliares na tela, como a grade e o centro da tela
     if self.debug:
       self.build_debug_grid()
       x0, y0, x1, y1 = self.window.get_corners()
@@ -117,13 +128,18 @@ class Viewport:
       self.draw_viewport_border()
       self.canva.create_text(x1 - 100, y1 - 10, fill="black", font=("Arial", 10, "bold"), text=str(self.window.position))
 
+    # Ordena os objetos por distância da janela antes de desenhá-los
+    # Dessa forma, objetos mais distantes são desenhados primeiro e, então, cobertos por objetos mais próximos
     for object in sorted(all_objects, key=lambda obj: obj.distance(self.window.position), reverse=True):
+      # Projeta os vértices do objeto na janela de visualização
       object.projected_vertices = self.window.project(object.vertices)
       for window_object in object.window_objects(self.curve_coefficient.get()):
+        # Recorta objetos cujas posições na janela estejam além dos limites da tela de exibição.
         clipped = self.clipper.clip(window_object)
         if clipped is not None: clipped.draw(self.canva)
 
-    # Redraw the building lines if in building mode
+    # Aplica o mesmo processo de projeção e recorte para os pontos que estão na lista de construção
+    # A única diferença é a construção manual das linhas entre os pontos
     prev = None
     for point in self.building_buffer:
       point = self.window.world_to_viewport(point)

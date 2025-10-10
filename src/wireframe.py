@@ -8,10 +8,15 @@ from tkinter import Canvas
 from my_types import WorldPoint, WindowPoint
 
 class WindowObject:
+  '''Representa a projeção de um objeto do mundo no plano da janela.
+  Cada objeto do mundo pode ser representado por um ou vários WindowObjects.
+  Cada WindowObject se desenha no canvas a partir de seu(s) ponto(s) (x, y) na janela.
+  '''
   def draw(self, canva: Canvas, color: str="black") -> None: pass
 
 @dataclass
 class WindowPointObject(WindowObject):
+  '''Representa um ponto na janela.'''
   p: WindowPoint
 
   def draw(self, canva: Canvas, color: str="black") -> None:
@@ -19,6 +24,7 @@ class WindowPointObject(WindowObject):
 
 @dataclass
 class WindowLineObject(WindowObject):
+  '''Linha na janela, definida por dois pontos.'''
   start: WindowPoint
   end: WindowPoint
 
@@ -27,6 +33,10 @@ class WindowLineObject(WindowObject):
 
 @dataclass
 class WindowPolygonObject(WindowObject):
+  '''Polígono na janela, definido por uma lista de pontos para os vértices.
+
+  Por requisito da matéria, esta classe só deve ser utilizada para preenchimento das faces **que possuem textura**.
+  '''
   points: list[WindowPoint]
   texture: str | None = None
 
@@ -36,6 +46,11 @@ class WindowPolygonObject(WindowObject):
     canva.create_polygon(*coords, outline="black", fill=self.texture if self.texture else "")
 
 class CurveType(Enum):
+  '''Tipos de curvas suportados.
+
+  - Bézier: Curvas definidas por pontos de controle, onde a curva é tangente aos segmentos que ligam os pontos de controle.
+  - B-Spline: Curvas definidas por pontos de controle, onde a curva não necessariamente passa pelos pontos de controle, mas é influenciada por eles.
+  '''
   BEZIER = 0
   B_SPLINE = 1
 
@@ -58,6 +73,13 @@ class CurveType(Enum):
 
 @dataclass
 class Curve:
+  '''Armazena informações de uma curva necessárias para construir sua representação na janela.
+
+  Os pontos de controle são índices para uma lista de pontos no mundo, armazenada no Wireframe que contém a curva.
+  A partir desses pontos de controle, a curva constrói um conjunto de linhas utilizando o algoritmo definido pelo seu tipo (*curve_type*).
+
+  *start*, *end* e *degree* estão presentes para manter compatibilidade com o formato Wavefront OBJ, mas não estão sendo 100% utilizados.
+  '''
   curve_type: CurveType
   control_points: list[int]
   start: float = 0.0
@@ -66,13 +88,16 @@ class Curve:
 
   @staticmethod
   def bezier_algorithm(t, *points: WindowPoint) -> WindowPoint:
-    """Calculate points on a cubic Bezier curve defined by four control points."""
+    '''Calcula um ponto na curva de Bézier para um dado valor de t (0 <= t <= 1) e uma lista de pontos de controle.
+
+    Calculo generalizado para qualquer número de pontos de controle >= 2. (para n = 2, é apenas uma linha reta)
+    '''
     n = len(points)
     tv = np.array([(1-t)**(n-1-i) * t**i * math.comb(n-1, i) for i in range(n)], dtype=float)
     return WindowPoint(*(np.dot(tv, np.array(points))[:2]))
 
   def generate_bezier_points(self, control_points: list[WindowPoint], curve_coefficient: int) -> list[WindowPoint]:
-    """Generate points on the Bezier curve defined by the control points."""
+    '''Utiliza *bezier_algorithm* para criar a lista de pontos que formam a curva de Bézier.'''
     curve_points = []
     for points in zip(*(control_points[i::self.degree-1] for i in range(self.degree))):
       curve_segment = [self.bezier_algorithm(step / curve_coefficient, *points) for step in range(curve_coefficient + 1)]
@@ -86,7 +111,7 @@ class Curve:
     return curve_points
 
   def generate_b_spline_points(self, control_points: list[WindowPoint], curve_coefficient: int) -> list[WindowPoint]:
-    """Generate points on a B-Spline curve defined by the control points using the forward difference method."""
+    '''Gera pontos em uma curva B-Spline definida pelos pontos de controle usando o método de diferenças progressivas.'''
     if len(control_points) < 4:
       raise ValueError("Cubic B-Spline curve requires at least 4 control points.")
 
@@ -165,13 +190,18 @@ class Curve:
     return curve_points
 
   def get_lines(self, control_points: list[WindowPoint], curve_coefficient: int) -> list[tuple[WindowPoint, WindowPoint]]:
+    '''Gera uma lista de pontos sobre a curva a partir do algoritmo definido por *curve_type*.
+
+    Então, constrói pares de pontos consecutivos para formar as linhas que representam a curva.
+    '''
     match self.curve_type:
       case CurveType.BEZIER: points = self.generate_bezier_points(control_points, curve_coefficient)
       case CurveType.B_SPLINE: points = self.generate_b_spline_points(control_points, curve_coefficient)
       case _: points = []
     return [(points[i], points[i+1]) for i in range(len(points)-1)]
 
-  def line_objects(self, control_points: list[WindowPoint], curve_coefficient: int) -> list[WindowLineObject]:
+  def window_objects(self, control_points: list[WindowPoint], curve_coefficient: int) -> list[WindowLineObject]:
+    '''Gera os objetos de linha que representam a curva na janela.'''
     return [WindowLineObject(line[0], line[1]) for line in self.get_lines(control_points, curve_coefficient)]
 
   def __str__(self) -> str:
@@ -186,6 +216,13 @@ class Curve:
 
 @dataclass
 class Surface:
+  '''Armazena informações de uma superfície necessárias para construir sua representação na janela.
+
+  Os pontos de controle são índices para uma lista de pontos no mundo, armazenada no Wireframe que contém a superfície.
+  A partir desses pontos de controle, a superfície constrói um conjunto de linhas utilizando o algoritmo definido pelo seu tipo (*surface_type*).
+
+  *start_u*, *end_u*, *start_v*, *end_v* e *degrees* estão presentes para manter compatibilidade com o formato Wavefront OBJ, mas não estão sendo 100% utilizados.  
+  '''
   surface_type: CurveType = CurveType.BEZIER
   control_points: list[int] = field(default_factory=list)
   degrees: tuple[int, int] = (4, 4)
@@ -195,9 +232,14 @@ class Surface:
   end_v: float = 1.0
 
   def window_objects(self, control_points: list[WindowPoint], curve_coefficient: int) -> list[WindowObject]:
+    '''Gera os objetos de linha que representam a superfície na janela.'''
     return [WindowLineObject(line[0], line[1]) for line in self.get_lines(control_points, curve_coefficient)]
 
   def get_lines(self, control_points: list[WindowPoint], curve_coefficient: int) -> list[tuple[WindowPoint, WindowPoint]]:
+    '''Gera uma lista de pontos sobre a superfície a partir do algoritmo definido por *surface_type*.
+
+    Então, constrói pares de pontos consecutivos para formar as linhas que representam a superfície.
+    '''
     match self.surface_type:
       case CurveType.BEZIER: points = self.generate_bezier_points(control_points, curve_coefficient)
       case CurveType.B_SPLINE: points = self.generate_b_spline_points(control_points, curve_coefficient)
@@ -205,9 +247,11 @@ class Surface:
     return [(points[i], points[i+1]) for i in range(len(points)-1)]
 
   def generate_bezier_points(self, control_points: list[WindowPoint], curve_coefficient: int) -> list[WindowPoint]:
+    '''Gera uma lista de pontos sobre uma superfície'''
     return []
   
   def generate_b_spline_points(self, control_points: list[WindowPoint], curve_coefficient: int) -> list[WindowPoint]:
+    '''Gera uma lista de pontos sobre uma superfície'''
     return []
 
   def copy(self) -> 'Surface':
@@ -230,6 +274,24 @@ class Surface:
 
 @dataclass 
 class Wireframe:
+  '''Representa um objeto 3D no mundo, composto por vértices, arestas, faces, curvas e superfícies.
+
+  Cada componente do wireframe possui sua própria representação na janela, que é gerada a partir dos vértices projetados.
+  Os componentes armazenam seus pontos como índices para a lista de vértices do wireframe.
+
+  Cada vértice é um WorldPoint, que é um array de n elementos de acordo com o número de dimensões do mundo. Esses pontos podem ser projetados para a janela, que é um plano.
+  Ou seja, WorldPoint (n dimensões) pode ser convertido para WindowPoint (2 dimensões).
+
+  A representação de cada compoenente do Wireframe é:
+  - Vértices: Diretamente convertidos para WindowPointObject
+  - Arestas: Cada aresta é representada por um WindowLineObject, que conecta dois vértices.
+  - Faces: Cada face é representada por múltiplos WindowLineObject, que conecta múltiplos vértices de forma circular. Caso a face possua textura, também será criado um WindowPolygonObject para preenchê-la.
+  - Curvas: Cada curva é representada por múltiplos WindowLineObject, criadas a partir dos pontos de controle.
+  - Superfícies: Cada superfície é representada por múltiplos WindowLineObject, criadas a partir dos pontos de controle.
+
+  Para desenhar o Wireframe na janela, primeiro é necessário converter seus vértices em WindowPoints. Então, cada componente pode usar esses valores para construir seus objetos de janela respectivos e desenhá-los.
+  Os vértices do Wireframe só são desenhados como pontos se o Wireframe não possuir nenhum outro tipo de componente.
+  '''
   wireframe_id: int
   name: str
   vertices: list[WorldPoint] = field(default_factory=list)  # List of vertices, each vertex is a numpy array of 4 elements (x, y, z, 1)
@@ -279,12 +341,16 @@ class Wireframe:
     return np.linalg.norm(center - window_pos).astype(float)
 
   def window_objects(self, curve_coefficient: int) -> list[WindowObject]:
+    '''Gera uma lista de objetos de janela que representam o Wireframe.
+
+    A definição da construção de objetos de janela a partir de cada componente está na docstring da classe Wireframe.
+    '''
     objects: list[WindowObject] = []
     for start_idx, end_idx in self.edges: objects.append(WindowLineObject(self.projected_vertices[start_idx], self.projected_vertices[end_idx]))
     for face in self.faces:
       face_vertices = [self.projected_vertices[idx] for idx in face[0]]
       objects.append(WindowPolygonObject(face_vertices, texture=face[1]))
-    for curve in self.curves: objects.extend(curve.line_objects([self.projected_vertices[x] for x in curve.control_points], curve_coefficient))
+    for curve in self.curves: objects.extend(curve.window_objects([self.projected_vertices[x] for x in curve.control_points], curve_coefficient))
     for surface in self.surfaces: objects.extend(surface.window_objects([self.projected_vertices[x] for x in surface.control_points], curve_coefficient))
     if objects == []:  # If there are no edges, faces or curves, draw the vertices as points
       for v in self.projected_vertices: objects.append(WindowPointObject(v))
@@ -293,6 +359,7 @@ class Wireframe:
 
   @classmethod
   def load_file(cls, filepath: str | None) -> list['Wireframe']:
+    '''Carrega um arquivo no formato Wavefront OBJ e retorna uma lista de Wireframes.'''
     if filepath is None: return []
     objects: list[Wireframe] = []
     current_vertices: list[WorldPoint] = []
@@ -392,17 +459,17 @@ class Wireframe:
     return objects
 
   def rotate(self, degrees: int=5, point: WorldPoint | None=None, a1: int=0, a2: int=1) -> None:
-    """Rotates the object around a given point in the XY plane.
-    If no point is given, rotate around the center of the object.
+    '''Rotaciona todos os vértices do objeto em torno de um ponto arbitrário.
+    Se nenhum ponto for fornecido, o objeto será rotacionado em torno de seu próprio centro.
 
-    The XY plane is chosen as the default plane for the 2D implementation of the program. This will then be replaced by the specific XY rotation for the 3D implementation.
-    """
-
+    O plano rotacionado é definido por a1 e a2, que são os índices das dimensões do mundo.
+    Por exemplo, para rotacionar no plano XY, a1=0 e a2=1 (padrão). Ou seja, rotacionar em torno do eixo Z.
+    '''
+    
     point = point if point is not None else self.center
 
     # Move the object to be centered around the rotation point.
     self.translate(*-point[:3])
-    # TODO: When needing to specify which plane the rotation is in, all that needs to change is which matrix is being used.
     # Apply the rotation matrix.
     M = np.eye(4)
     M[a1, a1] = np.cos(np.radians(degrees))
@@ -414,10 +481,7 @@ class Wireframe:
     self.translate(*point[:3])
 
   def translate(self, dx: float, dy: float, dz: float) -> None:
-    """Translate the object in the XY plane.
-    
-    Everything that was said about the XY plane in the rotate() method also applies here.
-    """
+    '''Desloca o objeto em relação ao seu sistema de coordenadas.'''
     self.transform(np.array([
       [1, 0, 0, dx],
       [0, 1, 0, dy],
@@ -426,7 +490,7 @@ class Wireframe:
     ]))
 
   def scale(self, factor: float) -> None:
-    """Scale the object in the XY plane."""
+    '''Escala o objeto em relação ao seu centro.'''
     self.translate(*-self.center[:3])
     self.transform(np.array([
       [factor, 0, 0, 0],
@@ -437,7 +501,7 @@ class Wireframe:
     self.translate(*self.center[:3])
 
   def transform(self, M: np.ndarray) -> None:
-    """Applies the given matrix to all of the object's vertices."""
+    '''Aplica uma transformação linear a todos os vértices do objeto.'''
     self.vertices = [M @ v for v in self.vertices]
 
   @property

@@ -1,7 +1,6 @@
 from tkinter import IntVar
 
 from enum import Enum
-import numpy as np
 from wireframe import *
 
 from logger import logging
@@ -27,6 +26,7 @@ class ClippingAlgorithm(Enum):
 class Clipping:
   """This class implements various 2D clipping algorithms.
   It holds the clipping window defined by (xmin, ymin) and (xmax, ymax).
+  Tipically these values would just match the viewport size. But since we'd like to prove that the clipping is actually working, we add a padding value to create a smaller clipping window inside the viewport.
 
   3D objects can be projected to the 2D clipping window using orthographic or perspective projection. To then be clipped by this class.
 
@@ -50,7 +50,7 @@ class Clipping:
     return ClippingAlgorithm(self._line_clipping_algorithm.get())
 
   def clip(self, object: WindowObject) -> WindowObject | None:
-    """Clips an wirefreame, altering its points accordingly. If the object is completely outside the clipping window, returns None.
+    """Clips an WindowObject, altering its points accordingly and returning it. If the object is completely outside the clipping window, returns None.
     
     "Line" is the only type of object that can be clipped by more than one algorithm. So the algorithm parameter is used to select which one to use for lines. Curves will also be affected, since they're approximated with lines for clipping.
     """
