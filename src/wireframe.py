@@ -194,10 +194,32 @@ class Surface:
   start_v: float = 0.0
   end_v: float = 1.0
 
-  @property
-  def window_objects(self) -> list[WindowObject]: return []
+  def window_objects(self, control_points: list[WindowPoint], curve_coefficient: int) -> list[WindowObject]:
+    return [WindowLineObject(line[0], line[1]) for line in self.get_lines(control_points, curve_coefficient)]
 
-  def copy(self) -> 'Surface': return Surface()
+  def get_lines(self, control_points: list[WindowPoint], curve_coefficient: int) -> list[tuple[WindowPoint, WindowPoint]]:
+    match self.surface_type:
+      case CurveType.BEZIER: points = self.generate_bezier_points(control_points, curve_coefficient)
+      case CurveType.B_SPLINE: points = self.generate_b_spline_points(control_points, curve_coefficient)
+      case _: points = []
+    return [(points[i], points[i+1]) for i in range(len(points)-1)]
+
+  def generate_bezier_points(self, control_points: list[WindowPoint], curve_coefficient: int) -> list[WindowPoint]:
+    return []
+  
+  def generate_b_spline_points(self, control_points: list[WindowPoint], curve_coefficient: int) -> list[WindowPoint]:
+    return []
+
+  def copy(self) -> 'Surface':
+    return Surface(
+      self.surface_type,
+      self.control_points[:],
+      self.degrees,
+      self.start_u,
+      self.end_u,
+      self.start_v,
+      self.end_v
+    )
 
   def __str__(self) -> str:
     output = f"cstype {self.surface_type.obj_name()}\n"
@@ -263,7 +285,7 @@ class Wireframe:
       face_vertices = [self.projected_vertices[idx] for idx in face[0]]
       objects.append(WindowPolygonObject(face_vertices, texture=face[1]))
     for curve in self.curves: objects.extend(curve.line_objects([self.projected_vertices[x] for x in curve.control_points], curve_coefficient))
-    for surface in self.surfaces: objects.extend(surface.window_objects)  # Not implemented yet, should be an empty list
+    for surface in self.surfaces: objects.extend(surface.window_objects([self.projected_vertices[x] for x in surface.control_points], curve_coefficient))
     if objects == []:  # If there are no edges, faces or curves, draw the vertices as points
       for v in self.projected_vertices: objects.append(WindowPointObject(v))
 
