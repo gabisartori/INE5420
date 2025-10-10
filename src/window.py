@@ -85,7 +85,7 @@ class Window:
     self.right = M @ self.right
     self.up = M @ self.up
     self.normal = np.cross(self.up, self.right)
-    # self.focus = M @ self.focus
+    self.focus = self.position - 100*self.normal
 
   def zoom_in(self, x, y):
     if self.zoom <= self.max_zoom: self.zoom *= 1.1
