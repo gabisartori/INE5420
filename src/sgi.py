@@ -25,6 +25,8 @@ class SGI:
     height: int,
     curve_type: int,
     curve_coefficient: int,
+    surface_type: int,
+    surface_degree: int,
     debug: bool,
     window_zoom: float,
     window_position: list[float],
@@ -61,6 +63,9 @@ class SGI:
     self.line_clipping_algorithm = tk.IntVar(value=line_clipping_algorithm)
     self.curve_type = tk.IntVar(value=curve_type)
     self.curve_coefficient = tk.IntVar(value=curve_coefficient)
+    
+    self.surface_type = tk.IntVar(value=surface_type)
+    self.surface_degree = tk.IntVar(value=surface_degree)
 
     self.create_components()
     self.create_navbar()
@@ -85,9 +90,11 @@ class SGI:
     settings_menu = tk.Menu(self.navbar, tearoff=0)
     clipping_submenu = tk.Menu(settings_menu, tearoff=0)
     curve_submenu = tk.Menu(settings_menu, tearoff=0)
+    surface_submenu = tk.Menu(settings_menu, tearoff=0)
 
     clipping_submenu.add_radiobutton(label="Cohen-Sutherland", value=0, variable=self.line_clipping_algorithm)
     clipping_submenu.add_radiobutton(label="Liang-Barsky", value=1, variable=self.line_clipping_algorithm)
+    
     curve_submenu.add_radiobutton(label="Bézier", value=0, variable=self.curve_type)
     curve_submenu.add_radiobutton(label="B-Spline", value=1, variable=self.curve_type)
     curve_submenu.add_command(label="Grau de continuidade", command=lambda: (
@@ -103,8 +110,24 @@ class SGI:
       )).pack(),
     ))
 
+    surface_submenu.add_radiobutton(label="Bézier", value=0, variable=self.surface_type)
+    surface_submenu.add_radiobutton(label="B-Spline", value=1, variable=self.surface_type)
+    surface_submenu.add_command(label="Grau de continuidade", command=lambda: (
+      popup := self.popup(250, 100, "Grau de continuidade"),
+      tk.Label(popup, text="Grau de continuidade:").pack(),
+      input := tk.Entry(popup),
+      input.insert(0, str(self.curve_coefficient.get())),
+      input.pack(),
+      tk.Button(popup, text="Aplicar", command=lambda: (
+        self.curve_coefficient.set(int(input.get())) if input.get().isnumeric() and int(input.get()) > 0 else None,
+        popup.destroy(),
+        self.viewport.update()
+      )).pack(),
+    ))
+
     settings_menu.add_cascade(label="Algoritmo de Recorte", menu=clipping_submenu)
     settings_menu.add_cascade(label="Curvas", menu=curve_submenu)
+    settings_menu.add_cascade(label="Superfície", menu=surface_submenu)
 
     self.navbar.add_cascade(label="Arquivo", menu=file_menu)
     self.navbar.add_cascade(label="Configurações", menu=settings_menu)
@@ -141,6 +164,8 @@ class SGI:
       self.height,
       self.curve_type,
       self.curve_coefficient,
+      self.surface_type,
+      self.surface_degree,
       self.debug,
       self.window_position,
       self.window_normal,
@@ -162,6 +187,8 @@ class SGI:
     self.ui_build_button = tk.Button(self.root, text="Build", command=self.toggle_building)
     self.ui_close_polygon_button = tk.Button(self.root, text="Polígono", command=self.finish_polygon)
     self.ui_create_curve_button = tk.Button(self.root, text="Curva", command=self.finish_curve)
+    self.ui_create_surface_button = tk.Button(self.root, text="Superfície", command=self.finish_surface)
+    
     self.ui_object_properties_button = tk.Button(self.root, text="Propriedades", command=self.properties_window) # also on mouse right click on object at table
     self.ui_rotate_x_button = tk.Button(self.root, text="Girar X", command=lambda:self.rotate_selected_object(a1=1, a2=2))
     self.ui_rotate_y_button = tk.Button(self.root, text="Girar Y", command=lambda:self.rotate_selected_object(a1=0, a2=2))
@@ -199,29 +226,35 @@ class SGI:
 
     self.ui_object_list_frame.grid(row=0, column=0, rowspan=12, columnspan=4, sticky="nsew")
 
-    self.ui_build_button.grid(row=12, column=0, rowspan=1, columnspan=2, sticky="nsew")
-    self.ui_close_polygon_button.grid(row=12, column=2, rowspan=1, columnspan=1, sticky="nsew")
-    self.ui_create_curve_button.grid(row=12, column=3, rowspan=1, columnspan=1, sticky="nsew")
-
-
-    self.ui_translate_object_button.grid(row=13, column=0, rowspan=1, columnspan=3, sticky="nsew")
-    self.ui_scale_button.grid(row=13, column=3, rowspan=1, columnspan=1, sticky="nsew")
-
-    self.ui_rotate_x_button.grid(row=14, column=0, rowspan=1, columnspan=1, sticky="nsew")
-    self.ui_rotate_y_button.grid(row=14, column=1, rowspan=1, columnspan=2, sticky="nsew")
-    self.ui_rotate_z_button.grid(row=14, column=3, rowspan=1, columnspan=1, sticky="nsew")
+    # row 12
+    self.ui_build_button.grid(row=12, column=0, rowspan=1, columnspan=1, sticky="nsew")
+    self.ui_close_polygon_button.grid(row=12, column=1, rowspan=1, columnspan=1, sticky="nsew")
+    self.ui_create_curve_button.grid(row=12, column=2, rowspan=1, columnspan=1, sticky="nsew")
+    self.ui_create_surface_button.grid(row=12, column=3, rowspan=1, columnspan=1, sticky="nsew")
     
-    self.ui_object_properties_button.grid(row=18, column=0, rowspan=1, columnspan=4, sticky="nsew")
+    #row 13
+    self.ui_object_properties_button.grid(row=13, column=0, rowspan=1, columnspan=4, sticky="nsew")
 
-    self.ui_point_label.grid(row=15, column=0, rowspan=1, columnspan=1, sticky="nsew")
-    self.ui_point_x_input.grid(row=15, column=1, rowspan=1, columnspan=1, sticky="nsew")
-    self.ui_point_y_input.grid(row=15, column=2, rowspan=1, columnspan=1, sticky="nsew")
-    self.ui_point_z_input.grid(row=15, column=3, rowspan=1, columnspan=1, sticky="nsew")
+    # row 14
+    self.ui_translate_object_button.grid(row=14, column=0, rowspan=1, columnspan=3, sticky="nsew")
+    self.ui_scale_button.grid(row=14, column=3, rowspan=1, columnspan=1, sticky="nsew")
 
-    self.ui_degree_label.grid(row=16, column=0, rowspan=1, columnspan=2, sticky="nsew")
-    self.ui_degree_input.grid(row=16, column=2, rowspan=1, columnspan=2, sticky="nsew")
-    self.ui_scale_factor_label.grid(row=17, column=0, rowspan=1, columnspan=2, sticky="nsew")
-    self.ui_scale_factor_input.grid(row=17, column=2, rowspan=1, columnspan=2, sticky="nsew")
+    # row 15
+    self.ui_rotate_x_button.grid(row=15, column=0, rowspan=1, columnspan=1, sticky="nsew")
+    self.ui_rotate_y_button.grid(row=15, column=1, rowspan=1, columnspan=2, sticky="nsew")
+    self.ui_rotate_z_button.grid(row=15, column=3, rowspan=1, columnspan=1, sticky="nsew")
+
+    # row 16
+    self.ui_point_label.grid(row=16, column=0, rowspan=1, columnspan=1, sticky="nsew")
+    self.ui_point_x_input.grid(row=16, column=1, rowspan=1, columnspan=1, sticky="nsew")
+    self.ui_point_y_input.grid(row=16, column=2, rowspan=1, columnspan=1, sticky="nsew")
+    self.ui_point_z_input.grid(row=16, column=3, rowspan=1, columnspan=1, sticky="nsew")
+
+    # row 17
+    self.ui_degree_label.grid(row=17, column=0, rowspan=1, columnspan=2, sticky="nsew")
+    self.ui_degree_input.grid(row=17, column=2, rowspan=1, columnspan=2, sticky="nsew")
+    self.ui_scale_factor_label.grid(row=18, column=0, rowspan=1, columnspan=2, sticky="nsew")
+    self.ui_scale_factor_input.grid(row=18, column=2, rowspan=1, columnspan=2, sticky="nsew")
 
   def controls(self):
     self.canva.bind("<ButtonRelease-1>", self.viewport.canva_click)
@@ -272,6 +305,8 @@ class SGI:
         "line_clipping_algorithm": self.line_clipping_algorithm.get(),
         "curve_type": self.curve_type.get(),
         "curve_coefficient": self.curve_coefficient.get(),
+        "surface_type": self.surface_type.get(),
+        "surface_degree": self.surface_degree.get(),
         "debug": self.viewport.debug,
       }, f, indent=2)
 
@@ -331,6 +366,51 @@ class SGI:
     cancel_button = tk.Button(popup, text="Cancelar", command=popup.destroy)
     apply_button.grid(row=4, column=0, columnspan=4, sticky="ew")
     cancel_button.grid(row=5, column=0, columnspan=4, sticky="ew")
+
+  def add_surface_window(self):
+    # inputs a 4x4 matrix of control points
+    popup = self.popup(0, 400, "Adicionar Superfície")
+    name_label = tk.Label(popup, text="Nome do objeto:")
+    name_label.grid(row=0, column=0, sticky="ew")
+    name_input = tk.Entry(popup)
+    name_input.grid(row=0, column=1, columnspan=3, sticky="ew")
+    
+    texture_label = tk.Label(popup, text="Cor de preenchimento:")
+    texture_label.grid(row=1, column=0, sticky="ew")
+    texture_input = tk.Entry(popup)
+    texture_input.grid(row=1, column=1, columnspan=2, sticky="ew")
+    texture_input.insert(0, "#ffffff")
+    texture_button = tk.Button(popup, text="Escolher", command=lambda: (
+      color := colorchooser.askcolor(title="Escolha a cor de preenchimento"),
+      texture_input.delete(0, tk.END),
+      texture_input.insert(0, color[1]) if color[1] else None
+    ))
+    texture_button.grid(row=1, column=3, sticky="ew")
+
+    control_points = [[None for _ in range(4)] for _ in range(4)]
+    for i in range(4):
+      for j in range(4):
+        control_points[i][j] = tk.Entry(popup, width=10)
+        control_points[i][j].grid(row=i+2, column=j, sticky="ew")
+        
+        # fills with default values
+        control_points[i][j].insert(0, f"({i},{j},0)")
+        
+    def finish_surface_callback():
+      try: 
+        name = name_input.get().strip() if name_input.get().strip() != "" else "Surface"
+        points = [list(map(float, control_points[i][j].get().strip("()").replace(" ", "").split(","))) for i in range(4) for j in range(4)]
+        points = [np.append(np.array(p), 1.0) for p in points]
+        self.viewport.add_surface(control_points=points, name=name, degree=self.surface_degree.get(), 
+                                  )
+      except ValueError:
+        self.log("Erro: pontos inválidos.")
+        return
+      popup.destroy()
+    create_button = tk.Button(popup, text="Criar Superfície", command=finish_surface_callback)
+    create_button.grid(row=17, column=0, columnspan=4, sticky="ew")
+    cancel_button = tk.Button(popup, text="Cancelar", command=popup.destroy)
+    cancel_button.grid(row=18, column=0, columnspan=4, sticky="ew")
 
   def add_polygon_window(self):
     popup = self.popup(0, 300, "Adicionar Polígono")
@@ -463,6 +543,13 @@ class SGI:
     self.ui_log.insert(tk.END, f"{''.join([str(m) for m in message])}\n")
     self.ui_log.see(tk.END)
     self.ui_log.config(state="disabled")
+    
+  def finish_surface(self):
+    if self.viewport.building:
+      self.ui_build_button.config(relief=tk.RAISED)
+      self.viewport.finish_surface()
+    else:
+      self.add_surface_window()
 
 # Wrappers for viewport methods
   def finish_polygon(self):

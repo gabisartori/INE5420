@@ -45,6 +45,29 @@ class WindowPolygonObject(WindowObject):
     for p in self.points: coords.extend([p.x, p.y])
     canva.create_polygon(*coords, outline="black", fill=self.texture if self.texture else "")
 
+@dataclass
+class WindowSurfaceObject(WindowObject):
+  '''Superfície na janela, definida por uma lista de pontos para os vértices.
+  
+  Por requisito da matéria, esta classe só deve ser utilizada para preenchimento das faces **que possuem textura**.
+  '''
+  points: list[WindowPoint]
+  texture: str | None = None
+  steps: int = 10
+
+  def draw(self, canva: Canvas, color: str="black") -> None:
+    coords = []
+    for p in self.points: coords.extend([p.x, p.y])
+    for i in range(self.steps+1):
+      for j in range(self.steps+1):
+        idx = i * (self.steps + 1) + j
+        if j < self.steps:
+          canva.create_line(self.points[idx].x, self.points[idx].y,
+                            self.points[idx + 1].x, self.points[idx + 1].y, fill=color)
+        if i < self.steps:
+          canva.create_line(self.points[idx].x, self.points[idx].y,
+                            self.points[idx + self.steps + 1].x, self.points[idx + self.steps + 1].y, fill=color)
+          
 class CurveType(Enum):
   '''Tipos de curvas suportados.
 
@@ -114,22 +137,6 @@ class Curve:
     '''Gera pontos em uma curva B-Spline definida pelos pontos de controle usando o método de diferenças progressivas.'''
     if len(control_points) < 4:
       raise ValueError("Cubic B-Spline curve requires at least 4 control points.")
-
-    # Algoritmo para Desenho de Curvas Paramétricas usando Forward Differences
-    # DesenhaCurvaFwdDiff( n, x, ∆x, ∆2x, ∆3x,
-    # y, ∆y, ∆2y, ∆3y,
-    # z, ∆z, ∆2z, ∆3z )
-    # início
-    # inteiro i = 0;
-    # mova(x, y, z);/* Move ao início da curva */
-    # enquanto i < n faça
-    # i <- i + 1;
-    # x <- x + ∆x; ∆x <- ∆x + ∆2x; ∆2x <- ∆2x + ∆3x;
-    # y <- y + ∆y; ∆y <- ∆y + ∆2y; ∆2y <- ∆2y + ∆3y;
-    # z <- z + ∆z; ∆z <- ∆z + ∆2z; ∆2z <- ∆2z + ∆3z;
-    # desenheAté(x, y, z); /* Desenha reta */
-    # fim enquanto;
-    # fim DesenhaCurvaFwdDiff;
 
     curve_points = []
     h = 1 / curve_coefficient
@@ -214,6 +221,32 @@ class Curve:
   def copy(self) -> 'Curve':
     return Curve(self.curve_type, self.control_points[:], self.degree)
 
+class SurfaceType(Enum):
+  '''Tipos de superfícies suportados.
+
+  - Bézier: Superfícies definidas por uma grade de pontos de controle, onde a superfície é tangente aos segmentos que ligam os pontos de controle.
+  - B-Spline: Superfícies definidas por uma grade de pontos de controle, onde a superfície não necessariamente passa pelos pontos de controle, mas é influenciada por eles.
+  '''
+  BEZIER = 0
+  B_SPLINE = 1
+
+  @classmethod
+  def from_obj_name(cls, name: str) -> 'SurfaceType | None':
+    name = name.lower()
+    if name == "bezier": return SurfaceType.BEZIER
+    elif name == "bspline": return SurfaceType.B_SPLINE
+    return None
+
+  def obj_name(self) -> str:
+    if self == SurfaceType.BEZIER: return "bezier"
+    elif self == SurfaceType.B_SPLINE: return "bspline"
+    return "unknown"
+
+  def __str__(self) -> str:
+    if self == SurfaceType.BEZIER: return "Bézier"
+    elif self == SurfaceType.B_SPLINE: return "B-Spline"
+    return "Unknown"
+
 @dataclass
 class Surface:
   '''Armazena informações de uma superfície necessárias para construir sua representação na janela.
@@ -223,7 +256,7 @@ class Surface:
 
   *start_u*, *end_u*, *start_v*, *end_v* e *degrees* estão presentes para manter compatibilidade com o formato Wavefront OBJ, mas não estão sendo 100% utilizados.  
   '''
-  surface_type: CurveType = CurveType.BEZIER
+  surface_type: SurfaceType = SurfaceType.BEZIER
   control_points: list[int] = field(default_factory=list)
   degrees: tuple[int, int] = (4, 4)
   start_u: float = 0.0
@@ -231,28 +264,103 @@ class Surface:
   start_v: float = 0.0
   end_v: float = 1.0
 
-  def window_objects(self, control_points: list[WindowPoint], curve_coefficient: int) -> list[WindowObject]:
+  def window_objects(self, control_points: list[WindowPoint], surface_degree: int | None) -> list[WindowObject]:
     '''Gera os objetos de linha que representam a superfície na janela.'''
-    return [WindowLineObject(line[0], line[1]) for line in self.get_lines(control_points, curve_coefficient)]
+    return [WindowLineObject(line[0], line[1]) for line in self.get_surface_points(control_points, surface_degree=10)]
 
-  def get_lines(self, control_points: list[WindowPoint], curve_coefficient: int) -> list[tuple[WindowPoint, WindowPoint]]:
+  def get_surface_points(self, control_points: list[WindowPoint], surface_degree: int | None) -> list[tuple[WindowPoint, WindowPoint]]:
     '''Gera uma lista de pontos sobre a superfície a partir do algoritmo definido por *surface_type*.
 
     Então, constrói pares de pontos consecutivos para formar as linhas que representam a superfície.
     '''
     match self.surface_type:
-      case CurveType.BEZIER: points = self.generate_bezier_points(control_points, curve_coefficient)
-      case CurveType.B_SPLINE: points = self.generate_b_spline_points(control_points, curve_coefficient)
+      case SurfaceType.BEZIER: points = self.generate_bezier_surface_points(control_points, surface_degree)
+      case SurfaceType.B_SPLINE: points = self.generate_b_spline_surface_points(control_points, surface_degree)
       case _: points = []
-    return [(points[i], points[i+1]) for i in range(len(points)-1)]
+    
+    # flatten points into list
+    lines = []
+    
+    rows = len(points)
+    cols = len(points[0]) if rows > 0 else 0
 
-  def generate_bezier_points(self, control_points: list[WindowPoint], curve_coefficient: int) -> list[WindowPoint]:
+    for i in range(rows):
+        for j in range(cols - 1):
+            lines.append((points[i][j], points[i][j + 1]))
+    for j in range(cols):
+        for i in range(rows - 1):
+            lines.append((points[i][j], points[i + 1][j]))
+
+    return lines
+
+  def generate_bezier_surface_points(self, control_points: list[WindowPoint], steps: int) -> list[WindowPoint]:
     '''Gera uma lista de pontos sobre uma superfície'''
-    return []
+    surface_points = []
+    
+    for i in range(steps + 1):
+        u = i / steps
+        row = []
+        for j in range(steps + 1):
+            v = j / steps
+            point = Surface.bezier_surface_point(control_points, u, v)
+            row.append(point)
+        surface_points.append(row)
+    self.points = [pt for row in surface_points for pt in row]
+    return surface_points
   
-  def generate_b_spline_points(self, control_points: list[WindowPoint], curve_coefficient: int) -> list[WindowPoint]:
+  def bezier_surface_point(control_points: list[WindowPoint], u: float, v: float) -> WindowPoint:
+    """Calcula um ponto na superfície de Bézier para dados valores de u e v (0 <= u, v <= 1) e uma lista de pontos de controle."""
+    n = m = int(math.sqrt(len(control_points))) - 1
+    
+    Bu = Surface.bernstein_poly(n, u)
+    Bv = Surface.bernstein_poly(m, v)
+
+    x = y = 0
+    for i in range(n + 1):
+        for j in range(m + 1):
+            b = Bu[i] * Bv[j]
+            px, py = control_points[i * (m + 1) + j].x, control_points[i * (m + 1) + j].y
+            x += b * px
+            y += b * py
+    return WindowPoint(x, y)
+
+  def bernstein_poly(n: int, t: float) -> float:
+    """Retorna lista [B_0^n(t), B_1^n(t), ..., B_n^n(t)]"""
+    return [math.comb(n, i) * (t ** i) * ((1 - t) ** (n - i)) for i in range(n + 1)]
+
+
+  def generate_b_spline_surface_points(self, control_points: list[WindowPoint], resolution: int, 
+                               degree_u: int, degree_v: int, knots_u: list[float], 
+                               knots_v: list[float]) -> list[WindowPoint]:
     '''Gera uma lista de pontos sobre uma superfície'''
-    return []
+    m = len(control_points[0]) - 1
+    n = len(control_points) - 1
+    surface_points = []
+    
+    for iu in range(resolution + 1):
+        u = knots_u[degree_u] + (knots_u[-degree_u - 1] - knots_u[degree_u]) * (iu / resolution)
+        for iv in range(resolution + 1):
+            v = knots_v[degree_v] + (knots_v[-degree_v - 1] - knots_v[degree_v]) * (iv / resolution)
+            x = y = z = 0.0
+            for i in range(n + 1):
+                Nu = self.basis_function(i, degree_u, u, knots_u)
+                for j in range(m + 1):
+                    Nv = self.basis_function(j, degree_v, v, knots_v)
+                    x += Nu * Nv * control_points[i * (m + 1) + j].x
+                    y += Nu * Nv * control_points[i * (m + 1) + j].y
+            surface_points.append(WindowPoint(x, y))
+    self.points = surface_points
+    return surface_points
+
+  def basis_function(self, i: int, k: int, t: float, knots: list[float]) -> float:
+    '''Calcula a função base B-Spline N(i, k) em t'''
+    if k == 0:
+        return 1.0 if knots[i] <= t < knots[i + 1] else 0.0
+    denom1 = knots[i + k] - knots[i]
+    denom2 = knots[i + k + 1] - knots[i + 1]
+    term1 = ((t - knots[i]) / denom1 * self.basis_function(i, k - 1, t, knots)) if denom1 != 0 else 0.0
+    term2 = ((knots[i + k + 1] - t) / denom2 * self.basis_function(i + 1, k - 1, t, knots)) if denom2 != 0 else 0.0
+    return term1 + term2
 
   def copy(self) -> 'Surface':
     return Surface(
@@ -340,7 +448,7 @@ class Wireframe:
     window_pos = window[:3]
     return np.linalg.norm(center - window_pos).astype(float)
 
-  def window_objects(self, curve_coefficient: int) -> list[WindowObject]:
+  def window_objects(self, curve_coefficient: int, surface_degree: int | None) -> list[WindowObject]:
     '''Gera uma lista de objetos de janela que representam o Wireframe.
 
     A definição da construção de objetos de janela a partir de cada componente está na docstring da classe Wireframe.
@@ -351,7 +459,8 @@ class Wireframe:
       face_vertices = [self.projected_vertices[idx] for idx in face[0]]
       objects.append(WindowPolygonObject(face_vertices, texture=face[1]))
     for curve in self.curves: objects.extend(curve.window_objects([self.projected_vertices[x] for x in curve.control_points], curve_coefficient))
-    for surface in self.surfaces: objects.extend(surface.window_objects([self.projected_vertices[x] for x in surface.control_points], curve_coefficient))
+    for surface in self.surfaces: 
+      objects.extend(surface.window_objects([self.projected_vertices[x] for x in surface.control_points], surface_degree))
     if objects == []:  # If there are no edges, faces or curves, draw the vertices as points
       for v in self.projected_vertices: objects.append(WindowPointObject(v))
 
@@ -420,29 +529,55 @@ class Wireframe:
               current_texture
             ))
             current_texture = None
-          
+            
           case 'cstype':
             if len(body) < 1: raise ValueError(f"Invalid cstype line: {line.strip()}")
             curve_type = CurveType.from_obj_name(body[0])
             if curve_type is None: raise ValueError(f"Unknown curve type: {body[0]}")
+            current_curve_type = curve_type  # Armazena temporariamente
 
-            deg_header, *deg_values = f.readline().split()
-            if deg_header != 'deg' or len(deg_values) < 1: raise ValueError(f"Invalid deg line: {' '.join([deg_header]+deg_values)}")
-            deg_values = [int(x) for x in deg_values]
+          case 'deg':
+            deg_values = [int(x) for x in body]
+            current_degrees = deg_values  # Também temporário
 
-            t, *points = f.readline().split()
-            if t == "curv":
-              start, end = [float(x) for x in points[:2]]
-              points = [int(x)-1 for x in points[2:]]
-              if len(points) < deg_values[0]: raise ValueError(f"Number of control points {len(points)} does not match curve degree {deg_values[0]}")
-              current_curves.append(Curve(curve_type, points, start, end, deg_values[0] if deg_values else len(points)))
-            elif t == "surf":
-              su, eu, sv, ev = [float(x) for x in points[:4]]
-              points = [int(x)-1 for x in points[4:]]
-              if len(deg_values) < 2: raise ValueError(f"Invalid surface degrees line: {' '.join(map(str, deg_values))}")
-              if len(points) < deg_values[0]*deg_values[1]: raise ValueError(f"Number of control points {len(points)} does not match surface degrees {deg_values[0]} and {deg_values[1]} (should be {deg_values[0]*deg_values[1]})")
-              current_surfaces.append(Surface(curve_type, points, (deg_values[0], deg_values[1]), su, eu, sv, ev))
-            else: raise ValueError(f"Invalid curve/surface line: {line.strip()}")
+          case 'surf':
+            su, eu, sv, ev = map(float, body[:4])
+            point_indices = [int(i) - 1 for i in body[4:]]
+            if len(current_degrees) < 2:
+                raise ValueError(f"Invalid surface degrees: {current_degrees}")
+            expected_points = current_degrees[0] * current_degrees[1]
+            if len(point_indices) < expected_points:
+                raise ValueError(f"Expected at least {expected_points} control points, got {len(point_indices)}")
+            current_surfaces.append(Surface(
+                surface_type=current_curve_type,
+                control_points=point_indices,
+                degrees=(current_degrees[0], current_degrees[1]),
+                start_u=su, end_u=eu, start_v=sv, end_v=ev
+            ))
+
+          
+          # case 'cstype':
+          #   if len(body) < 1: raise ValueError(f"Invalid cstype line: {line.strip()}")
+          #   curve_type = CurveType.from_obj_name(body[0])
+          #   if curve_type is None: raise ValueError(f"Unknown curve type: {body[0]}")
+
+          #   deg_header, *deg_values = f.readline().split()
+          #   if deg_header != 'deg' or len(deg_values) < 1: raise ValueError(f"Invalid deg line: {' '.join([deg_header]+deg_values)}")
+          #   deg_values = [int(x) for x in deg_values]
+
+          #   t, *points = f.readline().split()
+          #   if t == "curv":
+          #     start, end = [float(x) for x in points[:2]]
+          #     points = [int(x)-1 for x in points[2:]]
+          #     if len(points) < deg_values[0]: raise ValueError(f"Number of control points {len(points)} does not match curve degree {deg_values[0]}")
+          #     current_curves.append(Curve(curve_type, points, start, end, deg_values[0] if deg_values else len(points)))
+          #   elif t == "surf":
+          #     su, eu, sv, ev = [float(x) for x in points[:4]]
+          #     points = [int(x)-1 for x in points[4:]]
+          #     if len(deg_values) < 2: raise ValueError(f"Invalid surface degrees line: {' '.join(map(str, deg_values))}")
+          #     if len(points) < deg_values[0]*deg_values[1]: raise ValueError(f"Number of control points {len(points)} does not match surface degrees {deg_values[0]} and {deg_values[1]} (should be {deg_values[0]*deg_values[1]})")
+          #     current_surfaces.append(Surface(curve_type, points, (deg_values[0], deg_values[1]), su, eu, sv, ev))
+          #   else: raise ValueError(f"Invalid curve/surface line: {line.strip()}")
 
           case 'parm': continue
 

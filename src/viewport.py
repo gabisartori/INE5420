@@ -25,6 +25,8 @@ class Viewport:
     height: int,
     curve_type: IntVar,
     curve_coefficient: IntVar,
+    surface_type: IntVar,
+    surface_degree: IntVar,
     debug: bool,
     window_position: list[float],
     window_normal: list[float],
@@ -66,6 +68,8 @@ class Viewport:
     self.building: bool = False
     self.debug: bool = debug
     self._curve_type: IntVar = curve_type
+    self._surface_type: IntVar = surface_type
+    self.surface_degree: IntVar = surface_degree
 
     self.log = log_function
     self.object_list: ttk.Treeview = object_list
@@ -76,6 +80,10 @@ class Viewport:
   @property
   def curve_type(self) -> CurveType:
     return CurveType(self._curve_type.get())
+  
+  @property
+  def surface_type(self) -> SurfaceType:
+    return SurfaceType(self._surface_type.get())
 
   def save_objects(self, path: str):
     with open(path, "w") as f:
@@ -133,7 +141,7 @@ class Viewport:
     for object in sorted(all_objects, key=lambda obj: obj.distance(self.window.position), reverse=True):
       # Projeta os vértices do objeto na janela de visualização
       object.projected_vertices = self.window.project(object.vertices)
-      for window_object in object.window_objects(self.curve_coefficient.get()):
+      for window_object in object.window_objects(self.curve_coefficient.get(), self.surface_degree.get()):
         # Recorta objetos cujas posições na janela estejam além dos limites da tela de exibição.
         clipped = self.clipper.clip(window_object)
         if clipped is not None: clipped.draw(self.canva)
@@ -229,7 +237,8 @@ class Viewport:
   def finish_polygon(self):
     if self.building:
       if len(self.building_buffer) < 3:
-        raise Exception("Polígono precisa de ao menos 3 pontos.")
+        self.log("Polígono precisa de ao menos 3 pontos.")
+        return
       else:
         self.objects.append(Wireframe(
           self.id_counter,
@@ -330,8 +339,46 @@ class Viewport:
         "Curva",
         vertices=self.building_buffer.copy(),
         curves=[
-          Curve(self.curve_type, list(range(len(self.building_buffer))), self.curve_coefficient.get(), degree=min(4, len(self.building_buffer)))
+          Curve(self.curve_type, 
+                list(range(len(self.building_buffer))), 
+                self.curve_coefficient.get(), 
+                degree=min(4, len(self.building_buffer)))
         ]
       ))
     self.id_counter += 1
     self.cancel_building()
+
+  def add_surface(
+    self,
+    control_points: list[WorldPoint],
+    degree: int = 3,
+    name: str="Surface",
+    line_color: str="#000000",
+    fill_color: str="#ffffff",
+  ):
+    print("Adding surface with control points:", control_points)
+    if len(control_points) < 9:
+      self.log("Superfície precisa de ao menos 9 pontos de controle.")
+      return
+    elif len(control_points) < 16:
+      self.log("Interpolação bicúbica precisa de ao menos 16 pontos de controle. Criando uma superfície bilinear.")
+
+    degree_u = degree_v = min(degree, 3, len(control_points) - 1)
+
+    new_surface = Wireframe(
+      self.id_counter,
+      name,
+      vertices=control_points,
+      surfaces=[Surface(
+        self.surface_type,
+        [i for i in range(len(control_points))],
+        (degree_u, degree_v),
+        0.0,
+        1.0,
+        0.0,
+        1.0,
+      )],
+    )
+    self.objects.append(new_surface)
+    self.id_counter += 1
+    self.update()
