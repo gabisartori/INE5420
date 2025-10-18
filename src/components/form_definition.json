@@ -1,0 +1,36 @@
+{
+  "point": [
+    {"name": "name", "label": "Nome do objeto:", "type": "text", "default": "Point"},
+    {"name": "coordinates", "label": "Coordenadas (x,y,z):", "type": "text", "default": ""}
+  ],
+  "face": [
+    {"name": "name", "label": "Nome do objeto:", "type": "text", "default": "Face"},
+    {"name": "vertices", "label": "Vértices (x,y,z),...:", "type": "text", "default": ""},
+    {"name": "line_color", "label": "Cor de contorno:", "type": "color", "default": "#000000"},
+    {"name": "texture", "label": "Cor de preenchimento:", "type": "color", "default": "#ffffff"},
+    {"name": "thickness", "label": "Espessura da linha:", "type": "number", "default": "1"}
+  ],
+  "edge": [
+    {"name": "name", "label": "Nome do objeto:", "type": "text", "default": "Edge"},
+    {"name": "start_point", "label": "Ponto inicial (x,y,z):", "type": "text", "default": ""},
+    {"name": "end_point", "label": "Ponto final (x,y,z):", "type": "text", "default": ""},
+    {"name": "line_color", "label": "Cor da linha:", "type": "color", "default": "#000000"},
+    {"name": "thickness", "label": "Espessura da linha:", "type": "number", "default": "1"}
+  ],
+  "polygon": [
+    {"name": "name", "label": "Nome do objeto:", "type": "text", "default": "Polygon"},
+    {"name": "points", "label": "Pontos (x,y,z),...:", "type": "text", "default": ""},
+    {"name": "line_color", "label": "Cor de contorno:", "type": "color", "default": "#000000"},
+    {"name": "texture", "label": "Cor de preenchimento:", "type": "color", "default": "#ffffff"},
+    {"name": "thickness", "label": "Espessura da linha:", "type": "number", "default": "1"}
+  ],
+  "curve": [
+    {"name": "name", "label": "Nome da curva:", "type": "text", "default": "Curve"},
+    {"name": "points", "label": "Pontos de controle (x,y,z),...:", "type": "text", "default": ""},
+    {"name": "line_color", "label": "Cor da linha:", "type": "color", "default": "#000000"}
+  ],
+  "surface": [
+    {"name": "name", "label": "Nome da superfície:", "type": "text", "default": "Surface"},
+    {"name": "texture", "label": "Cor de preenchimento:", "type": "color", "default": "#ffffff"}
+  ]
+}
