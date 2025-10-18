@@ -5,7 +5,7 @@ import json
 
 from viewport import *
 from logger import logging
-from config import USER_PREFERENCES_PATH
+from config import USER_PREFERENCES_PATH, FORM_DEFINITIONS_PATH
 
 class SGI:
   '''Raiz do programa, responsável pela interface gráfica e interação com o usuário
@@ -57,6 +57,7 @@ class SGI:
     # GUI
     self.root = tk.Tk()
     self.set_up_root(title)
+    self.form_definition = self.load_form_definitions()
 
     ## The *line_clipping_algorithm* and *curve_type* variables will be also passed to the Viewport class
     ## This means that changing them here will change them in the Viewport class too
@@ -71,6 +72,10 @@ class SGI:
     self.create_navbar()
     self.position_components()
     self.controls()
+    
+  def load_form_definitions(self):
+    with open(FORM_DEFINITIONS_PATH, "r") as f:
+      return json.load(f)
   
 # Main window and components setup
   def set_up_root(self, title: str):
@@ -189,7 +194,7 @@ class SGI:
     self.ui_create_curve_button = tk.Button(self.root, text="Curva", command=self.finish_curve)
     self.ui_create_surface_button = tk.Button(self.root, text="Superfície", command=self.finish_surface)
     
-    self.ui_object_properties_button = tk.Button(self.root, text="Propriedades", command=self.properties_window) # also on mouse right click on object at table
+    self.ui_object_properties_button = tk.Button(self.root, text="Propriedades", command=self.open_properties_window) # also on mouse right click on object at table
     self.ui_rotate_x_button = tk.Button(self.root, text="Girar X", command=lambda:self.rotate_selected_object(a1=1, a2=2))
     self.ui_rotate_y_button = tk.Button(self.root, text="Girar Y", command=lambda:self.rotate_selected_object(a1=0, a2=2))
     self.ui_rotate_z_button = tk.Button(self.root, text="Girar Z", command=lambda:self.rotate_selected_object(a1=0, a2=1))
@@ -324,7 +329,7 @@ class SGI:
     if selected_item:
       self.ui_object_list.selection_set(selected_item)
       menu = tk.Menu(self.root, tearoff=0)
-      menu.add_command(label="Propriedades", command=self.properties_window)
+      menu.add_command(label="Propriedades", command=lambda: self.open_properties_window())
       menu.add_command(label="Remover", command=self.remove_selected_object)
 
       # Show the menu and close it if a click outside happens
@@ -349,204 +354,125 @@ class SGI:
     return popup
 
 # Additional Windows
-  def properties_window(self):
-    target = self.get_selected_object()
-    if target is None: return
-    popup = self.popup(0, 300, "Propriedades do Objeto")
-    def apply_changes(name, texture):
-      target.name = name.get().strip() if name.get().strip() != "" else target.name
-      for i, face in enumerate(target.faces):
-        target.faces[i] = (face[0], texture.strip() if texture.strip() != "" else face[1])
 
-      self.viewport.update()
-      popup.destroy()
+  def create_form_fields(self, popup: tk.Toplevel, fields: list[tuple[str, str]], 
+                         start_row: int = 0, default_values: dict[str, str] = None) -> dict[str, tk.Entry]:
+    """
+    Creates form fields in the given popup window, based on the provided field definitions.
+    """
+    entries = {}
+    default_values = default_values or {}
 
-    # Name
-    name_label = tk.Label(popup, text="Nome do objeto:")
-    name_input = tk.Entry(popup)
-    name_input.insert(0, target.name)
-    name_label.grid(row=0, column=0, sticky="ew")
-    name_input.grid(row=0, column=1, columnspan=2, sticky="ew")
+    for idx, field in enumerate(fields):
+        row = start_row + idx
+        label = tk.Label(popup, text=field['label'])
+        label.grid(row=row, column=0, sticky="ew")
+        
+        # gets default values by matching field name in default_values dict to field['name']
+      
+        entry = tk.Entry(popup)
+        entry.insert(0, default_values.get(field['name'], ""))
+        entry.grid(row=row, column=1, sticky="ew", columnspan=2)
 
-    
-    # Fill Color
-    texture_label = tk.Label(popup, text="Cor das faces:")
-    texture_input = tk.Entry(popup)
-    texture_input.insert(0, target.faces[0][1] if len(target.faces) > 0 and target.faces[0][1] else "")
-    texture_button = tk.Button(popup, text="Escolher", command=lambda: (
-      color := colorchooser.askcolor(title="Escolha a cor de preenchimento"),
-      texture_input.delete(0, tk.END),
-      texture_input.insert(0, color[1]) if color[1] else None
-    ))
-    texture_label.grid(row=2, column=0, sticky="ew")
-    texture_input.grid(row=2, column=1, sticky="ew")
-    texture_button.grid(row=2, column=2, sticky="ew")
+        # Se for campo de cor, adiciona botão de cor
+        if field['type'] == 'color':
+            btn = tk.Button(popup, text="Escolher", command=lambda e=entry: (
+                color := colorchooser.askcolor(title="Escolha a cor"),
+                e.delete(0, tk.END),
+                e.insert(0, color[1]) if color[1] else None
+            ))
+            btn.grid(row=row, column=3, sticky="ew")
+
+        entries[field['name']] = entry
+
+    return entries
   
+  def open_properties_window(self, form_type: str | None = None):
+    if form_type is None:
+      target = self.get_selected_object()
+      if target is None: return
+      form_type = target.get_type().lower()
+      
+    if form_type not in self.form_definition:
+      self.log(f"Erro: formulário '{form_type}' não definido.")
+      return
 
-    # Apply Button
-    apply_button = tk.Button(popup, text="Aplicar", command=lambda: apply_changes(name_input, texture_input.get()))
-    cancel_button = tk.Button(popup, text="Cancelar", command=popup.destroy)
-    apply_button.grid(row=4, column=0, columnspan=4, sticky="ew")
-    cancel_button.grid(row=5, column=0, columnspan=4, sticky="ew")
-
-  def add_surface_window(self):
-    # inputs a 4x4 matrix of control points
-    popup = self.popup(0, 400, "Adicionar Superfície")
-    name_label = tk.Label(popup, text="Nome do objeto:")
-    name_label.grid(row=0, column=0, sticky="ew")
-    name_input = tk.Entry(popup)
-    name_input.grid(row=0, column=1, columnspan=3, sticky="ew")
+    form_definition = self.form_definition[form_type]
+    default_values = self.viewport.generate_default_input(form_type)
+    popup = self.popup(0, 300, "Propriedades do Objeto")
+    inputs = self.create_form_fields(popup, form_definition, default_values=default_values)
     
-    texture_label = tk.Label(popup, text="Cor de preenchimento:")
-    texture_label.grid(row=1, column=0, sticky="ew")
-    texture_input = tk.Entry(popup)
-    texture_input.grid(row=1, column=1, columnspan=2, sticky="ew")
-    texture_input.insert(0, "#ffffff")
-    texture_button = tk.Button(popup, text="Escolher", command=lambda: (
-      color := colorchooser.askcolor(title="Escolha a cor de preenchimento"),
-      texture_input.delete(0, tk.END),
-      texture_input.insert(0, color[1]) if color[1] else None
-    ))
-    texture_button.grid(row=1, column=3, sticky="ew")
-
-    control_points = [[None for _ in range(4)] for _ in range(4)]
-    for i in range(4):
-      for j in range(4):
-        control_points[i][j] = tk.Entry(popup, width=10)
-        control_points[i][j].grid(row=i+2, column=j, sticky="ew")
+    # treats surface individual control points separately
+    control_points_matrix = None
+    if form_type == "surface":
+      surface_degree = self.surface_degree.get()
+      control_points_matrix = [[None for _ in range(surface_degree + 1)] for _ in range(surface_degree + 1)]
+      for i in range(surface_degree + 1):
+        for j in range(surface_degree + 1):
+          control_points_matrix[i][j] = tk.Entry(popup, width=10)
+          control_points_matrix[i][j].grid(row=i+len(form_definition), column=j, sticky="ew")
+          control_points_matrix[i][j].insert(0, f"({i},{j},0)")
+    
+    def finish_callback():
+      try:
+        name = inputs['name'].get().strip() if inputs['name'].get().strip() != "" else "Surface"
+        if form_type == "point":
+          point = list(map(float, inputs['point'].get().strip("()").replace(" ", "").split(",")))
+          point = np.append(np.array(point), 1.0)
+          self.viewport.add_point(point=point, name=name,
+                                  point_color=inputs['point_color'].get().strip(),
+                                  texture=inputs['texture'].get().strip(),
+                                  size=int(inputs['size'].get()) if inputs['size'].get().isnumeric() else 1)
+        elif form_type == "line":
+          p1, p2 = [list(map(float, p.strip("()").replace(" ", "").split(","))) for p in inputs['points'].get().split(",") if p.strip() != ""]
+          p1 = np.append(np.array(p1), 1.0)
+          p2 = np.append(np.array(p2), 1.0)
+          self.viewport.add_line(p1=p1, p2=p2, name=name,
+                                 line_color=inputs['line_color'].get().strip(),
+                                 texture=inputs['texture'].get().strip(),
+                                 thickness=int(inputs['thickness'].get()) if inputs['thickness'].get().isnumeric() else 1)
+        elif form_type == "face":
+          points = [list(map(float, p.strip("()").replace(" ", "").split(","))) for p in inputs['points'].get().split(",") if p.strip() != ""]
+          points = [np.append(np.array(p), 1.0) for p in points]
+          self.viewport.add_face(points=points, name=name,
+                                 face_color=inputs['face_color'].get().strip(),
+                                 line_color=inputs['line_color'].get().strip(),
+                                 texture=inputs['texture'].get().strip(),
+                                 thickness=int(inputs['thickness'].get()) if inputs['thickness'].get().isnumeric() else 1)
         
-        # fills with default values
-        control_points[i][j].insert(0, f"({i},{j},0)")
-        
-    def finish_surface_callback():
-      try: 
-        name = name_input.get().strip() if name_input.get().strip() != "" else "Surface"
-        points = [list(map(float, control_points[i][j].get().strip("()").replace(" ", "").split(","))) for i in range(4) for j in range(4)]
-        points = [np.append(np.array(p), 1.0) for p in points]
-        self.viewport.add_surface(control_points=points, name=name, degree=self.surface_degree.get(), 
-                                  )
+        elif form_type == "polygon":
+          points = [list(map(float, p.strip("()").replace(" ", "").split(","))) for p in inputs['points'].get().split(",") if p.strip() != ""]
+          points = [np.append(np.array(p), 1.0) for p in points]
+          self.viewport.add_polygon(points=points, name=name,
+                                    line_color=inputs['line_color'].get().strip(),
+                                    texture=inputs['texture'].get().strip(),
+                                    thickness=int(inputs['thickness'].get()) if inputs['thickness'].get().isnumeric() else 1)
+        elif form_type == "curve":
+          points = [list(map(float, p.strip("()").replace(" ", "").split(","))) for p in inputs['points'].get().split(",") if p.strip() != ""]
+          points = [np.append(np.array(p), 1.0) for p in points]
+          self.viewport.add_curve(points=points, name=name,
+                                  curve_type=self.curve_type.get(),
+                                  line_color=inputs['line_color'].get().strip(),
+                                  texture=inputs['texture'].get().strip(),
+                                  thickness=int(inputs['thickness'].get()) if inputs['thickness'].get().isnumeric() else 1)
+        elif form_type == "surface":
+          control_points = [list(map(float, control_points_matrix[i][j].get().strip("()").replace(" ", "").split(","))) for i in range(surface_degree + 1) for j in range(surface_degree + 1)]
+          control_points = [np.append(np.array(p), 1.0) for p in control_points]
+          self.viewport.add_surface(control_points=control_points, name=name,
+                                    surface_type=self.surface_type.get(),
+                                    texture=inputs['texture'].get().strip())
+        else:
+          self.log(f"Erro: tipo de formulário '{form_type}' não suportado.")
+          return
+        self.viewport.update()
       except ValueError:
         self.log("Erro: pontos inválidos.")
         return
       popup.destroy()
-    create_button = tk.Button(popup, text="Criar Superfície", command=finish_surface_callback)
-    create_button.grid(row=17, column=0, columnspan=4, sticky="ew")
+    create_button = tk.Button(popup, text="Criar/Alterar", command=finish_callback)
+    create_button.grid(row=100, column=0, columnspan=4, sticky="ew")
     cancel_button = tk.Button(popup, text="Cancelar", command=popup.destroy)
-    cancel_button.grid(row=18, column=0, columnspan=4, sticky="ew")
-
-  def add_polygon_window(self):
-    popup = self.popup(0, 300, "Adicionar Polígono")
-    def finish_polygon_callback():
-      name = name_input.get().strip() if name_input.get().strip() != "" else "Polygon"
-      points = points_input.get().strip("(").strip(")").replace(" ", "").split("),(")
-      try: points = [list(map(float, p.split(','))) for p in points]
-      except ValueError:
-        self.log("Erro: pontos inválidos.")
-        return
-      if len(points) < 3:
-        self.log("Erro: insira ao menos 3 pontos.")
-        return
-      points = [np.append(np.array(p), 1.0) for p in points]
-
-      try: thickness = int(thickness_input.get())
-      except ValueError: thickness = 1
-      line_color = line_color_input.get().strip() if line_color_input.get().strip() != "" else "#000000"
-      texture = texture_input.get().strip() if texture_input.get().strip() != "" else "#ffffff"
-      self.viewport.add_polygon(points, name, line_color, texture, thickness)
-      popup.destroy()
-    
-    name_label = tk.Label(popup, text="Nome do objeto:")
-    name_input = tk.Entry(popup)
-    name_input.insert(0, "Polygon")
-    name_label.grid(row=0, column=0, sticky="ew")
-    name_input.grid(row=0, column=1, columnspan=2, sticky="ew")
-
-    points_label = tk.Label(popup, text="Pontos (x0,y0,z0),(x1,y1,z1),...,(xN,yN,zN):")
-    points_input = tk.Entry(popup)
-    points_label.grid(row=1, column=0, sticky="ew")
-    points_input.grid(row=1, column=1, columnspan=2, sticky="ew")
-
-    line_color_label = tk.Label(popup, text="Cor de contorno:")
-    line_color_input = tk.Entry(popup)
-    line_color_input.insert(0, "#000000")
-    line_color_button = tk.Button(popup, text="Escolher", command=lambda: (
-      color := colorchooser.askcolor(title="Escolha a cor da linha"),
-      line_color_input.delete(0, tk.END),
-      line_color_input.insert(0, color[1]) if color[1] else None
-    ))
-    line_color_label.grid(row=2, column=0, sticky="ew")
-    line_color_input.grid(row=2, column=1, sticky="ew")
-    line_color_button.grid(row=2, column=2, sticky="ew")
-
-    texture_label = tk.Label(popup, text="Cor de preenchimento:")
-    texture_input = tk.Entry(popup)
-    texture_input.insert(0, "#ffffff")
-    texture_button = tk.Button(popup, text="Escolher", command=lambda: (
-      color := colorchooser.askcolor(title="Escolha a cor de preenchimento"),
-      texture_input.delete(0, tk.END),
-      texture_input.insert(0, color[1]) if color[1] else None
-    ))
-    texture_label.grid(row=3, column=0, sticky="ew")
-    texture_input.grid(row=3, column=1, sticky="ew")
-    texture_button.grid(row=3, column=2, sticky="ew")
-
-    thickness_label = tk.Label(popup, text="Espessura da linha:")
-    thickness_input = tk.Entry(popup)
-    thickness_input.insert(0, "1")
-    thickness_label.grid(row=4, column=0, sticky="ew")
-    thickness_input.grid(row=4, column=1, columnspan=2, sticky="ew")
-
-    create_button = tk.Button(popup, text="Criar Polígono", command=finish_polygon_callback)
-    create_button.grid(row=5, column=0, columnspan=3, sticky="ew")
-
-    cancel_button = tk.Button(popup, text="Cancelar", command=popup.destroy)
-    cancel_button.grid(row=6, column=0, columnspan=3, sticky="ew")
-
-  def add_curve_window(self):
-    popup = self.popup(0, 200, "Adicionar Curva")
-    
-    def finish_curve_callback():
-      control_points = points_input.get().strip("(").strip(")").replace(" ", "").split("),(")
-      try: control_points = [list(map(float, p.split(','))) for p in control_points]
-      except ValueError:
-        self.log("Erro: pontos inválidos.")
-        return
-      control_points = [np.append(np.array(p), 1.0) for p in control_points]
-
-      if len(control_points) < 4:
-        self.log("Erro: insira ao menos 4 pontos de controle.")
-        return
-
-      self.viewport.add_curve(control_points, name_input.get(), line_color_input.get().strip())
-      popup.destroy()
-
-    name_label = tk.Label(popup, text="Nome do objeto:")
-    name_input = tk.Entry(popup)
-    name_input.insert(0, "Curve")
-    name_label.grid(row=0, column=0, sticky="ew")
-    name_input.grid(row=0, column=1, columnspan=2, sticky="ew")
-
-    points_label = tk.Label(popup, text="Pontos de controle (x0,y0),(x1,y1),...,(xN,yN):")
-    points_input = tk.Entry(popup)
-    points_label.grid(row=1, column=0, sticky="ew")
-    points_input.grid(row=1, column=1, columnspan=2, sticky="ew")
-
-    line_color_label = tk.Label(popup, text="Cor da linha:")
-    line_color_input = tk.Entry(popup)
-    line_color_input.insert(0, "#000000")
-    line_color_button = tk.Button(popup, text="Escolher", command=lambda: (
-      color := colorchooser.askcolor(title="Escolha a cor da linha"),
-      line_color_input.delete(0, tk.END),
-      line_color_input.insert(0, color[1]) if color[1] else None
-    ))
-    line_color_label.grid(row=2, column=0, sticky="ew")
-    line_color_input.grid(row=2, column=1, sticky="ew")
-    line_color_button.grid(row=2, column=2, sticky="ew")
-
-    create_button = tk.Button(popup, text="Criar Curva", command=finish_curve_callback)
-    cancel_button = tk.Button(popup, text="Cancelar", command=popup.destroy)
-    create_button.grid(row=3, column=0, columnspan=3, sticky="ew")
-    cancel_button.grid(row=4, column=0, columnspan=3, sticky="ew")
+    cancel_button.grid(row=101, column=0, columnspan=4, sticky="ew")    
 
 # Instance attributes control
   def toggle_building(self):
@@ -571,7 +497,7 @@ class SGI:
       self.ui_build_button.config(relief=tk.RAISED)
       self.viewport.finish_surface()
     else:
-      self.add_surface_window()
+      self.open_properties_window("surface")
 
 # Wrappers for viewport methods
   def finish_polygon(self):
@@ -579,14 +505,14 @@ class SGI:
       self.ui_build_button.config(relief=tk.RAISED)
       self.viewport.finish_polygon()
     else:
-      self.add_polygon_window()
+      self.open_properties_window("polygon")
 
   def finish_curve(self):
     if self.viewport.building:
       self.ui_build_button.config(relief=tk.RAISED)
       self.viewport.finish_curve()
     else:
-      self.add_curve_window()
+      self.open_properties_window("curve")
   
   def get_selected_object(self, log=True) -> Wireframe | None:
     selected = self.ui_object_list.selection()

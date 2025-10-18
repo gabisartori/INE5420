@@ -1,6 +1,8 @@
 from typing import Callable
 
 from tkinter import Canvas, Event, IntVar, ttk
+import numpy as np
+import random
 
 from wireframe import *
 from window import *
@@ -386,3 +388,69 @@ class Viewport:
     self.objects.append(new_surface)
     self.id_counter += 1
     self.update()
+    
+  def generate_default_input(self, form_type: str):
+    """Generates default input values for the given form type.
+    Uses a seed to give slight variations to the default values, 
+    but still keeping them inside the canva area.
+    """
+
+    seed = 42  # Fixed seed for reproducibility
+    random.seed(seed)
+
+    match form_type:
+      case 'point':
+        x = random.randint(100, self.window.width - 100)
+        y = random.randint(100, self.window.height - 100)
+        z = random.randint(-100, 100)
+        return {
+          'coordinates': f"({x}, {y}, {z})"
+        }
+        
+      case 'edge':
+        x1 = random.randint(100, self.window.width - 200)
+        y1 = random.randint(100, self.window.height - 200)
+        z1 = random.randint(-100, 100)
+        x2 = x1 + random.randint(50, 150)
+        y2 = y1 + random.randint(50, 150)
+        z2 = z1 + random.randint(-50, 50)
+        return {
+          'start_point': f"({x1}, {y1}, {z1})",
+          'end_point': f"({x2}, {y2}, {z2})"
+        }
+      case 'face':
+        points = []
+        num_points = random.randint(3, 6)
+        for _ in range(num_points):
+          x = random.randint(100, self.window.width - 100)
+          y = random.randint(100, self.window.height - 100)
+          z = random.randint(-100, 100)
+          points.append(f"({x}, {y}, {z})")
+        return {
+          'vertices': ', '.join(points)
+        }
+      case 'polygon':
+        points = []
+        num_points = random.randint(3, 6)
+        for _ in range(num_points):
+          x = random.randint(100, self.window.width - 100)
+          y = random.randint(100, self.window.height - 100)
+          z = random.randint(-100, 100)
+          points.append(f"({x}, {y}, {z})")
+        return {
+          'points': ', '.join(points)
+        }
+      case 'curve':
+        points = []
+        num_points = random.randint(4, 6)
+        for _ in range(num_points):
+          x = random.randint(100, self.window.width - 100)
+          y = random.randint(100, self.window.height - 100)
+          z = random.randint(-100, 100)
+          points.append(f"({x}, {y}, {z})")
+        return {
+          'points': ', '.join(points)
+        }
+      case _:
+        return {} 
+        

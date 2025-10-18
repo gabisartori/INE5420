@@ -420,6 +420,14 @@ class Wireframe:
       [c.copy() for c in self.curves],
       [s.copy() for s in self.surfaces]
     )
+    
+  def get_type(self) -> str:
+    if self.surfaces: return "Surface"
+    if self.curves: return "Curve"
+    if self.faces: return "Face"
+    if self.edges: return "Edge"
+    if self.vertices: return "Point"
+    return "Empty"
   
   def __str__(self) -> str:
     vertices_str = '\n'.join(f"v {' '.join(map(str, v[:-1]))}" for v in self.vertices)

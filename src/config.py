@@ -8,3 +8,4 @@ WINDOW_PADDING = 15
 WINDOW_MOVEMENT_SPEED = 5
 WINDOW_ROTATION_SPEED = 5
 PROJECTION_TYPE = 1 # 0 - Paralel, 1 - Perspective
+FORM_DEFINITIONS_PATH = "src/components/form_definition.json"
