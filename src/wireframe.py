@@ -530,11 +530,46 @@ class Wireframe:
             ))
             current_texture = None
             
-          case 'cstype':
-            if len(body) < 1: raise ValueError(f"Invalid cstype line: {line.strip()}")
+          case 'ctype':  
+            if len(body) < 1: raise ValueError(f"Invalid ctype line: {line.strip()}")
             curve_type = CurveType.from_obj_name(body[0])
             if curve_type is None: raise ValueError(f"Unknown curve type: {body[0]}")
             current_curve_type = curve_type  # Armazena temporariamente
+
+            deg_header, *deg_values = f.readline().split()
+            if deg_header != 'deg' or len(deg_values) < 1: raise ValueError(f"Invalid deg line: {' '.join([deg_header]+deg_values)}")
+            deg_values = [int(x) for x in deg_values]
+
+            t, *points = f.readline().split()
+            if t == "curv":
+              start, end = [float(x) for x in points[:2]]
+              points = [int(x)-1 for x in points[2:]]
+              if len(points) < deg_values[0]: raise ValueError(f"Number of control points {len(points)} does not match curve degree {deg_values[0]}")
+              current_curves.append(Curve(curve_type, points, start, end, deg_values[0] if deg_values else len(points)))
+        
+          case 'stype':
+            if len(body) < 1: raise ValueError(f"Invalid stype line: {line.strip()}")
+            surface_type = SurfaceType.from_obj_name(body[0])
+            if surface_type is None: raise ValueError(f"Unknown surface type: {body[0]}")
+            current_surface_type = surface_type  # Também temporário
+
+            deg_header, *deg_values = f.readline().split()
+            if deg_header != 'deg' or len(deg_values) < 2: raise ValueError(f"Invalid deg line: {' '.join([deg_header]+deg_values)}")
+            deg_values = [int(x) for x in deg_values]
+
+            t, *points = f.readline().split()
+            if t == "surf":
+              su, eu, sv, ev = map(float, points[:4])
+              point_indices = [int(i) - 1 for i in points[4:]]
+              expected_points = deg_values[0] * deg_values[1]
+              if len(point_indices) < expected_points:
+                  raise ValueError(f"Expected at least {expected_points} control points, got {len(point_indices)}")
+              current_surfaces.append(Surface(
+                  surface_type=current_surface_type,
+                  control_points=point_indices,
+                  degrees=(deg_values[0], deg_values[1]),
+                  start_u=su, end_u=eu, start_v=sv, end_v=ev
+              ))
 
           case 'deg':
             deg_values = [int(x) for x in body]
@@ -548,36 +583,14 @@ class Wireframe:
             expected_points = current_degrees[0] * current_degrees[1]
             if len(point_indices) < expected_points:
                 raise ValueError(f"Expected at least {expected_points} control points, got {len(point_indices)}")
+            
+            control_points = [int(i) - 1 for i in body[4:]]
             current_surfaces.append(Surface(
-                surface_type=current_curve_type,
-                control_points=point_indices,
+                surface_type=current_surface_type,
+                control_points=control_points,
                 degrees=(current_degrees[0], current_degrees[1]),
                 start_u=su, end_u=eu, start_v=sv, end_v=ev
             ))
-
-          
-          # case 'cstype':
-          #   if len(body) < 1: raise ValueError(f"Invalid cstype line: {line.strip()}")
-          #   curve_type = CurveType.from_obj_name(body[0])
-          #   if curve_type is None: raise ValueError(f"Unknown curve type: {body[0]}")
-
-          #   deg_header, *deg_values = f.readline().split()
-          #   if deg_header != 'deg' or len(deg_values) < 1: raise ValueError(f"Invalid deg line: {' '.join([deg_header]+deg_values)}")
-          #   deg_values = [int(x) for x in deg_values]
-
-          #   t, *points = f.readline().split()
-          #   if t == "curv":
-          #     start, end = [float(x) for x in points[:2]]
-          #     points = [int(x)-1 for x in points[2:]]
-          #     if len(points) < deg_values[0]: raise ValueError(f"Number of control points {len(points)} does not match curve degree {deg_values[0]}")
-          #     current_curves.append(Curve(curve_type, points, start, end, deg_values[0] if deg_values else len(points)))
-          #   elif t == "surf":
-          #     su, eu, sv, ev = [float(x) for x in points[:4]]
-          #     points = [int(x)-1 for x in points[4:]]
-          #     if len(deg_values) < 2: raise ValueError(f"Invalid surface degrees line: {' '.join(map(str, deg_values))}")
-          #     if len(points) < deg_values[0]*deg_values[1]: raise ValueError(f"Number of control points {len(points)} does not match surface degrees {deg_values[0]} and {deg_values[1]} (should be {deg_values[0]*deg_values[1]})")
-          #     current_surfaces.append(Surface(curve_type, points, (deg_values[0], deg_values[1]), su, eu, sv, ev))
-          #   else: raise ValueError(f"Invalid curve/surface line: {line.strip()}")
 
           case 'parm': continue
 
