@@ -281,7 +281,7 @@ class SGI:
     self.root.bind("<KeyPress-Escape>", lambda e: self.cancel_building())
     self.root.bind("<Control-z>", lambda e: self.viewport.undo())
 
-    self.ui_object_list.bind("<Button-3>", lambda e: self.properties_window())
+    self.ui_object_list.bind("<Button-3>", lambda e: self.object_list_menu(e))
 
     # This one is not a control. It's used to remove focus from a text input when clicking outside of it
     def focus_clicked_widget(event):
@@ -317,6 +317,28 @@ class SGI:
       except Exception as e:
           logging.error(f"Erro ao salvar objetos: {e}")
     return self.viewport.objects
+
+
+  def object_list_menu(self, event):
+    selected_item = self.ui_object_list.identify_row(event.y)
+    if selected_item:
+      self.ui_object_list.selection_set(selected_item)
+      menu = tk.Menu(self.root, tearoff=0)
+      menu.add_command(label="Propriedades", command=self.properties_window)
+      menu.add_command(label="Remover", command=self.remove_selected_object)
+
+      # Show the menu and close it if a click outside happens
+      def close_menu_on_click(event2):
+        menu.unpost()
+        self.root.unbind("<Button-1>", close_menu_binding)
+      close_menu_binding = self.root.bind("<Button-1>", close_menu_on_click, add="+")
+      menu.post(event.x_root, event.y_root)    
+
+  def remove_selected_object(self):
+    target = self.get_selected_object()
+    if target is None: return
+    self.viewport.remove_object(target)
+    self.viewport.update()
 
   @staticmethod
   def popup(width: int, height: int, title: str) -> tk.Toplevel:

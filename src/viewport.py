@@ -108,6 +108,10 @@ class Viewport:
       self.id_counter += 1
 
     self.update()
+    
+  def remove_object(self, target: Wireframe):
+    self.objects = [obj for obj in self.objects if obj.wireframe_id != target.wireframe_id] 
+    self.update()
 
   def move_window(self, event: Event):
     self.window.position = self.window.viewport_to_world(event.x, event.y)
