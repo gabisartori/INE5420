@@ -130,7 +130,10 @@ class Viewport:
     self.update()
 
   def update(self):
+    print(self.objects)
     self.update_object_list()
+    print(self.objects)
+
     self.canva.delete("all")
     all_objects = [obj.copy() for obj in self.objects]
     # Se o modo debug estiver ativado, desenha elementos auxiliares na tela, como a grade e o centro da tela
@@ -150,7 +153,7 @@ class Viewport:
       for window_object in object.window_objects(self.curve_coefficient.get(), self.surface_degree):
         # Recorta objetos cujas posições na janela estejam além dos limites da tela de exibição.
         clipped = self.clipper.clip(window_object)
-        if clipped is not None: clipped.draw(self.canva)
+        if clipped is not None: clipped.draw(self.canva, object.texture)
 
     # Aplica o mesmo processo de projeção e recorte para os pontos que estão na lista de construção
     # A única diferença é a construção manual das linhas entre os pontos
@@ -259,6 +262,27 @@ class Viewport:
     else: return
 
     self.update()
+    
+  def add_point(
+    self,
+    point: WorldPoint,
+    name: str="Ponto",
+    thickness: int=1,
+    texture: str="#000000"
+  ):
+    print('texture: ', texture)
+    self.objects.append(Wireframe(
+      self.id_counter,
+      name,
+      vertices=[point],
+      edges=[],
+      faces=[],
+      thickness=thickness,
+      texture=texture
+    ))
+    print('self.objects depois de add_point: ', self.objects)
+    self.id_counter += 1
+    self.update()
 
   def add_polygon(
     self,
@@ -363,6 +387,7 @@ class Viewport:
     surface_steps: int=10,
     line_color: str="#000000",
     texture: str="#ffffff",
+    thickness: int=1
   ):
     if len(control_points) < 9:
       self.log("Superfície precisa de ao menos 9 pontos de controle.")
@@ -406,9 +431,8 @@ class Viewport:
           return {
             'name': target_object.name,
             'coordinates': f"({target_object.vertices[0][0]:.2f}, {target_object.vertices[0][1]:.2f}, {target_object.vertices[0][2]:.2f})",
-            'texture': target_object.color,
-            'thickness': target_object.thickness,
-            'line_color': target_object.line_color
+            'texture': target_object.texture,
+            'thickness': target_object.thickness
           }
         x = random.randint(100, self.window.width - 100)
         y = random.randint(100, self.window.height - 100)

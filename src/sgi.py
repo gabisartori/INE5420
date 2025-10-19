@@ -341,6 +341,7 @@ class SGI:
         "curve_coefficient": self.curve_coefficient.get(),
         "surface_type": self.surface_type.get(),
         "surface_degree": self.surface_degree,
+        "surface_steps": self.surface_steps.get(),
         "debug": self.viewport.debug,
       }, f, indent=2)
 
@@ -447,13 +448,15 @@ class SGI:
     
     def finish_callback():
       try:
+        if target:
+          self.viewport.remove_object(target)
         name = inputs['name'].get().strip() if inputs['name'].get().strip() != "" else "Surface"
         if form_type == "point":
           point = list(map(float, inputs['coordinates'].get().strip("()").replace(" ", "").split(",")))
           point = np.append(np.array(point), 1.0)
           self.viewport.add_point(point=point, name=name,
-                                              point_color=inputs['point_color'].get().strip(),
-                                              texture=inputs['texture'].get().strip())
+                                  thickness=int(inputs['thickness'].get()) if inputs['thickness'].get().isnumeric() else 1,
+                                  texture=inputs['texture'].get().strip())
         elif form_type == "edge":
           p1, p2 = [list(map(float, p.strip("()").replace(" ", "").split(","))) for p in inputs['points'].get().split(",") if p.strip() != ""]
           p1 = np.append(np.array(p1), 1.0)
@@ -479,7 +482,6 @@ class SGI:
                                     texture=inputs['texture'].get().strip(),
                                     thickness=int(inputs['thickness'].get()) if inputs['thickness'].get().isnumeric() else 1)
         elif form_type == "curve":
-          # example input: (x1,y1,z1),(x2,y2,z2),(x3,y3,z3)
           raw = inputs['points'].get().strip()
           raw = raw.strip("()").replace(" ", "")
           points_str = raw.split("),(")
@@ -488,7 +490,7 @@ class SGI:
           self.viewport.add_curve(points=points, name=name,
                                   curve_type=self.curve_type.get(),
                                   line_color=inputs['line_color'].get().strip(),
-                                  texture=None,
+                                  texture=inputs['texture'].get().strip(),
                                   thickness=int(inputs['thickness'].get()) if inputs['thickness'].get().isnumeric() else 1)
         elif form_type == "surface":
           control_points = [list(map(float, control_points_matrix[i][j].get().strip("()").replace(" ", "").split(","))) for i in range(self.surface_degree[0]) for j in range(self.surface_degree[1])]

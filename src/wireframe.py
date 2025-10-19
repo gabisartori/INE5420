@@ -12,14 +12,15 @@ class WindowObject:
   Cada objeto do mundo pode ser representado por um ou vários WindowObjects.
   Cada WindowObject se desenha no canvas a partir de seu(s) ponto(s) (x, y) na janela.
   '''
-  def draw(self, canva: Canvas, color: str="black") -> None: pass
+  def draw(self, canva: Canvas, color: str | None) -> None: pass
 
 @dataclass
 class WindowPointObject(WindowObject):
   '''Representa um ponto na janela.'''
   p: WindowPoint
 
-  def draw(self, canva: Canvas, color: str="black") -> None:
+  def draw(self, canva: Canvas, color: str) -> None:
+    print(f"Desenhando ponto em ({self.p.x}, {self.p.y}) com cor {color}")
     canva.create_oval(self.p.x-2, self.p.y-2, self.p.x+2, self.p.y+2, fill=color)
 
 @dataclass
@@ -298,7 +299,6 @@ class Surface:
     '''Gera uma lista de pontos sobre uma superfície'''
     surface_points = []
     
-    print(self.surface_steps)
     for i in range(self.surface_steps + 1):
         u = i / self.surface_steps
         row = []
@@ -317,7 +317,7 @@ class Surface:
 
     Bu = Surface.bernstein_poly(n, u)
     Bv = Surface.bernstein_poly(m, v)
-    print(control_points)
+
     x = y = 0
     for i in range(n + 1):
         for j in range(m + 1):
@@ -331,62 +331,148 @@ class Surface:
     """Retorna lista [B_0^n(t), B_1^n(t), ..., B_n^n(t)]"""
     return [math.comb(n, i) * (t ** i) * ((1 - t) ** (n - i)) for i in range(n + 1)]
 
-  def bspline_basis(self, i: int, p: int, u: float, knots: list[float]) -> float:
-    """Calcula a função base B-spline N_{i,p}(u) recursivamente."""
-    if p == 0:
-        # Caso base: função degrau
-        return 1.0 if knots[i] <= u < knots[i + 1] else 0.0
-    else:
-        left = right = 0.0
-        denom1 = knots[i + p] - knots[i]
-        denom2 = knots[i + p + 1] - knots[i + 1]
-        if denom1 != 0:
-            left = ((u - knots[i]) / denom1) * self.bspline_basis(i, p - 1, u, knots)
-        if denom2 != 0:
-            right = ((knots[i + p + 1] - u) / denom2) * self.bspline_basis(i + 1, p - 1, u, knots)
-        return left + right
+  @staticmethod
+  def cox_de_boor(u: float, i: int, k: int, T: list[float]) -> float:
+    """Calcula a i-ésima função base B-spline de grau k (p) no ponto u."""
+    
+    # K é o grau (p)
+    # T é o vetor nó (knot_vector)
+
+    # 1. CASO BASE (k = 0)
+    # N_i, 0 (u)
+    if k == 0:
+        # PONTO CRÍTICO: Intervalo [t_i, t_{i+1})
+        t_i = T[i]
+        t_i_plus_1 = T[i + 1]
+        
+        # Garante que o último intervalo (T[n], T[n+1]) inclua T[n+1] 
+        # para garantir que a soma seja 1 no final do domínio (u=1.0)
+        if i == len(T) - k - 2: # É o último nó que inicia o intervalo não-zero
+             # Para o último intervalo, usamos [t_i, t_{i+1}]
+            return 1.0 if t_i <= u <= t_i_plus_1 else 0.0
+        else:
+             # Para todos os outros, usamos [t_i, t_{i+1})
+            return 1.0 if t_i <= u < t_i_plus_1 - 1e-6 else 0.0
+    
+    # 2. CASO RECURSIVO (k > 0)
+    # N_i, k (u) = (u - t_i) / (t_{i+k} - t_i) * N_i, k-1 (u) + 
+    #              (t_{i+k+1} - u) / (t_{i+k+1} - t_{i+1}) * N_{i+1}, k-1 (u)
+    
+    # --- Primeiro Termo (N_i, k-1) ---
+    t_i = T[i]
+    t_i_plus_k = T[i + k] # O CRÍTICO: Índice i+k
+    
+    den1 = t_i_plus_k - t_i
+    term1 = 0.0
+    if abs(den1) > 1e-9: # Proteção contra divisão por zero (nós repetidos)
+        coeff1 = (u - t_i) / den1
+        term1 = coeff1 * Surface.cox_de_boor(u, i, k - 1, T)
+        
+    # --- Segundo Termo (N_{i+1}, k-1) ---
+    t_i_plus_1 = T[i + 1]
+    t_i_plus_k_plus_1 = T[i + k + 1] # O CRÍTICO: Índice i+k+1
+    
+    den2 = t_i_plus_k_plus_1 - t_i_plus_1
+    term2 = 0.0
+    if abs(den2) > 1e-9: # Proteção contra divisão por zero
+        coeff2 = (t_i_plus_k_plus_1 - u) / den2
+        term2 = coeff2 * Surface.cox_de_boor(u, i + 1, k - 1, T)
+
+    return term1 + term2
   
-  def bspline_surface_point(self, control_points: list, u: float, v: float,
-                          degree_u: int, degree_v: int,
-                          knots_u: list[float], knots_v: list[float]):
-    """Calcula um ponto em uma superfície B-spline (produto tensorial)."""
-    n = int(math.sqrt(len(control_points))) - 1
-    m = n  # assumindo malha quadrada
+  @staticmethod
+  def generate_knot_vector(num_control_points: int, degree: int) -> list[float]:
+    """Gera um vetor de nós uniforme para B-Spline."""
+    knot_vector = [0.0] * (degree + 1)
+    
+    num_internal = num_control_points - degree - 1 # n-p
+    
+    if num_internal > 0:
+        # Cria nós internos uniformemente espaçados entre 0 e 1
+        step = 1.0 / (num_internal + 1)
+        for i in range(1, num_internal + 1):
+            knot_vector.append(i * step)
+    
+    knot_vector += [1.0] * (degree + 1)
+    return knot_vector
+  
+  @staticmethod
+  def b_spline_surface_point(control_points: list[WindowPoint], u: float, v: float, 
+                             degree_u: int, degree_v: int,
+                             Tu: list[float], Tv: list[float], 
+                             num_u_ctrl: int, num_v_ctrl: int) -> WindowPoint:
+    """Calcula um ponto na superfície B-Spline para dados valores de u e v (0 <= u, v <= 1) e uma lista de pontos de controle."""
+    p = degree_u
+    q = degree_v
+    
+    x = y = 0.0 # Sem Z
+    
+    for i in range(num_u_ctrl):
+        Bu = Surface.cox_de_boor(u, i, p, Tu)
+        if Bu == 0:
+            continue
+          
+        for j in range(num_v_ctrl):
+            Bv = Surface.cox_de_boor(v, j, q, Tv)
+            b = Bu * Bv
+            index = i * num_v_ctrl + j
 
-    x = y = 0.0
-    for i in range(n + 1):
-        Ni = self.bspline_basis(i, degree_u, u, knots_u)
-        for j in range(m + 1):
-            Nj = self.bspline_basis(j, degree_v, v, knots_v)
-            b = Ni * Nj
-            p = control_points[i * (m + 1) + j]
-            x += b * p.x
-            y += b * p.y
+            # control_points[index] é um WindowPoint (2D)
+            px, py = control_points[index].x, control_points[index].y
+            
+            x += b * px
+            y += b * py
+            
+    return WindowPoint(x, y) # Retorna ponto 2D
+  
+  def generate_b_spline_surface_points(self, control_points: list[WindowPoint]) -> list[WindowPoint]:
+    """Gera uma lista de pontos sobre uma superfície B-Spline."""
+    num_u_ctrl = self.degrees[0] 
+    num_v_ctrl = self.degrees[1]
 
-    return WindowPoint(x, y)
+    max_degree_u = num_u_ctrl - 1
+    max_degree_v = num_v_ctrl - 1
+    
+    # using steps to determine degree
+    # user_desired_degree = max(1, self.surface_steps//10)
+    degree_u = min(3, max_degree_u)
+    degree_v = min(3, max_degree_v)
+    
+    Tu = Surface.generate_knot_vector(num_u_ctrl, degree_u)
+    Tv = Surface.generate_knot_vector(num_v_ctrl, degree_v)
+    
+    max_Tu = Tu[-1]
+    max_Tv = Tv[-1]
+    
+    Tu = [t / max_Tu for t in Tu] if max_Tu > 1 else Tu
+    Tv = [t / max_Tv for t in Tv] if max_Tv > 1 else Tv
 
-  def generate_b_spline_surface_points(self) -> list:
-    """Gera uma lista de WindowPoints sobre a superfície B-spline."""
-    n = self.degrees[0]
-    m = self.degrees[1]
-
-    knots_u = [0] * (n + 1) + list(range(n - self.degrees[0] + 2)) + [n - self.degrees[0] + 2] * self.degrees[0]
-    knots_v = knots_u[:]  # igual para ambos os eixos
+    u_min, u_max = self.start_u, self.end_u
+    v_min, v_max = self.start_v, self.end_v
 
     surface_points = []
-    u_min, u_max = knots_u[self.degrees[0]], knots_u[-self.degrees[0] - 1]
-    v_min, v_max = knots_v[self.degrees[1]], knots_v[-self.degrees[1] - 1]
+    
+    # print("Valores sendo utilizados: ")
+    # print(f"Tu: {Tu}")
+    # print(f"Tv: {Tv}")
+    # print(f"u_min: {u_min}, u_max: {u_max}")
+    # print(f"v_min: {v_min}, v_max: {v_max}")
+    # print(f"degree_u: {degree_u}, degree_v: {degree_v}")
 
-    for i in range(self.steps + 1):
-        u = u_min + (u_max - u_min) * (i / self.steps)
+    for i in range(self.surface_steps + 1):
+        u_norm = i / self.surface_steps
+        u = u_min + u_norm * (u_max - u_min)
         row = []
-        for j in range(self.steps + 1):
-            v = v_min + (v_max - v_min) * (j / self.steps)
-            point = self.bspline_surface_point(self.control_points, u, v,
-                                          self.degrees[0], self.degrees[1], knots_u, knots_v)
-            row.append(point)
+        for j in range(self.surface_steps + 1):
+            v_norm = j / self.surface_steps
+            v = v_min + v_norm * (v_max - v_min)
+            point = Surface.b_spline_surface_point(control_points, u, v, 
+                                                  degree_u, degree_v,
+                                                  Tu, Tv,
+                                                  num_u_ctrl, num_v_ctrl)
+            row.append(point) 
         surface_points.append(row)
-
+    self.points = [pt for row in surface_points for pt in row]
     return surface_points
 
   def copy(self) -> 'Surface':
@@ -437,8 +523,7 @@ class Wireframe:
   curves: list[Curve] = field(default_factory=list)
   surfaces: list[Surface] = field(default_factory=list)  # Placeholder for future surface implementations
   thickness: float | None = 1.0
-  color: str | None = "black"
-  line_color: str | None = "black"
+  texture: str | None = "black"
 
   def copy(self) -> 'Wireframe':
     return Wireframe(
@@ -449,7 +534,9 @@ class Wireframe:
       [edge[:] for edge in self.edges],
       [(face[0][:], face[1]) for face in self.faces],
       [c.copy() for c in self.curves],
-      [s.copy() for s in self.surfaces]
+      [s.copy() for s in self.surfaces],
+      self.thickness,
+      self.texture
     )
     
   def get_type(self) -> str:
