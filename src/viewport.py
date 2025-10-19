@@ -453,7 +453,7 @@ class Viewport:
           return {
             'name': target_object.name,
             'vertices': ', '.join(points),
-            'line_color': target_object.lince_color,
+            'line_color': target_object.line_color,
             'thickness': str(target_object.thickness),
             'texture': target_object.color
           }

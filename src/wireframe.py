@@ -259,23 +259,24 @@ class Surface:
   surface_type: SurfaceType = SurfaceType.BEZIER
   control_points: list[int] = field(default_factory=list)
   degrees: tuple[int, int] = (4, 4)
+  surface_steps: int = 10
   start_u: float = 0.0
   end_u: float = 1.0
   start_v: float = 0.0
   end_v: float = 1.0
 
-  def window_objects(self, control_points: list[WindowPoint], surface_degree: int | None) -> list[WindowObject]:
+  def window_objects(self, control_points: list[WindowPoint]) -> list[WindowObject]:
     '''Gera os objetos de linha que representam a superfície na janela.'''
-    return [WindowLineObject(line[0], line[1]) for line in self.get_surface_points(control_points, surface_degree=10)]
+    return [WindowLineObject(line[0], line[1]) for line in self.get_surface_points(control_points)]
 
-  def get_surface_points(self, control_points: list[WindowPoint], surface_degree: int | None) -> list[tuple[WindowPoint, WindowPoint]]:
+  def get_surface_points(self, control_points: list[WindowPoint]) -> list[tuple[WindowPoint, WindowPoint]]:
     '''Gera uma lista de pontos sobre a superfície a partir do algoritmo definido por *surface_type*.
 
     Então, constrói pares de pontos consecutivos para formar as linhas que representam a superfície.
     '''
     match self.surface_type:
-      case SurfaceType.BEZIER: points = self.generate_bezier_surface_points(control_points, surface_degree)
-      case SurfaceType.B_SPLINE: points = self.generate_b_spline_surface_points(control_points, surface_degree)
+      case SurfaceType.BEZIER: points = self.generate_bezier_surface_points(control_points)
+      case SurfaceType.B_SPLINE: points = self.generate_b_spline_surface_points(control_points)
       case _: points = []
     
     # flatten points into list
@@ -293,28 +294,30 @@ class Surface:
 
     return lines
 
-  def generate_bezier_surface_points(self, control_points: list[WindowPoint], steps: int) -> list[WindowPoint]:
+  def generate_bezier_surface_points(self, control_points: list[WindowPoint]) -> list[WindowPoint]:
     '''Gera uma lista de pontos sobre uma superfície'''
     surface_points = []
     
-    for i in range(steps + 1):
-        u = i / steps
+    print(self.surface_steps)
+    for i in range(self.surface_steps + 1):
+        u = i / self.surface_steps
         row = []
-        for j in range(steps + 1):
-            v = j / steps
-            point = Surface.bezier_surface_point(control_points, u, v)
+        for j in range(self.surface_steps + 1):
+            v = j / self.surface_steps
+            point = Surface.bezier_surface_point(control_points, u, v, self.degrees[0], self.degrees[1])
             row.append(point)
         surface_points.append(row)
     self.points = [pt for row in surface_points for pt in row]
     return surface_points
-  
-  def bezier_surface_point(control_points: list[WindowPoint], u: float, v: float) -> WindowPoint:
+
+  def bezier_surface_point(control_points: list[WindowPoint], u: float, v: float, degree_u: int, degree_v: int) -> WindowPoint:
     """Calcula um ponto na superfície de Bézier para dados valores de u e v (0 <= u, v <= 1) e uma lista de pontos de controle."""
-    n = m = int(math.sqrt(len(control_points))) - 1
-    
+    n = degree_u
+    m = degree_v
+
     Bu = Surface.bernstein_poly(n, u)
     Bv = Surface.bernstein_poly(m, v)
-
+    print(control_points)
     x = y = 0
     for i in range(n + 1):
         for j in range(m + 1):
@@ -362,24 +365,24 @@ class Surface:
 
     return WindowPoint(x, y)
 
-  def generate_b_spline_surface_points(self, control_points: list,
-                                    steps: int) -> list:
+  def generate_b_spline_surface_points(self) -> list:
     """Gera uma lista de WindowPoints sobre a superfície B-spline."""
-    n = int(math.sqrt(len(control_points))) - 1
+    n = self.degrees[0]
+    m = self.degrees[1]
 
-    knots_u = [0] * (self.degrees[0] + 1) + list(range(n - self.degrees[0] + 2)) + [n - self.degrees[0] + 2] * self.degrees[0]
+    knots_u = [0] * (n + 1) + list(range(n - self.degrees[0] + 2)) + [n - self.degrees[0] + 2] * self.degrees[0]
     knots_v = knots_u[:]  # igual para ambos os eixos
 
     surface_points = []
     u_min, u_max = knots_u[self.degrees[0]], knots_u[-self.degrees[0] - 1]
     v_min, v_max = knots_v[self.degrees[1]], knots_v[-self.degrees[1] - 1]
 
-    for i in range(steps + 1):
-        u = u_min + (u_max - u_min) * (i / steps)
+    for i in range(self.steps + 1):
+        u = u_min + (u_max - u_min) * (i / self.steps)
         row = []
-        for j in range(steps + 1):
-            v = v_min + (v_max - v_min) * (j / steps)
-            point = self.bspline_surface_point(control_points, u, v,
+        for j in range(self.steps + 1):
+            v = v_min + (v_max - v_min) * (j / self.steps)
+            point = self.bspline_surface_point(self.control_points, u, v,
                                           self.degrees[0], self.degrees[1], knots_u, knots_v)
             row.append(point)
         surface_points.append(row)
@@ -391,6 +394,7 @@ class Surface:
       self.surface_type,
       self.control_points[:],
       self.degrees,
+      self.surface_steps,
       self.start_u,
       self.end_u,
       self.start_v,
@@ -483,7 +487,7 @@ class Wireframe:
     window_pos = window[:3]
     return np.linalg.norm(center - window_pos).astype(float)
 
-  def window_objects(self, curve_coefficient: int, surface_degree: int | None) -> list[WindowObject]:
+  def window_objects(self, curve_coefficient: int, surface_degree: list[int] | None) -> list[WindowObject]:
     '''Gera uma lista de objetos de janela que representam o Wireframe.
 
     A definição da construção de objetos de janela a partir de cada componente está na docstring da classe Wireframe.
@@ -495,7 +499,7 @@ class Wireframe:
       objects.append(WindowPolygonObject(face_vertices, texture=face[1]))
     for curve in self.curves: objects.extend(curve.window_objects([self.projected_vertices[x] for x in curve.control_points], curve_coefficient))
     for surface in self.surfaces: 
-      objects.extend(surface.window_objects([self.projected_vertices[x] for x in surface.control_points], surface_degree))
+      objects.extend(surface.window_objects([self.projected_vertices[x] for x in surface.control_points]))
     if objects == []:  # If there are no edges, faces or curves, draw the vertices as points
       for v in self.projected_vertices: objects.append(WindowPointObject(v))
 
@@ -586,7 +590,7 @@ class Wireframe:
             if len(body) < 1: raise ValueError(f"Invalid stype line: {line.strip()}")
             surface_type = SurfaceType.from_obj_name(body[0])
             if surface_type is None: raise ValueError(f"Unknown surface type: {body[0]}")
-            current_surface_type = surface_type  # Também temporário
+            current_surface_type = surface_type  # Armazena temporariamente
 
             deg_header, *deg_values = f.readline().split()
             if deg_header != 'deg' or len(deg_values) < 2: raise ValueError(f"Invalid deg line: {' '.join([deg_header]+deg_values)}")
@@ -594,38 +598,19 @@ class Wireframe:
 
             t, *points = f.readline().split()
             if t == "surf":
-              su, eu, sv, ev = map(float, points[:4])
-              point_indices = [int(i) - 1 for i in points[4:]]
-              expected_points = deg_values[0] * deg_values[1]
-              if len(point_indices) < expected_points:
-                  raise ValueError(f"Expected at least {expected_points} control points, got {len(point_indices)}")
+              start_u, end_u, start_v, end_v = [float(x) for x in points[:4]]
+              points = [int(x)-1 for x in points[4:]]
+              if len(points) < deg_values[0] * deg_values[1]: raise ValueError(f"Number of control points {len(points)} does not match surface degrees {deg_values}")
               current_surfaces.append(Surface(
-                  surface_type=current_surface_type,
-                  control_points=point_indices,
-                  degrees=(deg_values[0], deg_values[1]),
-                  start_u=su, end_u=eu, start_v=sv, end_v=ev
+                current_surface_type,
+                points,
+                (deg_values[0], deg_values[1]),
+                10,  # Default steps
+                start_u,
+                end_u,
+                start_v,
+                end_v
               ))
-
-          case 'deg':
-            deg_values = [int(x) for x in body]
-            current_degrees = deg_values  # Também temporário
-
-          case 'surf':
-            su, eu, sv, ev = map(float, body[:4])
-            point_indices = [int(i) - 1 for i in body[4:]]
-            if len(current_degrees) < 2:
-                raise ValueError(f"Invalid surface degrees: {current_degrees}")
-            expected_points = current_degrees[0] * current_degrees[1]
-            if len(point_indices) < expected_points:
-                raise ValueError(f"Expected at least {expected_points} control points, got {len(point_indices)}")
-            
-            control_points = [int(i) - 1 for i in body[4:]]
-            current_surfaces.append(Surface(
-                surface_type=current_surface_type,
-                control_points=control_points,
-                degrees=(current_degrees[0], current_degrees[1]),
-                start_u=su, end_u=eu, start_v=sv, end_v=ev
-            ))
 
           case 'parm': continue
 

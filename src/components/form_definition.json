@@ -1,7 +1,9 @@
 {
   "point": [
     {"name": "name", "label": "Nome do objeto:", "type": "text", "default": "Point"},
-    {"name": "coordinates", "label": "Coordenadas (x,y,z):", "type": "text", "default": ""}
+    {"name": "coordinates", "label": "Coordenadas (x,y,z):", "type": "text", "default": ""},
+    {"name": "texture", "label": "Cor do ponto:", "type": "color", "default": "#ffffff"},
+    {"name": "thickness", "label": "Espessura do ponto:", "type": "number", "default": "1"}
   ],
   "face": [
     {"name": "name", "label": "Nome do objeto:", "type": "text", "default": "Face"},
@@ -27,10 +29,13 @@
   "curve": [
     {"name": "name", "label": "Nome da curva:", "type": "text", "default": "Curve"},
     {"name": "points", "label": "Pontos de controle (x,y,z),...:", "type": "text", "default": ""},
-    {"name": "line_color", "label": "Cor da linha:", "type": "color", "default": "#000000"}
+    {"name": "line_color", "label": "Cor da linha:", "type": "color", "default": "#000000"},
+    {"name": "thickness", "label": "Espessura da linha:", "type": "number", "default": "1"}
   ],
   "surface": [
     {"name": "name", "label": "Nome da superfície:", "type": "text", "default": "Surface"},
-    {"name": "texture", "label": "Cor de preenchimento:", "type": "color", "default": "#ffffff"}
+    {"name": "texture", "label": "Cor de preenchimento:", "type": "color", "default": "#ffffff"},
+    {"name": "line_color", "label": "Cor de contorno:", "type": "color", "default": "#000000"},
+    {"name": "thickness", "label": "Espessura da linha:", "type": "number", "default": "1"}
   ]
 }

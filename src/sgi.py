@@ -26,7 +26,8 @@ class SGI:
     curve_type: int,
     curve_coefficient: int,
     surface_type: int,
-    surface_degree: int,
+    surface_degree: tuple[int, int],
+    surface_steps: int,
     debug: bool,
     window_zoom: float,
     window_position: list[float],
@@ -66,7 +67,8 @@ class SGI:
     self.curve_coefficient = tk.IntVar(value=curve_coefficient)
     
     self.surface_type = tk.IntVar(value=surface_type)
-    self.surface_degree = tk.IntVar(value=surface_degree)
+    self.surface_steps = tk.IntVar(value=surface_steps)
+    self.surface_degree = surface_degree
 
     self.create_components()
     self.create_navbar()
@@ -117,14 +119,41 @@ class SGI:
 
     surface_submenu.add_radiobutton(label="Bézier", value=0, variable=self.surface_type)
     surface_submenu.add_radiobutton(label="B-Spline", value=1, variable=self.surface_type)
-    surface_submenu.add_command(label="Grau de continuidade", command=lambda: (
-      popup := self.popup(250, 100, "Grau de continuidade"),
-      tk.Label(popup, text="Grau de continuidade:").pack(),
+    # dimensoes da malha:
+    surface_submenu.add_command(
+        label="Dimensões da malha",
+        command=lambda: (
+            (lambda: (
+                setattr(self, 'popup_window', self.popup(250, 100, "Dimensões da malha")),
+                tk.Label(self.popup_window, text="Dimensões (n,m):").pack(),
+                setattr(self, 'dim_input', tk.Entry(self.popup_window)),
+                self.dim_input.pack(),
+                self.dim_input.insert(0, f"({self.surface_degree[0]},{self.surface_degree[1]})" if len(self.surface_degree) == 2 else "(4,4)"),
+                tk.Button(
+                    self.popup_window,
+                    text="Aplicar",
+                    command=lambda: (
+                        setattr(self, 'surface_degree',
+                            [int(x) for x in self.dim_input.get().strip().strip("()").split(",")
+                            if x.strip().isdigit() and int(x.strip()) >= 0]
+                        ),
+                        self.popup_window.destroy(),
+                        self.viewport.update()
+                    )
+                ).pack()
+            ))()
+        )
+    )
+
+    
+    surface_submenu.add_command(label="Passos", command=lambda: (
+      popup := self.popup(250, 100, "Passos"),
+      tk.Label(popup, text="Passos:").pack(),
       input := tk.Entry(popup),
       input.insert(0, str(self.curve_coefficient.get())),
       input.pack(),
       tk.Button(popup, text="Aplicar", command=lambda: (
-        self.curve_coefficient.set(int(input.get())) if input.get().isnumeric() and int(input.get()) > 0 else None,
+        self.surface_steps.set(int(input.get())) if input.get().isnumeric() and int(input.get()) > 0 else None,
         popup.destroy(),
         self.viewport.update()
       )).pack(),
@@ -311,7 +340,7 @@ class SGI:
         "curve_type": self.curve_type.get(),
         "curve_coefficient": self.curve_coefficient.get(),
         "surface_type": self.surface_type.get(),
-        "surface_degree": self.surface_degree.get(),
+        "surface_degree": self.surface_degree,
         "debug": self.viewport.debug,
       }, f, indent=2)
 
@@ -406,13 +435,15 @@ class SGI:
     # treats surface individual control points separately
     control_points_matrix = None
     if form_type == "surface":
-      surface_degree = self.surface_degree.get()
-      control_points_matrix = [[None for _ in range(surface_degree + 1)] for _ in range(surface_degree + 1)]
-      for i in range(surface_degree + 1):
-        for j in range(surface_degree + 1):
-          control_points_matrix[i][j] = tk.Entry(popup, width=10)
-          control_points_matrix[i][j].grid(row=i+len(form_definition), column=j, sticky="ew")
-          control_points_matrix[i][j].insert(0, f"({i},{j},0)")
+        control_points_matrix = [[None for _ in range(self.surface_degree[1])] for _ in range(self.surface_degree[0])]
+        
+        for i in range(self.surface_degree[0]):  # Iterando pelas linhas
+            for j in range(self.surface_degree[1]):  # Iterando pelas colunas
+                control_points_matrix[i][j] = tk.Entry(popup, width=10)
+                control_points_matrix[i][j].grid(row=i + len(form_definition), column=j, sticky="ew")
+                
+                default_cp = default_values.get(f"cp_{i}_{j}", f"({i},{j},0)")
+                control_points_matrix[i][j].insert(0, default_cp)
     
     def finish_callback():
       try:
@@ -460,13 +491,13 @@ class SGI:
                                   texture=None,
                                   thickness=int(inputs['thickness'].get()) if inputs['thickness'].get().isnumeric() else 1)
         elif form_type == "surface":
-          control_points = [list(map(float, control_points_matrix[i][j].get().strip("()").replace(" ", "").split(","))) for i in range(surface_degree + 1) for j in range(surface_degree + 1)]
+          control_points = [list(map(float, control_points_matrix[i][j].get().strip("()").replace(" ", "").split(","))) for i in range(self.surface_degree[0]) for j in range(self.surface_degree[1])]
           control_points = [np.append(np.array(p), 1.0) for p in control_points]
           self.viewport.add_surface(control_points=control_points, name=name,
-                                    degree=self.surface_degree.get(),
+                                    degree=self.surface_degree,
                                     line_color=inputs['line_color'].get().strip(),
-                                    color=inputs['color'].get().strip(),
-                                    texture=None,
+                                    texture=inputs['texture'].get().strip(),
+                                    surface_steps=self.surface_steps.get(),
                                     thickness=int(inputs['thickness'].get()) if inputs['thickness'].get().isnumeric() else 1)
         else:
           self.log(f"Erro: tipo de formulário '{form_type}' não suportado.")
