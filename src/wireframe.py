@@ -12,16 +12,15 @@ class WindowObject:
   Cada objeto do mundo pode ser representado por um ou vários WindowObjects.
   Cada WindowObject se desenha no canvas a partir de seu(s) ponto(s) (x, y) na janela.
   '''
-  def draw(self, canva: Canvas, color: str | None) -> None: pass
+  def draw(self, canva: Canvas, color: str | None, thickness: int) -> None: pass
 
 @dataclass
 class WindowPointObject(WindowObject):
   '''Representa um ponto na janela.'''
   p: WindowPoint
 
-  def draw(self, canva: Canvas, color: str) -> None:
-    print(f"Desenhando ponto em ({self.p.x}, {self.p.y}) com cor {color}")
-    canva.create_oval(self.p.x-2, self.p.y-2, self.p.x+2, self.p.y+2, fill=color)
+  def draw(self, canva: Canvas, color: str, thickness: int) -> None:
+    canva.create_oval(self.p.x-2, self.p.y-2, self.p.x+2, self.p.y+2, fill=color, width=thickness)
 
 @dataclass
 class WindowLineObject(WindowObject):
@@ -451,13 +450,6 @@ class Surface:
     v_min, v_max = self.start_v, self.end_v
 
     surface_points = []
-    
-    # print("Valores sendo utilizados: ")
-    # print(f"Tu: {Tu}")
-    # print(f"Tv: {Tv}")
-    # print(f"u_min: {u_min}, u_max: {u_max}")
-    # print(f"v_min: {v_min}, v_max: {v_max}")
-    # print(f"degree_u: {degree_u}, degree_v: {degree_v}")
 
     for i in range(self.surface_steps + 1):
         u_norm = i / self.surface_steps

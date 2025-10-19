@@ -130,9 +130,7 @@ class Viewport:
     self.update()
 
   def update(self):
-    print(self.objects)
     self.update_object_list()
-    print(self.objects)
 
     self.canva.delete("all")
     all_objects = [obj.copy() for obj in self.objects]
@@ -153,7 +151,7 @@ class Viewport:
       for window_object in object.window_objects(self.curve_coefficient.get(), self.surface_degree):
         # Recorta objetos cujas posições na janela estejam além dos limites da tela de exibição.
         clipped = self.clipper.clip(window_object)
-        if clipped is not None: clipped.draw(self.canva, object.texture)
+        if clipped is not None: clipped.draw(self.canva, object.texture, object.thickness)
 
     # Aplica o mesmo processo de projeção e recorte para os pontos que estão na lista de construção
     # A única diferença é a construção manual das linhas entre os pontos
@@ -161,10 +159,10 @@ class Viewport:
     for point in self.building_buffer:
       point = self.window.world_to_viewport(point)
       clipped_point = self.clipper.clip(WindowPointObject(point))
-      if clipped_point: clipped_point.draw(self.canva, 'red')
+      if clipped_point: clipped_point.draw(self.canva, 'red', 1)
       if prev is not None:
         line = self.clipper.clip(WindowLineObject(prev, point))
-        if line: line.draw(self.canva, 'red')
+        if line: line.draw(self.canva, 'red', 1)
       prev = point
 
   def update_object_list(self):
@@ -270,7 +268,6 @@ class Viewport:
     thickness: int=1,
     texture: str="#000000"
   ):
-    print('texture: ', texture)
     self.objects.append(Wireframe(
       self.id_counter,
       name,
@@ -280,7 +277,6 @@ class Viewport:
       thickness=thickness,
       texture=texture
     ))
-    print('self.objects depois de add_point: ', self.objects)
     self.id_counter += 1
     self.update()
 
