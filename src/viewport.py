@@ -312,6 +312,7 @@ class Viewport:
     control_points: list[WorldPoint],
     name: str="Curve",
     line_color: str="#000000",
+    thickness: int=1
   ):
     if len(control_points) < 4:
       raise Exception("Curva precisa de ao menos 4 pontos de controle.")
@@ -360,9 +361,8 @@ class Viewport:
     degree: int = 3,
     name: str="Surface",
     line_color: str="#000000",
-    fill_color: str="#ffffff",
+    color: str="#ffffff",
   ):
-    print("Adding surface with control points:", control_points)
     if len(control_points) < 9:
       self.log("Superfície precisa de ao menos 9 pontos de controle.")
       return
@@ -389,8 +389,8 @@ class Viewport:
     self.id_counter += 1
     self.update()
     
-  def generate_default_input(self, form_type: str):
-    """Generates default input values for the given form type.
+  def generate_default_input(self, form_type: str, target_object: Wireframe | None = None) -> dict[str, str]:
+    """Generates default input values for the given form type if object hasn't been created.
     Uses a seed to give slight variations to the default values, 
     but still keeping them inside the canva area.
     """
@@ -400,14 +400,35 @@ class Viewport:
 
     match form_type:
       case 'point':
+        if target_object:
+     
+          return {
+            'name': target_object.name,
+            'coordinates': f"({target_object.vertices[0][0]:.2f}, {target_object.vertices[0][1]:.2f}, {target_object.vertices[0][2]:.2f})",
+            'texture': target_object.color,
+            'thickness': target_object.thickness
+          }
         x = random.randint(100, self.window.width - 100)
         y = random.randint(100, self.window.height - 100)
         z = random.randint(-100, 100)
         return {
-          'coordinates': f"({x}, {y}, {z})"
+          'name': 'Ponto',
+          'coordinates': f"({x}, {y}, {z})",
+          'texture': f"#{random.randint(0, 0xFFFFFF):06x}",
+          'thickness': random.randint(1, 5)
         }
         
       case 'edge':
+        if target_object:
+          start = target_object.vertices[0]
+          end = target_object.vertices[1]
+          return {
+            'name': target_object.name,
+            'start_point': f"({start[0]:.2f}, {start[1]:.2f}, {start[2]:.2f})",
+            'end_point': f"({end[0]:.2f}, {end[1]:.2f}, {end[2]:.2f})",
+            'line_color': target_object.line_color,
+            'thickness': target_object.thickness
+          }
         x1 = random.randint(100, self.window.width - 200)
         y1 = random.randint(100, self.window.height - 200)
         z1 = random.randint(-100, 100)
@@ -415,11 +436,24 @@ class Viewport:
         y2 = y1 + random.randint(50, 150)
         z2 = z1 + random.randint(-50, 50)
         return {
-          'start_point': f"({x1}, {y1}, {z1})",
-          'end_point': f"({x2}, {y2}, {z2})"
+          'name': 'Aresta',
+          'start_point': f"({x1:.2f}, {y1:.2f}, {z1:.2f})",
+          'end_point': f"({x2:.2f}, {y2:.2f}, {z2:.2f})",
+          'line_color': f"#{random.randint(0, 0xFFFFFF):06x}",
+          'line_width': random.randint(1, 5)
         }
       case 'face':
         points = []
+        if target_object:
+          for point in target_object.vertices:
+            points.append(f"({point[0]:.2f}, {point[1]:.2f}, {point[2]:.2f})")
+          return {
+            'name': target_object.name,
+            'vertices': ', '.join(points),
+            'line_color': target_object.line_color,
+            'thickness': str(target_object.thickness),
+            'texture': target_object.color
+          }
         num_points = random.randint(3, 6)
         for _ in range(num_points):
           x = random.randint(100, self.window.width - 100)
@@ -427,10 +461,24 @@ class Viewport:
           z = random.randint(-100, 100)
           points.append(f"({x}, {y}, {z})")
         return {
-          'vertices': ', '.join(points)
+          'name': 'Face',
+          'vertices': ', '.join(points),
+          'line_color': f"#{random.randint(0, 0xFFFFFF):06x}",
+          'thickness': random.randint(1, 5),
+          'fill_color': f"#{random.randint(0, 0xFFFFFF):06x}",
         }
       case 'polygon':
         points = []
+        if target_object:
+          for point in target_object.vertices:
+            points.append(f"({point[0]}, {point[1]}, {point[2]})")
+          return {
+            'name': target_object.name,
+            'points': ', '.join(points),
+            'line_color': target_object.line_color,
+            'thickness': str(target_object.thickness),
+            'fill_color': target_object.color           
+          }
         num_points = random.randint(3, 6)
         for _ in range(num_points):
           x = random.randint(100, self.window.width - 100)
@@ -438,10 +486,21 @@ class Viewport:
           z = random.randint(-100, 100)
           points.append(f"({x}, {y}, {z})")
         return {
-          'points': ', '.join(points)
+          'name': 'Polígono',
+          'points': ', '.join(points),
+          'line_color': f"#{random.randint(0, 0xFFFFFF):06x}",
+          'thickness': random.randint(1, 5)
         }
       case 'curve':
         points = []
+        if target_object:
+          for point in target_object.vertices:
+            points.append(f"({point[0]}, {point[1]}, {point[2]})")
+          return {
+            'name': target_object.name,
+            'points': ', '.join(points),
+            'line_color': target_object.line_color
+          }
         num_points = random.randint(4, 6)
         for _ in range(num_points):
           x = random.randint(100, self.window.width - 100)
@@ -449,7 +508,24 @@ class Viewport:
           z = random.randint(-100, 100)
           points.append(f"({x}, {y}, {z})")
         return {
-          'points': ', '.join(points)
+          'name': 'Curva',
+          'points': ', '.join(points),
+          'line_color': f"#{random.randint(0, 0xFFFFFF):06x}",
+          'thickness': random.randint(1, 5)
+        }
+      case 'surface':
+        if target_object:
+          return {
+            'name': target_object.name,
+            'line_color': target_object.line_color,
+            'fill_color': target_object.color,
+            'thickness': str(target_object.thickness)
+          }
+        return {
+          'name': 'Superfície',
+          'line_color': f"#{random.randint(0, 0xFFFFFF):06x}",
+          'fill_color': f"#{random.randint(0, 0xFFFFFF):06x}",
+          'thickness': str(random.randint(1, 5))
         }
       case _:
         return {} 

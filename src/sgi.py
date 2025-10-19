@@ -388,6 +388,7 @@ class SGI:
     return entries
   
   def open_properties_window(self, form_type: str | None = None):
+    target = None
     if form_type is None:
       target = self.get_selected_object()
       if target is None: return
@@ -398,8 +399,8 @@ class SGI:
       return
 
     form_definition = self.form_definition[form_type]
-    default_values = self.viewport.generate_default_input(form_type)
-    popup = self.popup(0, 300, "Propriedades do Objeto")
+    default_values = self.viewport.generate_default_input(form_type, target if target else None)
+    popup = self.popup(0, 250, "Propriedades do Objeto")
     inputs = self.create_form_fields(popup, form_definition, default_values=default_values)
     
     # treats surface individual control points separately
@@ -417,13 +418,12 @@ class SGI:
       try:
         name = inputs['name'].get().strip() if inputs['name'].get().strip() != "" else "Surface"
         if form_type == "point":
-          point = list(map(float, inputs['point'].get().strip("()").replace(" ", "").split(",")))
+          point = list(map(float, inputs['coordinates'].get().strip("()").replace(" ", "").split(",")))
           point = np.append(np.array(point), 1.0)
           self.viewport.add_point(point=point, name=name,
-                                  point_color=inputs['point_color'].get().strip(),
-                                  texture=inputs['texture'].get().strip(),
-                                  size=int(inputs['size'].get()) if inputs['size'].get().isnumeric() else 1)
-        elif form_type == "line":
+                                              point_color=inputs['point_color'].get().strip(),
+                                              texture=inputs['texture'].get().strip())
+        elif form_type == "edge":
           p1, p2 = [list(map(float, p.strip("()").replace(" ", "").split(","))) for p in inputs['points'].get().split(",") if p.strip() != ""]
           p1 = np.append(np.array(p1), 1.0)
           p2 = np.append(np.array(p2), 1.0)
@@ -448,25 +448,32 @@ class SGI:
                                     texture=inputs['texture'].get().strip(),
                                     thickness=int(inputs['thickness'].get()) if inputs['thickness'].get().isnumeric() else 1)
         elif form_type == "curve":
-          points = [list(map(float, p.strip("()").replace(" ", "").split(","))) for p in inputs['points'].get().split(",") if p.strip() != ""]
+          # example input: (x1,y1,z1),(x2,y2,z2),(x3,y3,z3)
+          raw = inputs['points'].get().strip()
+          raw = raw.strip("()").replace(" ", "")
+          points_str = raw.split("),(")
+          points = [list(map(float, p.split(','))) for p in points_str]
           points = [np.append(np.array(p), 1.0) for p in points]
           self.viewport.add_curve(points=points, name=name,
                                   curve_type=self.curve_type.get(),
                                   line_color=inputs['line_color'].get().strip(),
-                                  texture=inputs['texture'].get().strip(),
+                                  texture=None,
                                   thickness=int(inputs['thickness'].get()) if inputs['thickness'].get().isnumeric() else 1)
         elif form_type == "surface":
           control_points = [list(map(float, control_points_matrix[i][j].get().strip("()").replace(" ", "").split(","))) for i in range(surface_degree + 1) for j in range(surface_degree + 1)]
           control_points = [np.append(np.array(p), 1.0) for p in control_points]
           self.viewport.add_surface(control_points=control_points, name=name,
-                                    surface_type=self.surface_type.get(),
-                                    texture=inputs['texture'].get().strip())
+                                    degree=self.surface_degree.get(),
+                                    line_color=inputs['line_color'].get().strip(),
+                                    color=inputs['color'].get().strip(),
+                                    texture=None,
+                                    thickness=int(inputs['thickness'].get()) if inputs['thickness'].get().isnumeric() else 1)
         else:
           self.log(f"Erro: tipo de formulário '{form_type}' não suportado.")
           return
         self.viewport.update()
-      except ValueError:
-        self.log("Erro: pontos inválidos.")
+      except Exception as e:
+        self.log(f"Erro: {e}")
         return
       popup.destroy()
     create_button = tk.Button(popup, text="Criar/Alterar", command=finish_callback)
