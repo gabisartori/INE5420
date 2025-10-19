@@ -16,7 +16,7 @@
     {"name": "name", "label": "Nome do objeto:", "type": "text", "default": "Edge"},
     {"name": "start_point", "label": "Ponto inicial (x,y,z):", "type": "text", "default": ""},
     {"name": "end_point", "label": "Ponto final (x,y,z):", "type": "text", "default": ""},
-    {"name": "line_color", "label": "Cor da linha:", "type": "color", "default": "#000000"},
+    {"name": "texture", "label": "Cor da linha:", "type": "color", "default": "#000000"},
     {"name": "thickness", "label": "Espessura da linha:", "type": "number", "default": "1"}
   ],
   "polygon": [

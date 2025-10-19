@@ -279,6 +279,26 @@ class Viewport:
     ))
     self.id_counter += 1
     self.update()
+    
+  def add_line(
+    self,
+    p1: WorldPoint,
+    p2: WorldPoint,
+    name: str="Linha",
+    thickness: int=1,
+    texture: str="#000000"
+  ):
+    self.objects.append(Wireframe(
+      self.id_counter,
+      name,
+      vertices=[p1, p2],
+      edges=[(0, 1)],
+      faces=[],
+      thickness=thickness,
+      texture=texture
+    ))
+    self.id_counter += 1
+    self.update()
 
   def add_polygon(
     self,
@@ -449,7 +469,7 @@ class Viewport:
             'name': target_object.name,
             'start_point': f"({start[0]:.2f}, {start[1]:.2f}, {start[2]:.2f})",
             'end_point': f"({end[0]:.2f}, {end[1]:.2f}, {end[2]:.2f})",
-            'line_color': target_object.line_color,
+            'texture': target_object.texture,
             'thickness': target_object.thickness
           }
         x1 = random.randint(100, self.window.width - 200)
@@ -462,8 +482,8 @@ class Viewport:
           'name': 'Aresta',
           'start_point': f"({x1:.2f}, {y1:.2f}, {z1:.2f})",
           'end_point': f"({x2:.2f}, {y2:.2f}, {z2:.2f})",
-          'line_color': f"#{random.randint(0, 0xFFFFFF):06x}",
-          'line_width': random.randint(1, 5)
+          'texture': f"#{random.randint(0, 0xFFFFFF):06x}",
+          'thickness': random.randint(1, 5)
         }
       case 'face':
         points = []

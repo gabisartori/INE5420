@@ -447,7 +447,7 @@ class SGI:
                 control_points_matrix[i][j].insert(0, default_cp)
     
     def finish_callback():
-      try:
+      #try:
         if target:
           self.viewport.remove_object(target)
         name = inputs['name'].get().strip() if inputs['name'].get().strip() != "" else "Surface"
@@ -458,11 +458,11 @@ class SGI:
                                   thickness=int(inputs['thickness'].get()) if inputs['thickness'].get().isnumeric() else 1,
                                   texture=inputs['texture'].get().strip())
         elif form_type == "edge":
-          p1, p2 = [list(map(float, p.strip("()").replace(" ", "").split(","))) for p in inputs['points'].get().split(",") if p.strip() != ""]
+          p1 = list(map(float, inputs['start_point'].get().strip("()").replace(" ", "").split(",")))
+          p2 = list(map(float, inputs['end_point'].get().strip("()").replace(" ", "").split(",")))
           p1 = np.append(np.array(p1), 1.0)
           p2 = np.append(np.array(p2), 1.0)
           self.viewport.add_line(p1=p1, p2=p2, name=name,
-                                 line_color=inputs['line_color'].get().strip(),
                                  texture=inputs['texture'].get().strip(),
                                  thickness=int(inputs['thickness'].get()) if inputs['thickness'].get().isnumeric() else 1)
         elif form_type == "face":
@@ -505,10 +505,10 @@ class SGI:
           self.log(f"Erro: tipo de formulário '{form_type}' não suportado.")
           return
         self.viewport.update()
-      except Exception as e:
-        self.log(f"Erro: {e}")
-        return
-      popup.destroy()
+      # except Exception as e:
+      #   self.log(f"Erro: {e}")
+      #   return
+        popup.destroy()
     create_button = tk.Button(popup, text="Criar/Alterar", command=finish_callback)
     create_button.grid(row=100, column=0, columnspan=4, sticky="ew")
     cancel_button = tk.Button(popup, text="Cancelar", command=popup.destroy)

@@ -28,8 +28,8 @@ class WindowLineObject(WindowObject):
   start: WindowPoint
   end: WindowPoint
 
-  def draw(self, canva: Canvas, color: str="black") -> None:
-    canva.create_line(self.start.x, self.start.y, self.end.x, self.end.y, fill=color)
+  def draw(self, canva: Canvas, color: str="black", thickness: int=1) -> None:
+    canva.create_line(self.start.x, self.start.y, self.end.x, self.end.y, fill=color, width=thickness)
 
 @dataclass
 class WindowPolygonObject(WindowObject):
