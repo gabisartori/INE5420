@@ -6,8 +6,8 @@
     {"name": "thickness", "label": "Espessura do ponto:", "type": "number", "default": "1"}
   ],
   "face": [
-    {"name": "name", "label": "Nome do objeto:", "type": "text", "default": "Face"},
-    {"name": "vertices", "label": "Vértices (x,y,z),...:", "type": "text", "default": ""},
+    {"name": "name", "label": "Nome do objeto:", "type": "text", "default": "Polygon"},
+    {"name": "points", "label": "Pontos (x,y,z),...:", "type": "text", "default": ""},
     {"name": "line_color", "label": "Cor de contorno:", "type": "color", "default": "#000000"},
     {"name": "texture", "label": "Cor de preenchimento:", "type": "color", "default": "#ffffff"},
     {"name": "thickness", "label": "Espessura da linha:", "type": "number", "default": "1"}

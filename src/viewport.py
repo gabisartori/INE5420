@@ -151,7 +151,7 @@ class Viewport:
       for window_object in object.window_objects(self.curve_coefficient.get(), self.surface_degree):
         # Recorta objetos cujas posições na janela estejam além dos limites da tela de exibição.
         clipped = self.clipper.clip(window_object)
-        if clipped is not None: clipped.draw(self.canva, object.texture, object.thickness)
+        if clipped is not None: clipped.draw(self.canva, object.texture, object.thickness, object.line_color)
 
     # Aplica o mesmo processo de projeção e recorte para os pontos que estão na lista de construção
     # A única diferença é a construção manual das linhas entre os pontos
@@ -305,7 +305,7 @@ class Viewport:
     points: list[WorldPoint],
     name: str="Polygon",
     line_color: str="#000000",
-    fill_color: str="#ffffff",
+    texture: str | None = None,
     thickness: int=1
   ):
     if len(points) < 3:
@@ -315,7 +315,10 @@ class Viewport:
       name,
       vertices=points,
       edges=[(i, (i+1) % len(points)) for i in range(len(points))],
-      faces=[([i], fill_color) for i in range(len(points))]
+      faces=[([i], texture) for i in range(len(points))],
+      line_color=line_color,
+      thickness=thickness,
+      texture=texture
     ))
     
     self.id_counter += 1
@@ -492,10 +495,10 @@ class Viewport:
             points.append(f"({point[0]:.2f}, {point[1]:.2f}, {point[2]:.2f})")
           return {
             'name': target_object.name,
-            'vertices': ', '.join(points),
+            'points': ', '.join(points),
             'line_color': target_object.line_color,
             'thickness': str(target_object.thickness),
-            'texture': target_object.color
+            'texture': target_object.texture
           }
         num_points = random.randint(3, 6)
         for _ in range(num_points):
@@ -505,7 +508,7 @@ class Viewport:
           points.append(f"({x}, {y}, {z})")
         return {
           'name': 'Face',
-          'vertices': ', '.join(points),
+          'points': ', '.join(points),
           'line_color': f"#{random.randint(0, 0xFFFFFF):06x}",
           'thickness': random.randint(1, 5),
           'texture': f"#{random.randint(0, 0xFFFFFF):06x}",
@@ -520,7 +523,7 @@ class Viewport:
             'points': ', '.join(points),
             'line_color': target_object.line_color,
             'thickness': str(target_object.thickness),
-            'texture': target_object.color           
+            'texture': target_object.texture
           }
         num_points = random.randint(3, 6)
         for _ in range(num_points):

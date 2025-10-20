@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, colorchooser, scrolledtext
-
+import re
 import json
 
 from viewport import *
@@ -127,8 +127,8 @@ class SGI:
                 setattr(self, 'popup_window', self.popup(250, 100, "Dimensões da malha")),
                 tk.Label(self.popup_window, text="Dimensões (n,m):").pack(),
                 setattr(self, 'dim_input', tk.Entry(self.popup_window)),
-                self.dim_input.pack(),
-                self.dim_input.insert(0, f"({self.surface_degree[0]},{self.surface_degree[1]})" if len(self.surface_degree) == 2 else "(4,4)"),
+                # self.dim_input.pack(), #  wont use this for now
+                # self.dim_input.insert(0, f"({self.surface_degree[0]},{self.surface_degree[1]})" if len(self.surface_degree) == 2 else "(4,4)"),
                 tk.Button(
                     self.popup_window,
                     text="Aplicar",
@@ -465,18 +465,10 @@ class SGI:
           self.viewport.add_line(p1=p1, p2=p2, name=name,
                                  texture=inputs['texture'].get().strip(),
                                  thickness=int(inputs['thickness'].get()) if inputs['thickness'].get().isnumeric() else 1)
-        elif form_type == "face":
-          points = [list(map(float, p.strip("()").replace(" ", "").split(","))) for p in inputs['points'].get().split(",") if p.strip() != ""]
-          points = [np.append(np.array(p), 1.0) for p in points]
-          self.viewport.add_face(points=points, name=name,
-                                 face_color=inputs['face_color'].get().strip(),
-                                 line_color=inputs['line_color'].get().strip(),
-                                 texture=inputs['texture'].get().strip(),
-                                 thickness=int(inputs['thickness'].get()) if inputs['thickness'].get().isnumeric() else 1)
-        
-        elif form_type == "polygon":
-          points = [list(map(float, p.strip("()").replace(" ", "").split(","))) for p in inputs['points'].get().split(",") if p.strip() != ""]
-          points = [np.append(np.array(p), 1.0) for p in points]
+        elif form_type in ("polygon", "face"):
+          raw_input = inputs['points'].get().strip()
+          matches = re.findall(r"\(([^()]+)\)", raw_input)
+          points = [list(map(float, m.split(","))) for m in matches]
           self.viewport.add_polygon(points=points, name=name,
                                     line_color=inputs['line_color'].get().strip(),
                                     texture=inputs['texture'].get().strip(),
