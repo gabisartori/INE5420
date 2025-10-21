@@ -19,7 +19,7 @@ class WindowPointObject(WindowObject):
   '''Representa um ponto na janela.'''
   p: WindowPoint
 
-  def draw(self, canva: Canvas, color: str, thickness: int) -> None:
+  def draw(self, canva: Canvas, color: str, thickness: int, line_color: str | None = None) -> None:
     canva.create_oval(self.p.x-2, self.p.y-2, self.p.x+2, self.p.y+2, fill=color, width=thickness)
 
 @dataclass
@@ -29,6 +29,7 @@ class WindowLineObject(WindowObject):
   end: WindowPoint
 
   def draw(self, canva: Canvas, color: str="black", thickness: int=1, line_color: str | None = None) -> None:
+    print(f"Drawing line from ({self.start.x}, {self.start.y}) to ({self.end.x}, {self.end.y}) with color {color} and thickness {thickness}")
     canva.create_line(self.start.x, self.start.y, self.end.x, self.end.y, fill=color, width=thickness)
 
 @dataclass
@@ -282,7 +283,7 @@ class Surface:
     
     # flatten points into list
     lines = []
-    print(points)
+
     rows = len(points)
     cols = len(points[0]) if rows > 0 else 0
 
@@ -312,8 +313,8 @@ class Surface:
 
   def bezier_surface_point(control_points: list[WindowPoint], u: float, v: float, degree_u: int, degree_v: int) -> WindowPoint:
     """Calcula um ponto na superfície de Bézier para dados valores de u e v (0 <= u, v <= 1) e uma lista de pontos de controle."""
-    n = degree_u
-    m = degree_v
+    n = degree_u - 1
+    m = degree_v - 1
 
     Bu = Surface.bernstein_poly(n, u)
     Bv = Surface.bernstein_poly(m, v)
@@ -437,18 +438,7 @@ class Surface:
       [-3/6,  0,    3/6, 0],
       [ 1/6,  4/6,  1/6, 0]
     ])
-    print(f"DEBUG: self.degrees (U, V): ({self.degrees[0]}, {self.degrees[1]})")
-    print(f"DEBUG: num_points_per_direction_x: {num_points_per_direction_x}")
-    print(f"DEBUG: num_points_per_direction_y: {num_points_per_direction_y}")
-    expected_size = num_points_per_direction_x * num_points_per_direction_y * 2
-    print(f"DEBUG: Tamanho da forma esperada (reshape): {num_points_per_direction_x}x{num_points_per_direction_y}x2 = {expected_size}")
 
-    # 2. Checa o Tamanho do Array de Entrada
-    array_plano = np.array([[cp.x, cp.y] for cp in control_points])
-    actual_size = array_plano.size
-    print(f"DEBUG: Tamanho real do array plano de entrada: {actual_size}") 
-    
-    
     M_b_spline_T = M_b_spline.T
     
     # reorganize control points into 2D grid
@@ -457,16 +447,7 @@ class Surface:
     #separate G into Gx and Gy
     GX_all = G_all_xy[:, :, 0]
     GY_all = G_all_xy[:, :, 1]
-    print(f"DEBUG: self.degrees (U, V): ({self.degrees[0]}, {self.degrees[1]})")
-    print(f"DEBUG: num_points_per_direction_x: {num_points_per_direction_x}")
-    print(f"DEBUG: num_points_per_direction_y: {num_points_per_direction_y}")
-    expected_size = num_points_per_direction_x * num_points_per_direction_y * 2
-    print(f"DEBUG: Tamanho da forma esperada (reshape): {num_points_per_direction_x}x{num_points_per_direction_y}x2 = {expected_size}")
-
-    # 2. Checa o Tamanho do Array de Entrada
-    array_plano = np.array([[cp.x, cp.y] for cp in control_points])
-    actual_size = array_plano.size
-    print(f"DEBUG: Tamanho real do array plano de entrada: {actual_size}")    
+  
     surface_points: list[WindowPoint] = []
     step_size = 1 / self.surface_steps
 
@@ -481,7 +462,6 @@ class Surface:
         
         # coefficients X and Y
         temp_X = np.matmul(M_b_spline, GX)
-        print('temp x', temp_X)  # --- IGNORE ---
         CX = np.matmul(temp_X, M_b_spline_T)
 
         temp_Y = np.matmul(M_b_spline, GY)

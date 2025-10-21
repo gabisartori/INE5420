@@ -470,8 +470,8 @@ class SGI:
           matches = re.findall(r"\(([^()]+)\)", raw_input)
           points = [list(map(float, m.split(","))) for m in matches]
           self.viewport.add_polygon(points=points, name=name,
-                                    line_color=inputs['line_color'].get().strip(),
-                                    texture=inputs['texture'].get().strip(),
+                                    #line_color=inputs['line_color'].get().strip(),
+                                    texture=inputs['line_color'].get().strip(),
                                     thickness=int(inputs['thickness'].get()) if inputs['thickness'].get().isnumeric() else 1)
         elif form_type == "curve":
           raw = inputs['points'].get().strip()
@@ -479,17 +479,15 @@ class SGI:
           points_str = raw.split("),(")
           points = [list(map(float, p.split(','))) for p in points_str]
           points = [np.append(np.array(p), 1.0) for p in points]
-          self.viewport.add_curve(points=points, name=name,
-                                  curve_type=self.curve_type.get(),
-                                  line_color=inputs['line_color'].get().strip(),
-                                  texture=inputs['texture'].get().strip(),
+          self.viewport.add_curve(control_points=points, name=name,
+                                  texture=inputs['line_color'].get().strip(),
                                   thickness=int(inputs['thickness'].get()) if inputs['thickness'].get().isnumeric() else 1)
         elif form_type == "surface":
           control_points = [list(map(float, control_points_matrix[i][j].get().strip("()").replace(" ", "").split(","))) for i in range(self.surface_degree[0]) for j in range(self.surface_degree[1])]
           control_points = [np.append(np.array(p), 1.0) for p in control_points]
           self.viewport.add_surface(control_points=control_points, name=name,
                                     degree=self.surface_degree,
-                                    line_color=inputs['line_color'].get().strip(),
+                                    #line_color=inputs['line_color'].get().strip(),
                                     texture=inputs['texture'].get().strip(),
                                     surface_steps=self.surface_steps.get(),
                                     thickness=int(inputs['thickness'].get()) if inputs['thickness'].get().isnumeric() else 1)

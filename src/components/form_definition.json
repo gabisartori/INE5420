@@ -9,7 +9,6 @@
     {"name": "name", "label": "Nome do objeto:", "type": "text", "default": "Polygon"},
     {"name": "points", "label": "Pontos (x,y,z),...:", "type": "text", "default": ""},
     {"name": "line_color", "label": "Cor de contorno:", "type": "color", "default": "#000000"},
-    {"name": "texture", "label": "Cor de preenchimento:", "type": "color", "default": "#ffffff"},
     {"name": "thickness", "label": "Espessura da linha:", "type": "number", "default": "1"}
   ],
   "edge": [
@@ -23,7 +22,6 @@
     {"name": "name", "label": "Nome do objeto:", "type": "text", "default": "Polygon"},
     {"name": "points", "label": "Pontos (x,y,z),...:", "type": "text", "default": ""},
     {"name": "line_color", "label": "Cor de contorno:", "type": "color", "default": "#000000"},
-    {"name": "texture", "label": "Cor de preenchimento:", "type": "color", "default": "#ffffff"},
     {"name": "thickness", "label": "Espessura da linha:", "type": "number", "default": "1"}
   ],
   "curve": [
@@ -34,8 +32,7 @@
   ],
   "surface": [
     {"name": "name", "label": "Nome da superfície:", "type": "text", "default": "Surface"},
-    {"name": "texture", "label": "Cor de preenchimento:", "type": "color", "default": "#ffffff"},
-    {"name": "line_color", "label": "Cor de contorno:", "type": "color", "default": "#000000"},
+    {"name": "texture", "label": "Cor da linha:", "type": "color", "default": "#000000"},
     {"name": "thickness", "label": "Espessura da linha:", "type": "number", "default": "1"}
   ]
 }

@@ -310,6 +310,7 @@ class Viewport:
   ):
     if len(points) < 3:
       raise Exception("Polígono precisa de ao menos 3 pontos.")
+    print('appending polygon with color:', line_color, ' and texture:', texture ," and points:", points)
     self.objects.append(Wireframe(
       self.id_counter,
       name,
@@ -354,7 +355,7 @@ class Viewport:
     self,
     control_points: list[WorldPoint],
     name: str="Curve",
-    line_color: str="#000000",
+    texture: str="#000000",
     thickness: int=1
   ):
     if len(control_points) < 4:
@@ -365,6 +366,8 @@ class Viewport:
       name,
       vertices=control_points,
       curves=[Curve(self.curve_type, list(range(len(control_points))), degree=min(4, len(control_points)))],
+      texture=texture,
+      thickness=thickness
     )
     self.objects.append(new_curve)
     self.id_counter += 1
@@ -404,8 +407,8 @@ class Viewport:
     degree: tuple[int, int],
     name: str="Surface",
     surface_steps: int=10,
-    line_color: str="#000000",
-    texture: str="#ffffff",
+    #line_color: str="#000000",
+    texture: str="#000000",
     thickness: int=1
   ):
     if len(control_points) < 9:
@@ -429,6 +432,8 @@ class Viewport:
         0.0,
         1.0,
       )],
+      texture=texture,
+      thickness=thickness
     )
     self.objects.append(new_surface)
     self.id_counter += 1
@@ -461,7 +466,6 @@ class Viewport:
           'coordinates': f"({x}, {y}, {z})",
           'texture': f"#{random.randint(0, 0xFFFFFF):06x}",
           'thickness': random.randint(1, 5),
-          'line_color': f"#{random.randint(0, 0xFFFFFF):06x}"
         }
         
       case 'edge':
@@ -498,7 +502,7 @@ class Viewport:
             'points': ', '.join(points),
             'line_color': target_object.line_color,
             'thickness': str(target_object.thickness),
-            'texture': target_object.texture
+            #'texture': target_object.texture
           }
         num_points = random.randint(3, 6)
         for _ in range(num_points):
@@ -511,7 +515,7 @@ class Viewport:
           'points': ', '.join(points),
           'line_color': f"#{random.randint(0, 0xFFFFFF):06x}",
           'thickness': random.randint(1, 5),
-          'texture': f"#{random.randint(0, 0xFFFFFF):06x}",
+          #'texture': f"#{random.randint(0, 0xFFFFFF):06x}",
         }
       case 'polygon':
         points = []
@@ -523,7 +527,7 @@ class Viewport:
             'points': ', '.join(points),
             'line_color': target_object.line_color,
             'thickness': str(target_object.thickness),
-            'texture': target_object.texture
+            #'texture': target_object.texture
           }
         num_points = random.randint(3, 6)
         for _ in range(num_points):
@@ -536,7 +540,7 @@ class Viewport:
           'points': ', '.join(points),
           'line_color': f"#{random.randint(0, 0xFFFFFF):06x}",
           'thickness': random.randint(1, 5),
-          'texture': f"#{random.randint(0, 0xFFFFFF):06x}",
+          #'texture': f"#{random.randint(0, 0xFFFFFF):06x}",
         }
       case 'curve':
         points = []
@@ -565,13 +569,13 @@ class Viewport:
         if target_object:
           return {
             'name': target_object.name,
-            'line_color': target_object.line_color,
-            'texture': target_object.color,
+            #'line_color': target_object.line_color,
+            'texture': target_object.texture,
             'thickness': str(target_object.thickness)
           }
         return {
           'name': 'Superfície',
-          'line_color': f"#{random.randint(0, 0xFFFFFF):06x}",
+          #'line_color': f"#{random.randint(0, 0xFFFFFF):06x}",
           'texture': f"#{random.randint(0, 0xFFFFFF):06x}",
           'thickness': str(random.randint(1, 5))
         }
