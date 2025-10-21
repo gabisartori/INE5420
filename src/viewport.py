@@ -310,7 +310,6 @@ class Viewport:
   ):
     if len(points) < 3:
       raise Exception("Polígono precisa de ao menos 3 pontos.")
-    print('appending polygon with color:', line_color, ' and texture:', texture ," and points:", points)
     self.objects.append(Wireframe(
       self.id_counter,
       name,
@@ -418,13 +417,14 @@ class Viewport:
       self.log("Interpolação bicúbica precisa de ao menos 16 pontos de controle. Criando uma superfície bilinear.")
 
     degree_u, degree_v = degree
+
     new_surface = Wireframe(
       self.id_counter,
       name,
       vertices=control_points,
       surfaces=[Surface(
         self.surface_type,
-        [i for i in range(len(control_points))],
+        list(range(len(control_points))),
         (degree_u, degree_v),
         surface_steps,
         0.0,

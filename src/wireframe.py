@@ -29,7 +29,6 @@ class WindowLineObject(WindowObject):
   end: WindowPoint
 
   def draw(self, canva: Canvas, color: str="black", thickness: int=1, line_color: str | None = None) -> None:
-    print(f"Drawing line from ({self.start.x}, {self.start.y}) to ({self.end.x}, {self.end.y}) with color {color} and thickness {thickness}")
     canva.create_line(self.start.x, self.start.y, self.end.x, self.end.y, fill=color, width=thickness)
 
 @dataclass
@@ -202,7 +201,7 @@ class Curve:
     '''Gera uma lista de pontos sobre a curva a partir do algoritmo definido por *curve_type*.
 
     Então, constrói pares de pontos consecutivos para formar as linhas que representam a curva.
-    '''
+    ''' 
     match self.curve_type:
       case CurveType.BEZIER: points = self.generate_bezier_points(control_points, curve_coefficient)
       case CurveType.B_SPLINE: points = self.generate_b_spline_points(control_points, curve_coefficient)

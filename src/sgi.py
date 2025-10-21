@@ -127,8 +127,8 @@ class SGI:
                 setattr(self, 'popup_window', self.popup(250, 100, "Dimensões da malha")),
                 tk.Label(self.popup_window, text="Dimensões (n,m):").pack(),
                 setattr(self, 'dim_input', tk.Entry(self.popup_window)),
-                # self.dim_input.pack(), #  wont use this for now
-                # self.dim_input.insert(0, f"({self.surface_degree[0]},{self.surface_degree[1]})" if len(self.surface_degree) == 2 else "(4,4)"),
+                self.dim_input.pack(), #  wont use this for now
+                self.dim_input.insert(0, f"({self.surface_degree[0]},{self.surface_degree[1]})" if len(self.surface_degree) == 2 else "(4,4)"),
                 tk.Button(
                     self.popup_window,
                     text="Aplicar",
@@ -422,7 +422,7 @@ class SGI:
     if form_type is None:
       target = self.get_selected_object()
       if target is None: return
-      form_type = target.get_type().lower()
+      form_type = target.get_type().lower()      
       
     if form_type not in self.form_definition:
       self.log(f"Erro: formulário '{form_type}' não definido.")
@@ -443,7 +443,7 @@ class SGI:
                 control_points_matrix[i][j] = tk.Entry(popup, width=10)
                 control_points_matrix[i][j].grid(row=i + len(form_definition), column=j, sticky="ew")
                 
-                default_cp = default_values.get(f"cp_{i}_{j}", f"({i},{j},0)")
+                default_cp = default_values.get(f"cp_{i}_{j}", f"({i},{j},0)")  
                 control_points_matrix[i][j].insert(0, default_cp)
     
     def finish_callback():
@@ -523,11 +523,12 @@ class SGI:
     self.ui_log.config(state="disabled")
     
   def finish_surface(self):
-    if self.viewport.building:
-      self.ui_build_button.config(relief=tk.RAISED)
-      self.viewport.finish_surface()
-    else:
-      self.open_properties_window("surface")
+    # if self.viewport.building:
+    #   self.ui_build_button.config(relief=tk.RAISED)
+    #   self.viewport.finish_surface()
+    # else:
+    self.ui_build_button.config(relief=tk.RAISED)
+    self.open_properties_window("surface")
 
 # Wrappers for viewport methods
   def finish_polygon(self):
