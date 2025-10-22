@@ -16,7 +16,8 @@ args = parser.parse_args()
 if args.output_file is not None and not args.output_file.strip().startswith(config.DATA_PATH):
   args.output_file = f"{config.DATA_PATH}/{args.output_file.strip()}"
 
-preferences = json.load(open(config.USER_PREFERENCES_PATH))
+try: preferences = json.load(open(config.USER_PREFERENCES_PATH))
+except: preferences = {}
 
 sgi = SGI(
   # Application configuration
