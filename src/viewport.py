@@ -2,6 +2,7 @@ from typing import Callable
 
 from tkinter import Canvas, Event, IntVar, ttk
 import numpy as np
+from datetime import datetime
 import random
 
 from wireframe import *
@@ -445,7 +446,7 @@ class Viewport:
     but still keeping them inside the canva area.
     """
 
-    seed = 42  # Fixed seed for reproducibility
+    seed = datetime.now().second + hash(form_type)
     random.seed(seed)
 
     match form_type:
