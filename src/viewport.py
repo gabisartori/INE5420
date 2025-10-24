@@ -568,18 +568,69 @@ class Viewport:
         }
       case 'surface':
         if target_object:
+          surface_points = target_object.surfaces[0].control_points
+          surface_points_str = []
+          for point in surface_points:
+            surface_points_str.append(f"({point[0]:.2f}, {point[1]:.2f}, {point[2]:.2f})")
           return {
             'name': target_object.name,
             #'line_color': target_object.line_color,
             'texture': target_object.texture,
-            'thickness': str(target_object.thickness)
+            'thickness': str(target_object.thickness),
+            'control_points': ', '.join(surface_points_str)
           }
+        generated_control_points = self.generate_random_surface_control_points()
+
         return {
           'name': 'Superfície',
           #'line_color': f"#{random.randint(0, 0xFFFFFF):06x}",
           'texture': f"#{random.randint(0, 0xFFFFFF):06x}",
-          'thickness': str(random.randint(1, 5))
+          'thickness': str(random.randint(1, 5)),
+          'control_points': ', '.join(f"({pt[0]:.2f}, {pt[1]:.2f}, {pt[2]:.2f})" for row in generated_control_points for pt in row),
+
         }
       case _:
         return {} 
+  
+  def generate_random_surface_control_points(self) -> str:
+    """Generates a list of random control points for surface creation."""
+    num_patches_u = random.randint(1, 3)
+    num_points_u = num_patches_u * 4
+    
+    num_patches_v = random.randint(1, 3)
+    num_points_v = num_patches_v * 4
+    
+    x_min, x_max = 50, self.window.width - 50
+    y_min, y_max = 50, self.window.height - 50
+    z_min, z_max = -50, 50
+
+    control_points: list[WorldPoint] = []
+    x_base = np.linspace(x_min, x_max, num_points_u)
+    y_base = np.linspace(y_min, y_max, num_points_v)
+
+    amplitude_x = (x_max - x_min) / (num_points_u * 2)
+    amplitude_y = (y_max - y_min) / (num_points_v * 2)
+    
+    for i in range(num_points_u):
+      row_points = []
+      for j in range(num_points_v):
+        x = x_base[i] 
+        y = y_base[j]
+
+        x = float(x + random.uniform(-amplitude_x, amplitude_x))
+        y = float(y + random.uniform(-amplitude_y, amplitude_y))
+
+        z_base = (z_max + z_min) / 2
+        z_wave = 50 * np.sin(i / (num_points_u - 1) * np.pi) * np.cos(j / (num_points_v - 1) * np.pi)
+        z_noise = random.uniform(-10, 10)
+        final_z = float(z_base + z_wave + z_noise)
+
+        point_str = f"({x:.2f},{y:.2f},{final_z:.2f})"
+        print(point_str)
+        row_points.append((x, y, final_z))
+
+      control_points.append(row_points)
+    return control_points
+        
+        
         

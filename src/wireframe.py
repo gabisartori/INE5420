@@ -317,6 +317,8 @@ class Surface:
     return M_b_matrix
 
   def generate_surface_points(self, control_points: list[WindowPoint]) -> list[list[WindowPoint]]:
+    self.control_points = control_points
+    print('generating surface with control points:', control_points)
     step_size = 1 / self.surface_steps
     num_points_per_patch = 4
     
@@ -387,7 +389,7 @@ class Surface:
   def copy(self) -> 'Surface':
     return Surface(
       self.surface_type,
-      self.control_points[:],
+      self.control_points,
       self.degrees,
       self.surface_steps,
       self.start_u,
@@ -436,6 +438,7 @@ class Wireframe:
   line_color: str | None = "black"
 
   def copy(self) -> 'Wireframe':
+    print([surface.control_points for surface in self.surfaces])
     return Wireframe(
       self.wireframe_id,
       self.name,
@@ -671,6 +674,10 @@ class Wireframe:
     '''Aplica uma transformação linear a todos os vértices do objeto.'''
     self.vertices = [M @ v for v in self.vertices]
 
+
   @property
   def center(self) -> WorldPoint:
     return np.mean(self.vertices, axis=0).astype(float)
+
+
+

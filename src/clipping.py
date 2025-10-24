@@ -1,9 +1,8 @@
 from tkinter import IntVar
-
 from enum import Enum
 from wireframe import *
 
-from logger import logging
+import logging
 
 class Code(Enum):
   INSIDE  = 0b0000

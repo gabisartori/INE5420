@@ -4,7 +4,7 @@ import re
 import json
 
 from viewport import *
-from logger import logging
+import logging
 from config import USER_PREFERENCES_PATH, FORM_DEFINITIONS_PATH
 
 class SGI:
