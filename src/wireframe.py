@@ -318,7 +318,7 @@ class Surface:
 
   def generate_surface_points(self, control_points: list[WindowPoint]) -> list[list[WindowPoint]]:
     self.control_points = control_points
-    print('generating surface with control points:', control_points)
+    
     step_size = 1 / self.surface_steps
     num_points_per_patch = 4
     
@@ -438,7 +438,6 @@ class Wireframe:
   line_color: str | None = "black"
 
   def copy(self) -> 'Wireframe':
-    print([surface.control_points for surface in self.surfaces])
     return Wireframe(
       self.wireframe_id,
       self.name,

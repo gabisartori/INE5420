@@ -26,6 +26,7 @@ class SGI:
     curve_type: int,
     curve_coefficient: int,
     surface_type: int,
+    surface_algorithm_type: int,
     surface_degree: tuple[int, int],
     surface_steps: int,
     debug: bool,
@@ -67,6 +68,7 @@ class SGI:
     self.curve_coefficient = tk.IntVar(value=curve_coefficient)
     
     self.surface_type = tk.IntVar(value=surface_type)
+    self.surface_algorithm_type = tk.IntVar(value=surface_algorithm_type)
     self.surface_steps = tk.IntVar(value=surface_steps)
     self.surface_degree = surface_degree
 
@@ -97,7 +99,7 @@ class SGI:
     settings_menu = tk.Menu(self.navbar, tearoff=0)
     clipping_submenu = tk.Menu(settings_menu, tearoff=0)
     curve_submenu = tk.Menu(settings_menu, tearoff=0)
-    surface_submenu = tk.Menu(settings_menu, tearoff=0)
+    self.surface_submenu = tk.Menu(settings_menu, tearoff=0)
 
     clipping_submenu.add_radiobutton(label="Cohen-Sutherland", value=0, variable=self.line_clipping_algorithm)
     clipping_submenu.add_radiobutton(label="Liang-Barsky", value=1, variable=self.line_clipping_algorithm)
@@ -117,10 +119,14 @@ class SGI:
       )).pack(),
     ))
 
-    surface_submenu.add_radiobutton(label="Bézier", value=0, variable=self.surface_type)
-    surface_submenu.add_radiobutton(label="B-Spline", value=1, variable=self.surface_type)
+    self.surface_submenu.add_radiobutton(label="Bézier", value=0, variable=self.surface_type)
+    self.surface_submenu.add_radiobutton(label="B-Spline", value=1, variable=self.surface_type)
+
+    self.surface_submenu.add_radiobutton(label="Blending Functions", value=0, variable=self.surface_algorithm_type, command=self.toggle_forward_differences)
+    self.surface_submenu.add_radiobutton(label="Forward Differences", value=1, variable=self.surface_algorithm_type, command=self.toggle_forward_differences)
+
     # dimensoes da malha:
-    surface_submenu.add_command(
+    self.surface_submenu.add_command(
         label="Dimensões da malha",
         command=lambda: (
             (lambda: (
@@ -145,8 +151,7 @@ class SGI:
         )
     )
 
-    
-    surface_submenu.add_command(label="Passos", command=lambda: (
+    self.surface_submenu.add_command(label="Passos", command=lambda: (
       popup := self.popup(250, 100, "Passos"),
       tk.Label(popup, text="Passos:").pack(),
       input := tk.Entry(popup),
@@ -161,7 +166,7 @@ class SGI:
 
     settings_menu.add_cascade(label="Algoritmo de Recorte", menu=clipping_submenu)
     settings_menu.add_cascade(label="Curvas", menu=curve_submenu)
-    settings_menu.add_cascade(label="Superfície", menu=surface_submenu)
+    settings_menu.add_cascade(label="Superfície", menu=self.surface_submenu)
 
     self.navbar.add_cascade(label="Arquivo", menu=file_menu)
     self.navbar.add_cascade(label="Configurações", menu=settings_menu)
@@ -340,6 +345,7 @@ class SGI:
         "curve_type": self.curve_type.get(),
         "curve_coefficient": self.curve_coefficient.get(),
         "surface_type": self.surface_type.get(),
+        "surface_algorithm_type": self.surface_algorithm_type.get(),
         "surface_degree": self.surface_degree,
         "surface_steps": self.surface_steps.get(),
         "debug": self.viewport.debug,
@@ -353,6 +359,13 @@ class SGI:
           logging.error(f"Erro ao salvar objetos: {e}")
     return self.viewport.objects
 
+  def toggle_forward_differences(self):
+    if self.surface_algorithm_type.get() == 1: # Forward Differences
+      self.surface_type.set(0) # Bézier
+      self.surface_submenu.entryconfig("B-Spline", state="disabled")
+    else:
+      self.surface_submenu.entryconfig("B-Spline", state="normal")
+      self.surface_degree = (4, 4)  # reset to default
 
   def object_list_menu(self, event):
     selected_item = self.ui_object_list.identify_row(event.y)
