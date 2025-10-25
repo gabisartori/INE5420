@@ -29,6 +29,7 @@ class Viewport:
     curve_type: IntVar,
     curve_coefficient: IntVar,
     surface_type: IntVar,
+    surface_algorithm_type: IntVar,
     surface_degree: tuple[int, int],
     debug: bool,
     window_position: list[float],
@@ -72,6 +73,7 @@ class Viewport:
     self.debug: bool = debug
     self._curve_type: IntVar = curve_type
     self._surface_type: IntVar = surface_type
+    self._surface_algorithm_type: IntVar = surface_algorithm_type
     self.surface_degree: tuple[int, int] = surface_degree
 
     self.log = log_function
@@ -87,6 +89,10 @@ class Viewport:
   @property
   def surface_type(self) -> SurfaceType:
     return SurfaceType(self._surface_type.get())
+  
+  @property
+  def surface_algorithm_type(self) -> SurfaceAlgorithmType:
+    return SurfaceAlgorithmType(self._surface_algorithm_type.get())
 
   def save_objects(self, path: str):
     with open(path, "w") as f:
@@ -425,6 +431,7 @@ class Viewport:
       vertices=control_points,
       surfaces=[Surface(
         self.surface_type,
+        self.surface_algorithm_type,
         list(range(len(control_points))),
         (degree_u, degree_v),
         surface_steps,
@@ -439,8 +446,8 @@ class Viewport:
     self.objects.append(new_surface)
     self.id_counter += 1
     self.update()
-    
-  def generate_default_input(self, form_type: str, target_object: Wireframe | None = None) -> dict[str, str]:
+
+  def generate_default_input(self, form_type: str, degrees: tuple[int, int], target_object: Wireframe | None = None) -> dict[str, str]:
     """Generates default input values for the given form type if object hasn't been created.
     Uses a seed to give slight variations to the default values, 
     but still keeping them inside the canva area.
@@ -579,8 +586,7 @@ class Viewport:
             'thickness': str(target_object.thickness),
             'control_points': ', '.join(surface_points_str)
           }
-        generated_control_points = self.generate_random_surface_control_points()
-
+        generated_control_points = self.generate_random_surface_control_points(degrees)
         return {
           'name': 'Superfície',
           #'line_color': f"#{random.randint(0, 0xFFFFFF):06x}",
@@ -590,20 +596,23 @@ class Viewport:
 
         }
       case _:
-        return {} 
-  
-  def generate_random_surface_control_points(self) -> str:
+        return {}
+
+  def generate_random_surface_control_points(self, degrees: tuple[int, int]) -> str:
     """Generates a list of random control points for surface creation."""
-    num_patches_u = random.randint(1, 3)
-    num_points_u = num_patches_u * 4
+    max_patches_u = degrees[0] // 4
+    max_patches_v = degrees[1] // 4
     
-    num_patches_v = random.randint(1, 3)
+    num_patches_u = random.randint(1, max(1, max_patches_u))
+    num_points_u = num_patches_u * 4
+
+    num_patches_v = random.randint(1, max(1, max_patches_v))
     num_points_v = num_patches_v * 4
     
     x_min, x_max = 50, self.window.width - 50
     y_min, y_max = 50, self.window.height - 50
     z_min, z_max = -50, 50
-
+    
     control_points: list[WorldPoint] = []
     x_base = np.linspace(x_min, x_max, num_points_u)
     y_base = np.linspace(y_min, y_max, num_points_v)

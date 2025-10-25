@@ -204,6 +204,7 @@ class SGI:
       self.curve_type,
       self.curve_coefficient,
       self.surface_type,
+      self.surface_algorithm_type,
       self.surface_degree,
       self.debug,
       self.window_position,
@@ -399,32 +400,57 @@ class SGI:
 # Additional Windows
 
   def create_form_fields(self, popup: tk.Toplevel, fields: list[tuple[str, str]], 
-                         start_row: int = 0, default_values: dict[str, str] = None) -> dict[str, tk.Entry]:
+                         start_row: int = 0, default_values: dict[str, str] = None,
+                         surface_degrees: tuple[int, int] = (4, 4)) -> dict[str, tk.Entry]:
     """
     Creates form fields in the given popup window, based on the provided field definitions.
     """
     entries = {}
     default_values = default_values or {}
+    default_matrix = []
+    
+    cp_string = default_values.get("control_points", "")
+    if cp_string:
+      cp_matches = re.findall(r"\(([^()]+)\)", cp_string)
+      for match in cp_matches:
+        coords = match.split(",")
+        if len(coords) == 3:
+          x = coords[0].strip()
+          y = coords[1].strip()
+          z = coords[2].strip()
+          default_matrix.append(f"({x}, {y}, {z})")
 
     for idx, field in enumerate(fields):
+        print(field)
         row = start_row + idx
         label = tk.Label(popup, text=field['label'])
         label.grid(row=row, column=0, sticky="ew")
         
         # gets default values by matching field name in default_values dict to field['name']
-      
-        entry = tk.Entry(popup)
-        entry.insert(0, default_values.get(field['name'], ""))
-        entry.grid(row=row, column=1, sticky="ew", columnspan=2)
+        if field['type'] == 'matrix':
+          control_points_matrix = [[None for _ in range(surface_degrees[1])] for _ in range(surface_degrees[0])]
+          for i in range(surface_degrees[0]):
+              for j in range(surface_degrees[1]):
+                control_points_matrix[i][j] = tk.Entry(popup, width=10)
+                control_points_matrix[i][j].grid(row=i + len(fields), column=j, sticky="ew")
 
-        # Se for campo de cor, adiciona botão de cor
-        if field['type'] == 'color':
-            btn = tk.Button(popup, text="Escolher", command=lambda e=entry: (
-                color := colorchooser.askcolor(title="Escolha a cor"),
-                e.delete(0, tk.END),
-                e.insert(0, color[1]) if color[1] else None
-            ))
-            btn.grid(row=row, column=3, sticky="ew")
+                default_cp = default_matrix[i * surface_degrees[1] + j] if i * surface_degrees[1] + j < len(default_matrix) else "(0, 0, 0)"
+                control_points_matrix[i][j].insert(0, default_cp)
+
+          print("Default matrix:", default_matrix)
+        else:      
+          entry = tk.Entry(popup)
+          entry.insert(0, default_values.get(field['name'], ""))
+          entry.grid(row=row, column=1, sticky="ew", columnspan=2)
+
+          # Se for campo de cor, adiciona botão de cor
+          if field['type'] == 'color':
+              btn = tk.Button(popup, text="Escolher", command=lambda e=entry: (
+                  color := colorchooser.askcolor(title="Escolha a cor"),
+                  e.delete(0, tk.END),
+                  e.insert(0, color[1]) if color[1] else None
+              ))
+              btn.grid(row=row, column=3, sticky="ew")
 
         entries[field['name']] = entry
 
@@ -442,22 +468,9 @@ class SGI:
       return
 
     form_definition = self.form_definition[form_type]
-    default_values = self.viewport.generate_default_input(form_type, target if target else None)
+    default_values = self.viewport.generate_default_input(form_type, self.surface_degree, target if target else None)
     popup = self.popup(0, 250, "Propriedades do Objeto")
     inputs = self.create_form_fields(popup, form_definition, default_values=default_values)
-    
-    # treats surface individual control points separately
-    control_points_matrix = None
-    if form_type == "surface":
-        control_points_matrix = [[None for _ in range(self.surface_degree[1])] for _ in range(self.surface_degree[0])]
-        
-        for i in range(self.surface_degree[0]):  # Iterando pelas linhas
-            for j in range(self.surface_degree[1]):  # Iterando pelas colunas
-                control_points_matrix[i][j] = tk.Entry(popup, width=10)
-                control_points_matrix[i][j].grid(row=i + len(form_definition), column=j, sticky="ew")
-                
-                default_cp = default_values.get(f"cp_{i}_{j}", f"({i},{j},0)")  
-                control_points_matrix[i][j].insert(0, default_cp)
     
     def finish_callback():
       #try:
@@ -496,8 +509,8 @@ class SGI:
                                   texture=inputs['line_color'].get().strip(),
                                   thickness=int(inputs['thickness'].get()) if inputs['thickness'].get().isnumeric() else 1)
         elif form_type == "surface":
-          control_points = [list(map(float, control_points_matrix[i][j].get().strip("()").replace(" ", "").split(","))) for i in range(self.surface_degree[0]) for j in range(self.surface_degree[1])]
-          control_points = [np.append(np.array(p), 1.0) for p in control_points]
+          print(inputs)
+          control_points = self.get_control_points_from_entries(inputs, self.surface_degree)
           self.viewport.add_surface(control_points=control_points, name=name,
                                     degree=self.surface_degree,
                                     #line_color=inputs['line_color'].get().strip(),
@@ -516,6 +529,38 @@ class SGI:
     create_button.grid(row=100, column=0, columnspan=4, sticky="ew")
     cancel_button = tk.Button(popup, text="Cancelar", command=popup.destroy)
     cancel_button.grid(row=101, column=0, columnspan=4, sticky="ew")    
+
+  def get_control_points_from_entries(self, entries: dict[str, tk.Entry], surface_degrees: tuple[int, int]) -> list[WorldPoint]:
+    control_points: list[WorldPoint] = []
+    for i in range(surface_degrees[0]):
+      for j in range(surface_degrees[1]):
+        entry_key = f"control_point_{i}_{j}"
+        if entry_key not in entries:
+          raise ValueError(f"Entrada para ponto de controle ({i}, {j}) não encontrada.")
+        cp_string = entries[entry_key].get().strip()
+        cleaned_string = cp_string.strip("()")
+        
+        try:
+            # Garante que os números são lidos como float
+            coords = list(map(float, cleaned_string.split(",")))
+        except ValueError:
+            raise ValueError(f"Coordenadas inválidas em ({i}, {j}). Por favor, use o formato (x.xx, y.yy, z.zz)")
+        
+        if len(coords) != 3:
+            raise ValueError(f"O ponto ({i}, {j}) deve ter 3 coordenadas. Encontrado {len(coords)}.")
+
+        # Cria o WorldPoint (ndarray homogêneo)
+        # np.append(np.array([x, y, z]), 1.0) -> [x, y, z, 1.0]
+        point = np.append(np.array(coords, dtype=np.float64), 1.0)
+        
+        # Adiciona à lista linear (formato mais comum para processamento de superfície)
+        control_points.append(point)
+        
+    # Se você quiser retornar uma matriz 2D (Nu x Nv):
+    # return np.array(control_points).reshape(num_u, num_v, 4)
+    # Mas o formato linear (lista de WorldPoints) é mais comum para processamento subsequente.
+    return control_points
+
 
 # Instance attributes control
   def toggle_building(self):

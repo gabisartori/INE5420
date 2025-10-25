@@ -33,6 +33,7 @@
   "surface": [
     {"name": "name", "label": "Nome da superfície:", "type": "text", "default": "Surface"},
     {"name": "texture", "label": "Cor da linha:", "type": "color", "default": "#000000"},
-    {"name": "thickness", "label": "Espessura da linha:", "type": "number", "default": "1"}
+    {"name": "thickness", "label": "Espessura da linha:", "type": "number", "default": "1"},
+    {"name": "control_points", "label": "Pontos de controle (x,y,z),...:", "type": "matrix", "default": ""}
   ]
 }

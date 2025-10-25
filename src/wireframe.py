@@ -247,6 +247,32 @@ class SurfaceType(Enum):
     if self == SurfaceType.BEZIER: return "Bézier"
     elif self == SurfaceType.B_SPLINE: return "B-Spline"
     return "Unknown"
+  
+class SurfaceAlgorithmType(Enum):
+  '''Tipos de algoritmos para geração de superfícies.
+
+  - Blending Functions: Utiliza funções de mistura para calcular pontos na superfície.
+  - Forward Differences: Utiliza o método de diferenças progressivas para calcular pontos na superfície.
+  '''
+  BLENDING_FUNCTIONS = 0
+  FORWARD_DIFFERENCES = 1
+  
+  @classmethod
+  def from_name(cls, name: str) -> 'SurfaceAlgorithmType | None':
+    name = name.lower()
+    if name == "blending_functions": return SurfaceAlgorithmType.BLENDING_FUNCTIONS
+    elif name == "forward_differences": return SurfaceAlgorithmType.FORWARD_DIFFERENCES
+    return None
+  
+  def obj_name(self) -> str:
+    if self == SurfaceAlgorithmType.BLENDING_FUNCTIONS: return "blending_functions"
+    elif self == SurfaceAlgorithmType.FORWARD_DIFFERENCES: return "forward_differences"
+    return "unknown"
+
+  def __str__(self) -> str:
+    if self == SurfaceAlgorithmType.BLENDING_FUNCTIONS: return "Blending Functions"
+    elif self == SurfaceAlgorithmType.FORWARD_DIFFERENCES: return "Forward Differences"
+    return "Unknown"
 
 @dataclass
 class Surface:
@@ -258,6 +284,7 @@ class Surface:
   *start_u*, *end_u*, *start_v*, *end_v* e *degrees* estão presentes para manter compatibilidade com o formato Wavefront OBJ, mas não estão sendo 100% utilizados.  
   '''
   surface_type: SurfaceType = SurfaceType.BEZIER
+  surface_algorithm_type: SurfaceAlgorithmType = SurfaceAlgorithmType.BLENDING_FUNCTIONS
   control_points: list[int] = field(default_factory=list)
   degrees: tuple[int, int] = (4, 4)
   surface_steps: int = 10
@@ -276,12 +303,6 @@ class Surface:
     Então, constrói pares de pontos consecutivos para formar as linhas que representam a superfície.
     '''
     points: list[list[WindowPoint]] = self.generate_surface_points(control_points)
-    # match self.surface_type:
-    #   case SurfaceType.BEZIER: points = self.generate_bezier_surface_points(control_points)
-    #   case SurfaceType.B_SPLINE: points = self.generate_b_spline_surface_points(control_points)
-    #   case _: points = []
-    
-    # flatten points into list
     lines = []
 
     rows = len(points)
@@ -318,10 +339,126 @@ class Surface:
 
   def generate_surface_points(self, control_points: list[WindowPoint]) -> list[list[WindowPoint]]:
     self.control_points = control_points
-    
+    if self.surface_algorithm_type == SurfaceAlgorithmType.FORWARD_DIFFERENCES:
+      return self.generate_forward_differences_surface_points(control_points)
+    elif self.surface_algorithm_type == SurfaceAlgorithmType.BLENDING_FUNCTIONS:
+      return self.generate_blending_functions_surface_points(control_points)
+    else:
+      raise ValueError("Unsupported surface algorithm type.")
+  
+  def generate_forward_differences_surface_points(self, control_points: list[WindowPoint]) -> list[list[WindowPoint]]:
     step_size = 1 / self.surface_steps
     num_points_per_patch = 4
+    print('generating forward differences surface points for control points:', control_points)
+    M_b_matrix = self.get_matrices()
+    M_b_matrix_T = M_b_matrix.T
+    num_points_x, num_points_y = self.degrees[0], self.degrees[1]
     
+    if len(control_points) != num_points_x * num_points_y:
+      print(len(control_points), num_points_x * num_points_y, self.degrees)
+      raise ValueError("Number of control points does not match the specified degrees.")
+    
+    G_all_xy = np.array([[cp.x, cp.y] for cp in control_points]).reshape(num_points_x, num_points_y, 2)
+    GX_all = G_all_xy[:, :, 0]
+    GY_all = G_all_xy[:, :, 1]
+    
+    surface_points: list[list[WindowPoint]] = []
+    
+    if self.surface_type == SurfaceType.B_SPLINE:
+      if num_points_x < 4 or num_points_y < 4:
+        raise ValueError("B-Spline surface requires at least degree 3 in both u and v directions.")
+      num_patches_u = num_points_x - 3
+      num_patches_v = num_points_y - 3
+      patch_step = 1
+    elif self.surface_type == SurfaceType.BEZIER:
+      if num_points_x % 4 != 0 or num_points_y % 4 != 0:
+        raise ValueError("Bézier surface requires degrees to be multiples of 3 plus 1.")
+      num_patches_u = num_points_x // 4 
+      num_patches_v = num_points_y // 4
+      patch_step = 4   
+      
+    # defining differences matrices
+    delta = step_size
+    delta2 = delta * delta
+    delta3 = delta2 * delta
+    
+    D = np.array([
+      [0,         0,          0,      1],
+      [delta3,    delta2,     delta,  0],
+      [6*delta3,  2*delta2,   0,      0],
+      [6*delta3,  0,          0,      0]
+    ])
+    
+    for patch_u_idx in range(num_patches_u):
+      for patch_v_idx in range(num_patches_v):
+        start_u = patch_u_idx * patch_step
+        start_v = patch_v_idx * patch_step
+        end_u = start_u + num_points_per_patch
+        end_v = start_v + num_points_per_patch
+        
+        GX = GX_all[start_u:end_u, start_v:end_v]
+        GY = GY_all[start_u:end_u, start_v:end_v]
+        
+        temp_X = np.matmul(M_b_matrix, GX)
+        CX = np.matmul(temp_X, M_b_matrix_T)
+        
+        temp_Y = np.matmul(M_b_matrix, GY)
+        CY = np.matmul(temp_Y, M_b_matrix_T)
+        
+        # Calculate the initial points and differences for X and Y
+        FX = np.matmul(np.matmul(D, CX), D.T)
+        FY = np.matmul(np.matmul(D, CY), D.T)
+
+        FX_cols = FX[:, 0].copy()
+        FY_cols = FY[:, 0].copy()
+
+        F_VX = np.matmul(FX, D.T)
+        F_VY = np.matmul(FY, D.T)
+        
+        for i in range(self.surface_steps + 1):
+          f_x = FX_cols.copy()
+          f_y = FY_cols.copy()
+          row_points = []
+          
+          for j in range(self.surface_steps + 1):
+            x = f_x[0]
+            y = f_y[0]
+            row_points.append(WindowPoint(x, y))
+            
+            f_x[0] += f_x[1]
+            f_x[1] += f_x[2]
+            f_x[2] += f_x[3]
+            f_y[0] += f_y[1]
+            f_y[1] += f_y[2]
+            f_y[2] += f_y[3]
+          surface_points.append(row_points)
+          
+          if i < self.surface_steps:
+            FX_cols[0] += F_VX[0,1]
+            FX_cols[1] += F_VX[1,1]
+            FX_cols[2] += F_VX[2,1]
+            FX_cols[3] += F_VX[3,1]
+
+            FY_cols[0] += F_VY[0,1]
+            FY_cols[1] += F_VY[1,1]
+            FY_cols[2] += F_VY[2,1]
+            FY_cols[3] += F_VY[3,1]
+            
+            F_VX[:,0] += F_VX[:,1]
+            F_VX[:,1] += F_VX[:,2]
+            F_VX[:,2] += F_VX[:,3]
+            
+            F_VY[:,0] += F_VY[:,1]
+            F_VY[:,1] += F_VY[:,2]
+            F_VY[:,2] += F_VY[:,3]
+
+
+    return surface_points
+
+  def generate_blending_functions_surface_points(self, control_points: list[WindowPoint]) -> list[list[WindowPoint]]:    
+    step_size = 1 / self.surface_steps
+    num_points_per_patch = 4
+    print('generating blending functions surface points')
     M_b_matrix = self.get_matrices()
     M_b_matrix_T = M_b_matrix.T
     num_points_x, num_points_y = self.degrees[0], self.degrees[1]
@@ -383,12 +520,12 @@ class Surface:
             row_points.append(WindowPoint(x, y))
             
           surface_points.append(row_points)
-    return surface_points
-            
+    return surface_points         
  
   def copy(self) -> 'Surface':
     return Surface(
       self.surface_type,
+      self.surface_algorithm_type,
       self.control_points,
       self.degrees,
       self.surface_steps,
@@ -399,7 +536,7 @@ class Surface:
     )
 
   def __str__(self) -> str:
-    output = f"stype {self.surface_type.obj_name()}\n"
+    output = f"stype {self.surface_type.obj_name()} {self.surface_algorithm_type.obj_name()}\n"
     output += f"deg {self.degrees[0]} {self.degrees[1]}\n"
     output += f"surf {self.start_u} {self.end_u} {self.start_v} {self.end_v} {' '.join(str(idx+1) for idx in self.control_points)}\n"
     output += "parm u 0 1\nparm v 0 1"
@@ -589,6 +726,7 @@ class Wireframe:
           case 'stype':
             if len(body) < 1: raise ValueError(f"Invalid stype line: {line.strip()}")
             surface_type = SurfaceType.from_obj_name(body[0])
+            surface_algorithm_type = SurfaceAlgorithmType.from_name(body[1]) if len(body) > 1 else SurfaceAlgorithmType.FORWARD_DIFFERENCES
             if surface_type is None: raise ValueError(f"Unknown surface type: {body[0]}")
             current_surface_type = surface_type  # Armazena temporariamente
 
@@ -601,9 +739,9 @@ class Wireframe:
               start_u, end_u, start_v, end_v = [float(x) for x in points[:4]]
               points = [int(x)-1 for x in points[4:]]
               if len(points) < deg_values[0] * deg_values[1]: raise ValueError(f"Number of control points {len(points)} does not match surface degrees {deg_values}")
-              print
               current_surfaces.append(Surface(
                 current_surface_type,
+                surface_algorithm_type,
                 points,
                 (deg_values[0], deg_values[1]),
                 10,  # Default steps
