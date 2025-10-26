@@ -407,21 +407,9 @@ class SGI:
     """
     entries = {}
     default_values = default_values or {}
-    default_matrix = []
-    
-    cp_string = default_values.get("control_points", "")
-    if cp_string:
-      cp_matches = re.findall(r"\(([^()]+)\)", cp_string)
-      for match in cp_matches:
-        coords = match.split(",")
-        if len(coords) == 3:
-          x = coords[0].strip()
-          y = coords[1].strip()
-          z = coords[2].strip()
-          default_matrix.append(f"({x}, {y}, {z})")
+    default_matrix = self.parse_matrix_control_points(default_values.get("control_points", ""))
 
     for idx, field in enumerate(fields):
-        print(field)
         row = start_row + idx
         label = tk.Label(popup, text=field['label'])
         label.grid(row=row, column=0, sticky="ew")
@@ -454,6 +442,19 @@ class SGI:
         entries[field['name']] = entry
 
     return entries
+  
+  def parse_matrix_control_points(self, raw_input: str) -> list[str]:
+    default_matrix: list[str] = []
+    if raw_input:
+      cp_matches = re.findall(r"\(([^()]+)\)", raw_input)
+      for match in cp_matches:
+        coords = match.split(",")
+        if len(coords) == 3:
+          x = coords[0].strip()
+          y = coords[1].strip()
+          z = coords[2].strip()
+          default_matrix.append(f"({x}, {y}, {z})")
+    return default_matrix
   
   def open_properties_window(self, form_type: str | None = None):
     target = None
@@ -508,8 +509,15 @@ class SGI:
                                   texture=inputs['line_color'].get().strip(),
                                   thickness=int(inputs['thickness'].get()) if inputs['thickness'].get().isnumeric() else 1)
         elif form_type == "surface":
-          print(inputs)
-          control_points = self.get_control_points_from_entries(inputs, self.surface_degree)
+          default_matrix = self.parse_matrix_control_points(default_values.get("control_points", ""))
+          control_points: list[WorldPoint] = []
+          for point in default_matrix:
+              coords = point.strip("()").replace(" ", "").split(",")
+              if len(coords) == 3:
+                  x = float(coords[0])
+                  y = float(coords[1])
+                  z = float(coords[2])
+                  control_points.append(np.array([x, y, z, 1.0]))
           self.viewport.add_surface(control_points=control_points, name=name,
                                     degree=self.surface_degree,
                                     #line_color=inputs['line_color'].get().strip(),
@@ -528,38 +536,6 @@ class SGI:
     create_button.grid(row=100, column=0, columnspan=4, sticky="ew")
     cancel_button = tk.Button(popup, text="Cancelar", command=popup.destroy)
     cancel_button.grid(row=101, column=0, columnspan=4, sticky="ew")    
-
-  def get_control_points_from_entries(self, entries: dict[str, tk.Entry], surface_degrees: tuple[int, int]) -> list[WorldPoint]:
-    control_points: list[WorldPoint] = []
-    for i in range(surface_degrees[0]):
-      for j in range(surface_degrees[1]):
-        entry_key = f"control_point_{i}_{j}"
-        if entry_key not in entries:
-          raise ValueError(f"Entrada para ponto de controle ({i}, {j}) não encontrada.")
-        cp_string = entries[entry_key].get().strip()
-        cleaned_string = cp_string.strip("()")
-        
-        try:
-            # Garante que os números são lidos como float
-            coords = list(map(float, cleaned_string.split(",")))
-        except ValueError:
-            raise ValueError(f"Coordenadas inválidas em ({i}, {j}). Por favor, use o formato (x.xx, y.yy, z.zz)")
-        
-        if len(coords) != 3:
-            raise ValueError(f"O ponto ({i}, {j}) deve ter 3 coordenadas. Encontrado {len(coords)}.")
-
-        # Cria o WorldPoint (ndarray homogêneo)
-        # np.append(np.array([x, y, z]), 1.0) -> [x, y, z, 1.0]
-        point = np.append(np.array(coords, dtype=np.float64), 1.0)
-        
-        # Adiciona à lista linear (formato mais comum para processamento de superfície)
-        control_points.append(point)
-        
-    # Se você quiser retornar uma matriz 2D (Nu x Nv):
-    # return np.array(control_points).reshape(num_u, num_v, 4)
-    # Mas o formato linear (lista de WorldPoints) é mais comum para processamento subsequente.
-    return control_points
-
 
 # Instance attributes control
   def toggle_building(self):

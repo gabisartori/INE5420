@@ -635,7 +635,6 @@ class Viewport:
         final_z = float(z_base + z_wave + z_noise)
 
         point_str = f"({x:.2f},{y:.2f},{final_z:.2f})"
-        print(point_str)
         row_points.append((x, y, final_z))
 
       control_points.append(row_points)
