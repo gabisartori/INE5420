@@ -437,7 +437,6 @@ class SGI:
                 default_cp = default_matrix[i * surface_degrees[1] + j] if i * surface_degrees[1] + j < len(default_matrix) else "(0, 0, 0)"
                 control_points_matrix[i][j].insert(0, default_cp)
 
-          print("Default matrix:", default_matrix)
         else:      
           entry = tk.Entry(popup)
           entry.insert(0, default_values.get(field['name'], ""))

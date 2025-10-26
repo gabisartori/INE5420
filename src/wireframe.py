@@ -349,14 +349,13 @@ class Surface:
   def generate_forward_differences_surface_points(self, control_points: list[WindowPoint]) -> list[list[WindowPoint]]:
     step_size = 1 / self.surface_steps
     num_points_per_patch = 4
-    print('generating forward differences surface points for control points:', control_points)
+    print('generating forward differences surface points')
     M_b_matrix = self.get_matrices()
     M_b_matrix_T = M_b_matrix.T
     num_points_x, num_points_y = self.degrees[0], self.degrees[1]
     
     if len(control_points) != num_points_x * num_points_y:
-      print(len(control_points), num_points_x * num_points_y, self.degrees)
-      raise ValueError("Number of control points does not match the specified degrees.")
+      raise ValueError("Number of control points does not match the specified degrees. Expected {}, got {}.".format(num_points_x * num_points_y, len(control_points)))
     
     G_all_xy = np.array([[cp.x, cp.y] for cp in control_points]).reshape(num_points_x, num_points_y, 2)
     GX_all = G_all_xy[:, :, 0]
@@ -383,10 +382,10 @@ class Surface:
     delta3 = delta2 * delta
     
     D = np.array([
-      [0,         0,          0,      1],
-      [delta3,    delta2,     delta,  0],
-      [6*delta3,  2*delta2,   0,      0],
-      [6*delta3,  0,          0,      0]
+      [0,         0,          0,      1],  # P(0)
+      [delta3,    delta2,     delta,  0],  # Delta P(0)
+      [6*delta3,  2*delta2,   0,      0],  # Delta^2 P(0)
+      [6*delta3,  0,          0,      0]   # Delta^3 P(0)
     ])
     
     for patch_u_idx in range(num_patches_u):
@@ -412,8 +411,8 @@ class Surface:
         FX_cols = FX[:, 0].copy()
         FY_cols = FY[:, 0].copy()
 
-        F_VX = np.matmul(FX, D.T)
-        F_VY = np.matmul(FY, D.T)
+        F_VX = FX.copy() 
+        F_VY = FY.copy()
         
         for i in range(self.surface_steps + 1):
           f_x = FX_cols.copy()
@@ -452,7 +451,6 @@ class Surface:
             F_VY[:,1] += F_VY[:,2]
             F_VY[:,2] += F_VY[:,3]
 
-
     return surface_points
 
   def generate_blending_functions_surface_points(self, control_points: list[WindowPoint]) -> list[list[WindowPoint]]:    
@@ -464,9 +462,8 @@ class Surface:
     num_points_x, num_points_y = self.degrees[0], self.degrees[1]
     
     if len(control_points) != num_points_x * num_points_y:
-      print(len(control_points), num_points_x * num_points_y, self.degrees)
-      raise ValueError("Number of control points does not match the specified degrees.")
-    
+      raise ValueError("Number of control points does not match the specified degrees. Expected {}, got {}.".format(num_points_x * num_points_y, len(control_points)))
+
     G_all_xy = np.array([[cp.x, cp.y] for cp in control_points]).reshape(num_points_x, num_points_y, 2)
     GX_all = G_all_xy[:, :, 0]
     GY_all = G_all_xy[:, :, 1]
