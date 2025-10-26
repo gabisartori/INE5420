@@ -124,7 +124,8 @@ class SGI:
 
     self.surface_submenu.add_radiobutton(label="Blending Functions", value=0, variable=self.surface_algorithm_type, command=self.toggle_forward_differences)
     self.surface_submenu.add_radiobutton(label="Forward Differences", value=1, variable=self.surface_algorithm_type, command=self.toggle_forward_differences)
-
+    self.toggle_forward_differences()
+    
     # dimensoes da malha:
     self.surface_submenu.add_command(
         label="Dimensões da malha",
@@ -138,14 +139,7 @@ class SGI:
                 tk.Button(
                     self.popup_window,
                     text="Aplicar",
-                    command=lambda: (
-                        setattr(self, 'surface_degree',
-                            [int(x) for x in self.dim_input.get().strip().strip("()").split(",")
-                            if x.strip().isdigit() and int(x.strip()) >= 0]
-                        ),
-                        self.popup_window.destroy(),
-                        self.viewport.update()
-                    )
+                    command=lambda: self.validate_and_set_surface_degree(self.dim_input.get())
                 ).pack()
             ))()
         )
@@ -359,6 +353,33 @@ class SGI:
       except Exception as e:
           logging.error(f"Erro ao salvar objetos: {e}")
     return self.viewport.objects
+  
+  def validate_and_set_surface_degree(self, input_str: str):
+    cleaned_input = input_str.strip().strip("()")
+    str_values = [x.strip() for x in cleaned_input.split(",")]
+    
+    if len(str_values) != 2:
+        self.log("Erro: Insira dois valores inteiros separados por vírgula para as dimensões da malha.")
+        return
+      
+    try:
+        degree_values = [int(x) for x in str_values]
+    except ValueError:
+        self.log("Erro: Insira apenas valores inteiros para as dimensões da malha.")
+        return
+      
+    if any(d < 0 for d in degree_values):
+        self.log("Erro: As dimensões da malha devem ser inteiros não negativos.")
+        return
+      
+    for val in degree_values:
+        if val < 4:
+            self.log("Erro: As dimensões da malha devem ser no mínimo 4. Ajustando para 4.")
+            degree_values[degree_values.index(val)] = 4
+            
+    self.surface_degree = tuple(degree_values)
+    self.popup_window.destroy()
+    self.viewport.update()
 
   def toggle_forward_differences(self):
     if self.surface_algorithm_type.get() == 1: # Forward Differences
@@ -470,7 +491,7 @@ class SGI:
     form_definition = self.form_definition[form_type]
     default_values = self.viewport.generate_default_input(form_type, self.surface_degree, target if target else None)
     popup = self.popup(0, 250, "Propriedades do Objeto")
-    inputs = self.create_form_fields(popup, form_definition, default_values=default_values)
+    inputs = self.create_form_fields(popup, form_definition, default_values=default_values, surface_degrees=self.surface_degree)
     
     def finish_callback():
       #try:

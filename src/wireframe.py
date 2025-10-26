@@ -349,7 +349,7 @@ class Surface:
   def generate_forward_differences_surface_points(self, control_points: list[WindowPoint]) -> list[list[WindowPoint]]:
     step_size = 1 / self.surface_steps
     num_points_per_patch = 4
-    print('generating forward differences surface points')
+    
     M_b_matrix = self.get_matrices()
     M_b_matrix_T = M_b_matrix.T
     num_points_x, num_points_y = self.degrees[0], self.degrees[1]
@@ -362,19 +362,26 @@ class Surface:
     GY_all = G_all_xy[:, :, 1]
     
     surface_points: list[list[WindowPoint]] = []
-    
     if self.surface_type == SurfaceType.B_SPLINE:
+      num_points_x = self.degrees[0]
+      num_points_y = self.degrees[1]
+
       if num_points_x < 4 or num_points_y < 4:
-        raise ValueError("B-Spline surface requires at least degree 3 in both u and v directions.")
+        raise ValueError("B-Spline cúbica requer no mínimo 4 pontos (grau 3) em ambas as direções.")
+        
       num_patches_u = num_points_x - 3
       num_patches_v = num_points_y - 3
       patch_step = 1
+      
     elif self.surface_type == SurfaceType.BEZIER:
-      if num_points_x % 4 != 0 or num_points_y % 4 != 0:
-        raise ValueError("Bézier surface requires degrees to be multiples of 3 plus 1.")
+      if num_points_x < 4 or num_points_y < 4:
+        raise ValueError("Bézier cúbica requer no mínimo 4 pontos (grau 3) em ambas as direções.")
+      
       num_patches_u = num_points_x // 4 
       num_patches_v = num_points_y // 4
-      patch_step = 4   
+      patch_step = 4
+    else:
+      raise ValueError("Unsupported surface type.") 
       
     # defining differences matrices
     delta = step_size
@@ -456,7 +463,7 @@ class Surface:
   def generate_blending_functions_surface_points(self, control_points: list[WindowPoint]) -> list[list[WindowPoint]]:    
     step_size = 1 / self.surface_steps
     num_points_per_patch = 4
-    print('generating blending functions surface points')
+    
     M_b_matrix = self.get_matrices()
     M_b_matrix_T = M_b_matrix.T
     num_points_x, num_points_y = self.degrees[0], self.degrees[1]

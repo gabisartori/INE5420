@@ -600,15 +600,13 @@ class Viewport:
 
   def generate_random_surface_control_points(self, degrees: tuple[int, int]) -> str:
     """Generates a list of random control points for surface creation."""
-    max_patches_u = degrees[0] // 4
-    max_patches_v = degrees[1] // 4
+    num_points_u = degrees[0] 
+    num_points_v = degrees[1] 
     
-    num_patches_u = random.randint(1, max(1, max_patches_u))
-    num_points_u = num_patches_u * 4
-
-    num_patches_v = random.randint(1, max(1, max_patches_v))
-    num_points_v = num_patches_v * 4
-    
+    if num_points_u < 4 or num_points_v < 4:
+      self.log("Número de pontos de controle para superfícies deve ser ao menos 4 em cada direção. Ajustando para 4x4.")
+      return
+      
     x_min, x_max = 50, self.window.width - 50
     y_min, y_max = 50, self.window.height - 50
     z_min, z_max = -50, 50
