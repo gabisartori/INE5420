@@ -384,9 +384,7 @@ class SGI:
   def toggle_forward_differences(self):
     if self.surface_algorithm_type.get() == 1: # Forward Differences
       self.surface_type.set(0) # Bézier
-      self.surface_submenu.entryconfig("B-Spline", state="disabled")
     else:
-      self.surface_submenu.entryconfig("B-Spline", state="normal")
       self.surface_degree = (4, 4)  # reset to default
 
   def object_list_menu(self, event):
@@ -486,6 +484,10 @@ class SGI:
       
     if form_type not in self.form_definition:
       self.log(f"Erro: formulário '{form_type}' não definido.")
+      return
+    
+    if form_type == "surface" and target:
+      self.log("Nota: As propriedades da superfície só podem ser editadas durante a criação.")
       return
 
     form_definition = self.form_definition[form_type]
