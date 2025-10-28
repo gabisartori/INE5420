@@ -204,7 +204,7 @@ class Clipping:
 
     if len(new_points) == 0: return None
     elif len(new_points) < 3:
-      logging.warning(f"This point should not be reachable. {new_points=}")
+      # logging.warning(f"This point should not be reachable. {new_points=}")
       return None
     current_points = new_points.copy()
     new_points = []
@@ -234,7 +234,7 @@ class Clipping:
         new_points.append(curr)
     if len(new_points) == 0: return None
     elif len(new_points) < 3:
-      logging.warning(f"This point should not be reachable. {new_points=}")
+      #logging.warning(f"This point should not be reachable. {new_points=}")
       return None
     current_points = new_points.copy()
     new_points = []
@@ -264,7 +264,7 @@ class Clipping:
         new_points.append(curr)
     if len(new_points) == 0: return None
     elif len(new_points) < 3:
-      logging.warning(f"This point should not be reachable. {new_points=}")
+      #logging.warning(f"This point should not be reachable. {new_points=}")
       return None
     current_points = new_points.copy()
     new_points = []
@@ -294,7 +294,7 @@ class Clipping:
         new_points.append(curr)
     if len(new_points) == 0: return None
     elif len(new_points) < 3:
-      logging.warning(f"This point should note be reachable. {new_points=}")
+      #logging.warning(f"This point should note be reachable. {new_points=}")
       return None
 
     return new_points if len(new_points) >= 3 else None
