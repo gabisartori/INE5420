@@ -394,7 +394,8 @@ class Surface:
       [6*delta3,  2*delta2,   0,      0],  # Delta^2 P(0)
       [6*delta3,  0,          0,      0]   # Delta^3 P(0)
     ])
-    
+
+    # Loop principal pelos patches
     for patch_u_idx in range(num_patches_u):
       for patch_v_idx in range(num_patches_v):
         start_u = patch_u_idx * patch_step
@@ -404,60 +405,46 @@ class Surface:
         
         GX = GX_all[start_u:end_u, start_v:end_v]
         GY = GY_all[start_u:end_u, start_v:end_v]
-        
-        temp_X = np.matmul(M_b_matrix, GX)
-        CX = np.matmul(temp_X, M_b_matrix_T)
-        
-        temp_Y = np.matmul(M_b_matrix, GY)
-        CY = np.matmul(temp_Y, M_b_matrix_T)
-        
-        # Calculate the initial points and differences for X and Y
-        FX = np.matmul(np.matmul(D, CX), D.T)
-        FY = np.matmul(np.matmul(D, CY), D.T)
 
-        FX_cols = FX[:, 0].copy()
-        FY_cols = FY[:, 0].copy()
+        CX = np.matmul(M_b_matrix, np.matmul(GX, M_b_matrix_T))
+        CY = np.matmul(M_b_matrix, np.matmul(GY, M_b_matrix_T))
+        
+
+        FX = np.matmul(D, np.matmul(CX, D.T))
+        FY = np.matmul(D, np.matmul(CY, D.T))
 
         F_VX = FX.copy() 
         F_VY = FY.copy()
+        patch_points: list[list[WindowPoint]] = []
         
         for i in range(self.surface_steps + 1):
-          f_x = FX_cols.copy()
-          f_y = FY_cols.copy()
+          f_x = F_VX[:, 0].copy()
+          f_y = F_VY[:, 0].copy()
           row_points = []
           
           for j in range(self.surface_steps + 1):
             x = f_x[0]
             y = f_y[0]
             row_points.append(WindowPoint(x, y))
-            
+
             f_x[0] += f_x[1]
             f_x[1] += f_x[2]
             f_x[2] += f_x[3]
             f_y[0] += f_y[1]
             f_y[1] += f_y[2]
             f_y[2] += f_y[3]
-          surface_points.append(row_points)
+            
+          patch_points.append(row_points)
           
           if i < self.surface_steps:
-            FX_cols[0] += F_VX[0,1]
-            FX_cols[1] += F_VX[1,1]
-            FX_cols[2] += F_VX[2,1]
-            FX_cols[3] += F_VX[3,1]
-
-            FY_cols[0] += F_VY[0,1]
-            FY_cols[1] += F_VY[1,1]
-            FY_cols[2] += F_VY[2,1]
-            FY_cols[3] += F_VY[3,1]
+            F_VX[:, 0] += F_VX[:, 1]
+            F_VX[:, 1] += F_VX[:, 2]
+            F_VX[:, 2] += F_VX[:, 3]
+            F_VY[:, 0] += F_VY[:, 1]
+            F_VY[:, 1] += F_VY[:, 2]
+            F_VY[:, 2] += F_VY[:, 3]
             
-            F_VX[:,0] += F_VX[:,1]
-            F_VX[:,1] += F_VX[:,2]
-            F_VX[:,2] += F_VX[:,3]
-            
-            F_VY[:,0] += F_VY[:,1]
-            F_VY[:,1] += F_VY[:,2]
-            F_VY[:,2] += F_VY[:,3]
-
+        surface_points.extend(patch_points)
     return surface_points
 
   def generate_blending_functions_surface_points(self, control_points: list[WindowPoint]) -> list[list[WindowPoint]]:    
