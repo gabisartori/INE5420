@@ -31,7 +31,7 @@ As utilidades do SGI são acessíveis por meio das seguintes entradas de instru�
   - **Linhas:** O botão *Build* faz com que os pontos inseridos por cliques formem linhas interconectadas;
   - **Polígonos:** No modo *Build*, após inserir os pontos desejados, clicar no botão *Polígono* vai unir o primeiro e último ponto inseridos para fechar o polígono;  
   - **Curvas:** No modo *Build*, colocar ao menos 4 pontos e clicar no botão *Curva* irá inserir curvas. Para escolher o tipo (Bezier ou B-Spline), acesse o menu de *Configurações -> Curvas*. Clicar no botão *Curva* sem estar no modo *Build* irá abrir uma janela para inserir os pontos textualmente. É possível alterar os pontos da curva no menu de *Propriedades* do objeto;
-  - **Superfícies:** Ao clicar no botão de *Superficie*, é possível inserir os pontos de controle e gerar uma curva. É possível fazer alterações nos parâmetros de construção no menu de configurações;
+  - **Superfícies:** Ao clicar no botão de *Superficie*, é possível inserir os pontos de controle e gerar uma superfície. É possível fazer alterações nos parâmetros de construção no menu de configurações;
 - **Manipulação de objetos:** Na lista de objetos, clique no objeto cuja propriedade deseja alterar e siga as instruções condizentes.
   - **Translação:** Preencha os valores de deslocamento no eixo X e Y e aperte o botão *Deslocar* ;
   - **Rotações em torno:**
