@@ -20,7 +20,7 @@ class WindowPointObject(WindowObject):
   p: WindowPoint
 
   def draw(self, canva: Canvas, color: str, thickness: int, line_color: str | None = None) -> None:
-    canva.create_oval(self.p.x-2, self.p.y-2, self.p.x+2, self.p.y+2, fill=color, width=thickness)
+    canva.create_oval(self.p.x-2, self.p.y-2, self.p.x+2, self.p.y+2, fill="black", width=thickness)
 
 @dataclass
 class WindowLineObject(WindowObject):
