@@ -1,0 +1,5 @@
+positive: ((Best Quality)) (masterpiece) (details), masterpiece, best quality, highly detailed, (ultra detailed, very aesthetic, anime realism, 8K, 4K, 16K), solo, full body, front facing, humanoid, looking at the viewer, emotionless, model pose, robot mask
+negative: bad quality, worst quality, lowres, jpeg artifacts, bad anatomy, bad hands, multiple views, signature, watermark, censored, ugly, messy
+modelo: dreamshaper
+lora: mecha-musume
+
