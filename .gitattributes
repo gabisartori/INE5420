@@ -1,0 +1,6 @@
+game/casa filter=lfs diff=lfs merge=lfs -text
+game/character/ filter=lfs diff=lfs merge=lfs -text
+provas/ filter=lfs diff=lfs merge=lfs -text
+doublejump.blend filter=lfs diff=lfs merge=lfs -text
+torre_e_casa.blend filter=lfs diff=lfs merge=lfs -text
+torre_e_casa.fbx filter=lfs diff=lfs merge=lfs -text
