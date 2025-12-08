@@ -41,7 +41,7 @@ class Viewport:
     window_padding: int,
     window_zoom: float,
     line_clipping_algorithm: IntVar,
-    projection_type: int,
+    projection_type: IntVar,
   ):
     self.canva = canva
     self.window = Window(

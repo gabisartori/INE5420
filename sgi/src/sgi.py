@@ -49,7 +49,6 @@ class SGI:
     self.window_position: list[float] = window_position
     self.window_normal: list[float] = window_normal
     self.window_focus: list[float] = window_focus
-    self.projection_type: int = projection_type
     self.window_up: list[float] = window_up
     self.window_movement_speed: int = window_movement_speed
     self.window_rotation_speed: int = window_rotation_speed
@@ -63,6 +62,7 @@ class SGI:
 
     ## The *line_clipping_algorithm* and *curve_type* variables will be also passed to the Viewport class
     ## This means that changing them here will change them in the Viewport class too
+    self.projection_type: tk.IntVar = tk.IntVar(value=projection_type)
     self.line_clipping_algorithm = tk.IntVar(value=line_clipping_algorithm)
     self.curve_type = tk.IntVar(value=curve_type)
     self.curve_coefficient = tk.IntVar(value=curve_coefficient)
@@ -99,11 +99,15 @@ class SGI:
     settings_menu = tk.Menu(self.navbar, tearoff=0)
     clipping_submenu = tk.Menu(settings_menu, tearoff=0)
     curve_submenu = tk.Menu(settings_menu, tearoff=0)
-    self.surface_submenu = tk.Menu(settings_menu, tearoff=0)
+    surface_submenu = tk.Menu(settings_menu, tearoff=0)
+    projection_submenu = tk.Menu(settings_menu, tearoff=0)
 
     clipping_submenu.add_radiobutton(label="Cohen-Sutherland", value=0, variable=self.line_clipping_algorithm)
     clipping_submenu.add_radiobutton(label="Liang-Barsky", value=1, variable=self.line_clipping_algorithm)
     
+    projection_submenu.add_radiobutton(label="Paralela", value=0, variable=self.projection_type, command=self.viewport.update)
+    projection_submenu.add_radiobutton(label="Perspectiva", value=1, variable=self.projection_type, command=self.viewport.update)
+
     curve_submenu.add_radiobutton(label="Bézier", value=0, variable=self.curve_type)
     curve_submenu.add_radiobutton(label="B-Spline", value=1, variable=self.curve_type)
     curve_submenu.add_command(label="Grau de continuidade", command=lambda: (
@@ -119,15 +123,15 @@ class SGI:
       )).pack(),
     ))
 
-    self.surface_submenu.add_radiobutton(label="Bézier", value=0, variable=self.surface_type)
-    self.surface_submenu.add_radiobutton(label="B-Spline", value=1, variable=self.surface_type)
+    surface_submenu.add_radiobutton(label="Bézier", value=0, variable=self.surface_type)
+    surface_submenu.add_radiobutton(label="B-Spline", value=1, variable=self.surface_type)
 
-    self.surface_submenu.add_radiobutton(label="Blending Functions", value=0, variable=self.surface_algorithm_type, command=self.toggle_forward_differences)
-    self.surface_submenu.add_radiobutton(label="Forward Differences", value=1, variable=self.surface_algorithm_type, command=self.toggle_forward_differences)
+    surface_submenu.add_radiobutton(label="Blending Functions", value=0, variable=self.surface_algorithm_type, command=self.toggle_forward_differences)
+    surface_submenu.add_radiobutton(label="Forward Differences", value=1, variable=self.surface_algorithm_type, command=self.toggle_forward_differences)
     self.toggle_forward_differences()
     
     # dimensoes da malha:
-    self.surface_submenu.add_command(
+    surface_submenu.add_command(
         label="Dimensões da malha",
         command=lambda: (
             (lambda: (
@@ -145,7 +149,7 @@ class SGI:
         )
     )
 
-    self.surface_submenu.add_command(label="Passos", command=lambda: (
+    surface_submenu.add_command(label="Passos", command=lambda: (
       popup := self.popup(250, 100, "Passos"),
       tk.Label(popup, text="Passos:").pack(),
       input := tk.Entry(popup),
@@ -160,7 +164,8 @@ class SGI:
 
     settings_menu.add_cascade(label="Algoritmo de Recorte", menu=clipping_submenu)
     settings_menu.add_cascade(label="Curvas", menu=curve_submenu)
-    settings_menu.add_cascade(label="Superfície", menu=self.surface_submenu)
+    settings_menu.add_cascade(label="Superfície", menu=surface_submenu)
+    settings_menu.add_cascade(label="Projeção", menu=projection_submenu)
 
     self.navbar.add_cascade(label="Arquivo", menu=file_menu)
     self.navbar.add_cascade(label="Configurações", menu=settings_menu)

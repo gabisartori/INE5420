@@ -690,7 +690,7 @@ class Wireframe:
 
           case 'f':
             if len(body) < 3: raise ValueError(f"Invalid face line: {line.strip()}")
-            vertices = [int(x)-1 for x in body]
+            vertices = [int(x.split("//")[0])-1 for x in body]
             current_faces.append((
               vertices,
               current_texture

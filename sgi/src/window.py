@@ -1,3 +1,5 @@
+from tkinter import IntVar
+
 import numpy as np
 from my_types import WorldPoint, WindowPoint
 
@@ -25,7 +27,7 @@ class Window:
     movement_speed: int,
     rotation_speed: int,
     zoom: float,
-    projection_type: int,
+    projection_type: IntVar,
   ):
     self.position: WorldPoint = np.array(position, dtype=float)
     self.normal: WorldPoint = normalize(normal)
@@ -40,8 +42,7 @@ class Window:
     self.max_zoom = 100.0
     self.min_zoom = 0.1
     self.padding = 15
-
-    self.chosen_projection = self.perspective_projection if projection_type == 1 else self.paralel_projection
+    self.projection_type = projection_type
 
     # Calculate the right and up vectors based on the normal vector and the given up vector
     if np.array_equal(self.normal, up) or np.array_equal(self.normal, -normalize(up)):
@@ -50,6 +51,10 @@ class Window:
     else:
       self.right = normalize(np.cross(self.normal, up))
       self.up = normalize(np.cross(self.right, self.normal))
+
+  @property
+  def chosen_projection(self):
+    return self.perspective_projection if self.projection_type.get() == 1 else self.paralel_projection
 
   def move_up(self): self.position[1] += max(self.movement_speed/self.zoom, 1.0)
 
