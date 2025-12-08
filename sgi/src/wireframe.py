@@ -42,9 +42,14 @@ class WindowPolygonObject(WindowObject):
 
   def draw(self, canva: Canvas, color: str | None = None, thickness: int=1, line_color: str | None = None) -> None:
     coords = []
+    fill_color = self.texture if self.texture else color if color else ""
     for p in self.points: coords.extend([p.x, p.y])
-    canva.create_polygon(*coords, outline=line_color if line_color else "black", 
-                         fill=color if self.texture else "", width=thickness)
+    canva.create_polygon(
+      *coords,
+      outline=line_color if line_color else "black", 
+      fill=fill_color,
+      width=thickness
+    )
 
 @dataclass
 class WindowSurfaceObject(WindowObject):
@@ -562,7 +567,7 @@ class Wireframe:
   curves: list[Curve] = field(default_factory=list)
   surfaces: list[Surface] = field(default_factory=list)  # Placeholder for future surface implementations
   thickness: float | None = 1.0
-  texture: str | None = "black"
+  texture: str | None = None
   line_color: str | None = "black"
 
   def copy(self) -> 'Wireframe':

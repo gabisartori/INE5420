@@ -24,7 +24,7 @@ class SGI:
     width: int=1600,
     height: int=900,
     curve_type: int=0,
-    curve_coefficient: int=0,
+    curve_coefficient: int=100,
     surface_type: int=0,
     surface_algorithm_type: int=0,
     surface_degree: tuple[int, int]=(4, 4),
