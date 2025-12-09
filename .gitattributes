@@ -4,3 +4,5 @@ provas/ filter=lfs diff=lfs merge=lfs -text
 doublejump.blend filter=lfs diff=lfs merge=lfs -text
 torre_e_casa.blend filter=lfs diff=lfs merge=lfs -text
 torre_e_casa.fbx filter=lfs diff=lfs merge=lfs -text
+relatorio-2.pdf filter=lfs diff=lfs merge=lfs -text
+relatorio-4.pdf filter=lfs diff=lfs merge=lfs -text
